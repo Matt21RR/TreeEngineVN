@@ -26,21 +26,22 @@
     "cinematica":[
       {"zoom":4,"movement":"instant","onComplete":[
         {"left":"100%","movement":"instant"},
-        {"top":"100%","movement":"instant"},
-        {"duration":10,"zoom":3,"delay":5},
-        {"delay":0.1,"left":0,"duration":20,"movement":"smooth","ease":"Sine.easeInOut"},
-        {"delay":0.1,"top":0,"duration":20,"movement":"smooth","ease":"Sine.easeInOut","onComplete":[
-          {"delay":1,"duration":0.5,"opacity":0,"onComplete":[{
-            "zoom":2,"onComplete":[{
-              "duration":1,"opacity":1,"onComplete":[ 
-                {"delay":1,"duration":0.5,"opacity":0,"onComplete":[{
-                  "zoom":1,"onComplete":[{
-                    "duration":1,"opacity":1,"cinematicEnd":true
-                  }]
-                }]}
-              ]
-            }]
-          }]}
+        {"top":"100%","movement":"instant","onComplete":[
+          {"duration":10,"zoom":3,"delay":5},
+          {"delay":0.1,"left":0,"duration":20,"movement":"smooth","ease":"Sine.easeInOut"},
+          {"delay":0.1,"top":0,"duration":20,"movement":"smooth","ease":"Sine.easeInOut","onComplete":[
+            {"delay":1,"duration":0.5,"opacity":0,"onComplete":[{
+              "zoom":2,"onComplete":[{
+                "duration":1,"opacity":1,"onComplete":[ 
+                  {"delay":1,"duration":0.5,"opacity":0,"onComplete":[{
+                    "zoom":1,"onComplete":[{
+                      "duration":1,"opacity":1,"cinematicEnd":true
+                    }]
+                  }]}
+                ]
+              }]
+            }]}
+          ]}
         ]}
       ]}
     ],

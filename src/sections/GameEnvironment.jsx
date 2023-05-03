@@ -357,9 +357,11 @@ class GameEnvironment extends React.Component {
         <div className="relative h-full w-full overflow-hidden" id="gameCanvasScreenshotTarget">
           <div ref={this.cameraReference} className="relative h-full w-full overflow-hidden" style={{}} id="camera">
             <div className="relative h-full w-full overflow-hidden" style={{transformOrigin: "0 0"}} id="scaleCaster">
-              {this.execPhase1Fondo()}
-              {this.execPhase2()}
-              {this.execPhase1CapaSuperior()}
+              <div className="top-0 absolute h-full w-full overflow-hidden pointer-events-none">
+                {this.execPhase1Fondo()}
+                {this.execPhase2()}
+                {this.execPhase1CapaSuperior()}
+              </div>
             </div>
           </div>
           {this.execPhase3()}

@@ -46,14 +46,14 @@ class Fondo extends React.Component{
             gsap.to(this.target.current,this.state.fondo.fadeOut.duration,this.state.fondo.fadeOut);
           },0.5);
         }
-        });
+      });
     }
 
   }
   render(){
     return(
       <div
-       className={"absolute top-0 left-0 w-full h-full pointer-events-none"} ref={this.target}
+       className={"absolute top-0 left-0 w-full h-full pointer-events-none fondo"} ref={this.target}
         style={
           this.state.styleElements
       }
