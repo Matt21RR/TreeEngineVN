@@ -4,4 +4,7 @@ function generateRndRGBColor(maxLumminosityLevel=255,minLumminosityLevel=1){
   }
   return ("rgb("+randChannelCodeGenerator()+","+randChannelCodeGenerator()+","+randChannelCodeGenerator()+")");
 }
-export {generateRndRGBColor}
+function random(maxValue,minValue=0){
+  return(Math.floor(Math.random() * maxLumminosityLevel) + minLumminosityLevel);
+}
+export {generateRndRGBColor,random}
