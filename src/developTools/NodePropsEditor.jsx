@@ -121,7 +121,6 @@ class NodePropsEditor extends React.Component{
     //Agregar condicionales para valor tipo numerico y valor tipo archivo/imagen
     return(
       <TextareaAutosize className=" rounded-md px-1" defaultValue={valorPropiedad} style={{backgroundColor:"black",width:"200px",borderWidth:"1px",borderColor:"#40404075"}} />
-      // <input className=" rounded-md px-1 border-2" type="text" value={valorPropiedad} style={{backgroundColor:"#262626"}}/>
     );
   }
   renderPropiedades(info = this.state.nodeInfo,nombrePropiedad = null){

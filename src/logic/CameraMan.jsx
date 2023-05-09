@@ -145,7 +145,6 @@ class CameraMan {
         var easingFunction = null;
         var easingFunctionName = instruction.ease.split(".")[1];
         if (instruction.ease.indexOf("Sine") != -1) {
-          // console.log(Sine[easingFunctionName]);
           easingFunction = Sine[easingFunctionName];
         }
         newInstruction = Object.assign(newInstruction, {
@@ -156,7 +155,7 @@ class CameraMan {
       if ("zoom" in instruction) {
         newInstruction = Object.assign(newInstruction, { width: (instruction.zoom * 100) + "%", height: (instruction.zoom * 100) + "%" });
 
-        // newInstruction = Object.assign(newInstruction,{scale:instruction.zoom});
+        //newInstruction = Object.assign(newInstruction,{scale:instruction.zoom});
       }
       if ("onComplete" in instruction) {
         if (Array.isArray(instruction.onComplete)) {
