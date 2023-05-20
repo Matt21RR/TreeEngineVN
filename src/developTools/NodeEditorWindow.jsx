@@ -13,22 +13,35 @@ class LateralToolBar extends React.Component{
   }
   renderButtons(){
     const optionsList = [
-      {action:this.props.close,text:"cerrar",icon:""},
-      {action:this.props.showNodeInterpretedPropsEditor,text:"propiedadesDelNodoInterpretadas",icon:""},
-      {action:this.props.showNodeUninterpretedPropsEditor,text:"propiedadesDelNodoSinInterpretar",icon:""},
-      {action:()=>{},text:"elementosPredefinidos",icon:""}
+      {action:this.props.close,text:"Cerrar",icon:""},
+      {action:this.props.showNodeInterpretedPropsEditor,text:"Propiedades Del Nodo Interpretadas",icon:""},
+      {action:this.props.showNodeUninterpretedPropsEditor,text:"Propiedades Del Nodo Sin Interpretar",icon:""},
+      {action:()=>{},text:"Elementos Predefinidos",icon:""}
     ];
     return(
       optionsList.map((option)=>(
-        <div title={option.title} className="w-14 h-14 border-[1px] cursor-pointer" style={{backgroundColor:generateRndRGBColor()}} onClick={()=>{option.action()}}>
-          {option.text}
+        <div 
+          className="flex flex-row cursor-pointer pointer-events-auto"
+          onClick={()=>{option.action()}}
+          onMouseOver={(e)=>{e.target.childNodes[1].style.width = e.target.childNodes[1].childNodes[0].scrollWidth+"px";}}
+          onMouseOut={(e)=>{e.target.childNodes[1].style.width = "0px";}}
+          >
+          <div 
+            className="w-14 h-14 border-[1px] pointer-events-none" 
+            style={{backgroundColor:generateRndRGBColor()}} 
+            />
+          <div className="relative w-0 h-14 bg-orange-800 overflow-hidden pointer-events-none flex flex-col">
+            <div className="mt-auto px-2 mb-2 text-sm w-max h-fit">
+              {option.text}
+            </div>
+          </div>
         </div>
       ))
     );
   }
   render(){
     return(
-      <div className=" w-14 h-full absolute bg-slate-600 flex flex-col">
+      <div className=" w-auto h-full absolute bg-[#00000043] flex flex-col text-white">
         {this.renderButtons()}
       </div>
     );
@@ -78,13 +91,6 @@ class NodeEditorWindow extends React.Component {
         loadSavedGame={(actualNode, storyVars, onComplete) => { }}
         aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
       />
-    );
-  }
-  gameEnvironmentEditorCanvas(){
-    return(
-      <div className="absolute top-0 left-0">
-
-      </div>
     );
   }
   renderNodePropsEditor(){

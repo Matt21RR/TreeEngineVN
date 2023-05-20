@@ -175,10 +175,6 @@ class CameraMan {
           newInstruction = Object.assign(newInstruction, { [prop]: instruction[prop] });
         }
       });
-      //console.warn("running camera instruction:");
-      //console.log(newInstruction);
-      //console.log("compiled from:");
-      //console.log(instruction);
       this.followInstruction(newInstruction);
     });
   }

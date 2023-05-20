@@ -130,6 +130,7 @@ class Template extends React.Component {
       case 4:
         return (
           <NodesWatch
+            changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
             gameScript={this.gameScript}
           />
         );

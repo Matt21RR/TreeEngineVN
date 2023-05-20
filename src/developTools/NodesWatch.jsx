@@ -1,6 +1,6 @@
 import gsap from "gsap";
 import React from "react";
-import { Button1 } from "../components/buttons";
+import { Button1,MenuButton } from "../components/buttons";
 import { NodesBuilder } from "../logic/NodesBuilder";
 import { GameEnvironment } from "../sections/GameEnvironment";
 import { NodeEditorWindow } from "./NodeEditorWindow";
@@ -149,7 +149,12 @@ class NodesWatch extends React.Component {
     return (
       <>
         <div className="lg:px-6 md:px-4 px-3 absolute h-full w-full overflow-auto">
-          <div className="text-white m-4 pt-4">Haz click sobre un nodo para editarlo</div>
+          <div className='relative top-0 h-16 w-full flex flex-col'>
+            <div className='absolute right-8 my-auto text-white top-1/2 text-lg' style={{transform:"translate(0%,-50%)"}}>Haz clic sobre un nodo para editarlo</div>
+            <div className='my-auto mx-6 text-white'>
+              <MenuButton text="Volver" action={() => this.props.changeSection(0)} />
+            </div>
+          </div>
           <div className="flex flex-wrap pt-6" ref={this.nodesRef}>
             {this.nodesList()}
             {this.addANodeBox()}
