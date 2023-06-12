@@ -11,4 +11,10 @@ function random(maxValue,minValue=0){
     return(Math.floor(Math.random() * maxValue) + minValue);
   }
 }
-export {generateRndRGBColor,random}
+function removeCharAt(text = new String(),i= new Number()) {
+  var tmp = text.split('');
+  i = i<0?text.length+i:i; // for negative index
+  tmp.splice(i , 1);
+  return tmp.join('');
+}
+export {generateRndRGBColor,random,removeCharAt}
