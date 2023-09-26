@@ -5,11 +5,13 @@ import { NodesBuilder } from "../logic/NodesBuilder";
 import { GameEnvironment } from "../sections/GameEnvironment";
 import { NodeEditorWindow } from "./NodeEditorWindow";
 import { NodeBuilder } from "../logic/NodeBuilder";
+//Developermode Main
 class NodesWatch extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       unIntrepretedGameScript: NodesBuilder.getUninterpretedGameScript(),
+      //estos nodos son requeridos en otros nodos
       requiredNodes: NodesBuilder.getRequiredNodesList(NodesBuilder.getUninterpretedGameScript()),
       gameScript: this.props.gameScript,
       nodeToEdit: new Object(),
@@ -23,7 +25,7 @@ class NodesWatch extends React.Component {
     if (!this.componentMounted) {
       this.componentMounted = true;
       this.setState({unIntrepretedGameScript: NodesBuilder.getUninterpretedGameScript(), requiredNodes: NodesBuilder.getRequiredNodesList(NodesBuilder.getUninterpretedGameScript())},()=>{
-        console.log(this.state.requiredNodes);
+        console.warn(this.state.requiredNodes);
       });
     }
   }

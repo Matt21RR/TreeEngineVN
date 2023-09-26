@@ -3,13 +3,14 @@ import { GameSaveLogic } from "../logic/GameSaveLogic";
 import {MenuButton} from "../components/buttons";
 import {all} from "../components/alert";
 import { gameFiles } from "../res/gameRes/files";
+import {RenderEngine} from "../renderCore/RenderEngine";
 
 class MainMenu extends React.Component{
   render(){
     return(
       <div className="flex-row absolute w-full h-full"
         >
-          <div
+          {/* <div
           className="absolute h-full w-full"
           style={{ 
             backgroundImage:"url('"+gameFiles.mainMenuBackgroundGif+"')",
@@ -18,7 +19,11 @@ class MainMenu extends React.Component{
             filter:"blur(1.5px) hue-rotate(340deg)"
           }}>
 
-          </div>
+          </div> */}
+        <div className="absolute w-full h-full">
+          <RenderEngine />
+        </div>
+          
         <div className="absolute mx-16 h-auto bottom-[4%]">
           <MenuButton text="Continuar" hide={GameSaveLogic.getSavedGames().length  == 0} action={()=>{
             var lastSavedGame = GameSaveLogic.getSavedGames().at(-1);

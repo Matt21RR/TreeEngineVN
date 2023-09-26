@@ -6,6 +6,7 @@ import { ImageViewer } from "./ImageViewer";
 import { NodePropsEditor } from "./NodePropsEditor";
 import { generateRndRGBColor } from "../logic/Misc";
 import { NodesBuilder } from "../logic/NodesBuilder";
+import { PropertyEditor } from "./PropertyEditor";
 
 class LateralToolBar extends React.Component{
   constructor(props){
@@ -96,11 +97,13 @@ class NodeEditorWindow extends React.Component {
   renderNodePropsEditor(){
     if(this.state.showing){
       return(
-        <NodePropsEditor
+        <NodePropsEditor //HERE
           showing={this.state.showNodePropsEditor}
           interpretedMode={this.state.showInterpretedProps}
-          node={NodesBuilder.nodeFinder(this.state.node,this.state.showInterpretedProps?this.state.gameScript:this.state.unInterpretedGameScript)}
+          node={NodesBuilder.nodeFinder(this.state.nodethis.state.showInterpretedProps?this.state.gameScript:this.state.unInterpretedGameScript)}
           close={()=>{this.setState({showNodePropsEditor:false})}}
+
+          updateNodeData={(node)=>{this.props.updateNodeData(node)}}
         />
       );
     }
@@ -124,7 +127,9 @@ class NodeEditorWindow extends React.Component {
           />
           {this.renderNodePropsEditor()}
           {this.renderImageViewer()}
+          
         </div>
+        <PropertyEditor/>
       </div>
     );
   }

@@ -27,12 +27,15 @@ class Parallax {
     }
   }
   static calcParallaxElementsSize() {
-    const clientHeight = document.getElementById("camera").clientHeight;
+    
     this.elementsComputedPercentageSize = {};
+    //calculos iniciales
+    const clientHeight = document.getElementById("camera").clientHeight;//resolucion vertical del canvas
     const clientUnitaryHeightPercentageConstant = 100 / clientHeight;
-    const algoPerspectiveAngle = (this.userPerspectiveAngle / 2) * (Math.PI / 180);
+    const algoPerspectiveAngle = (this.userPerspectiveAngle / 2) * (Math.PI / 180);//uses camera angle
     const tangencialConstant = Math.tan(algoPerspectiveAngle) * 2;
-    this.layersZpos.forEach(layerZpos => {
+
+    this.layersZpos.forEach(layerZpos => {//para cada elemento que se dibuja creada
       if(layerZpos != null){
         const perspectiveDiff = this.displayDigitalRepresentationZ - layerZpos;
         const toAddSize = perspectiveDiff * tangencialConstant;

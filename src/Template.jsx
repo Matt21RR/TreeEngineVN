@@ -18,7 +18,8 @@ class Template extends React.Component {
       actualNode: null,
       storyVars: null,
       ingameSavedGamesList: false,
-      aspectRatio: "unset"
+      aspectRatio: "unset",
+      componentMounted:false,
     }
     this.resizeTimeout = 0;
     this.gameScript = null;
@@ -28,14 +29,17 @@ class Template extends React.Component {
     console.log(charsFiles);
     if (!this.componentMounted) {
       this.componentMounted = true;
+
       window.setTimeout(() => {
         if (Object.keys(localStorage).indexOf("aspectRatio") != -1) {
           this.setState({ aspectRatio: localStorage.getItem("aspectRatio") }, () => {
-            this.aspectRatioCalc();
+            this.aspectRatioCalc(null,()=>{this.setState({componentMounted:true});});
+            
           });
         } else {
           localStorage.setItem("aspectRatio", "unset");
         }
+
         window.addEventListener('resize', () => {
           gsap.to(document.getElementById("display"), 0.3, { opacity: 0 });
           clearTimeout(this.resizeTimeout);
@@ -54,10 +58,10 @@ class Template extends React.Component {
         console.log(NodesBuilder.getRequiredNodesList(NodesBuilder.getUninterpretedGameScript()));
         this.gameScript = NodesBuilder.buildGameScript();
         console.log(this.gameScript);
-      }, 2);
+      }, 200);
     }
   }
-  aspectRatioCalc(op = null) {
+  aspectRatioCalc(op = null,fun = null) {
     if (op != null) {
       this.setState({ aspectRatio: op }, () => { localStorage.setItem("aspectRatio", op) });
     } else {
@@ -78,65 +82,70 @@ class Template extends React.Component {
       document.getElementById("display").style.width = "";
       document.getElementById("display").style.height = "";
     }
-
+    if(fun != null){
+      fun();
+    }
   }
   changeSection(sectionToLoad) {
     this.setState({ section: sectionToLoad });
   }
   renderSection() {
-    switch (this.state.section) {
-      case 0://MainMenu
-        return (
-          <MainMenu
-            loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
-            loadNewGame={(onComplete) => { this.setState({ actualNode: null, storyVars: new Object() }, () => { onComplete(); }) }}
-            changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-
-            aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
-          />
-        );
+    if(this.state.componentMounted){
+      switch (this.state.section) {
+        case 0://MainMenu
+          return (
+            <MainMenu
+              loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
+              loadNewGame={(onComplete) => { this.setState({ actualNode: null, storyVars: new Object() }, () => { onComplete(); }) }}
+              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
+  
+              aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
+            />
+          );
+          break;
+        case 1://SavedGamesScreeen
+          return (
+            <SavedGamesScreen
+              loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
+              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
+            />
+          );
+          break;
+        case 2://GameEnvironment
+          return (
+            <GameEnvironment
+              storyVars={this.state.storyVars}
+              actualNode={this.state.actualNode}
+              gameScript={this.gameScript}
+              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
+  
+              loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
+              aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
+            />
+          );
+          break;
+  
+        case 3:
+          return (
+            <Config
+              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
+              aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
+            />
+          );
+  
         break;
-      case 1://SavedGamesScreeen
-        return (
-          <SavedGamesScreen
-            loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
-            changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-          />
-        );
+        case 4:
+          return (
+            <NodesWatch
+              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
+              gameScript={this.gameScript}
+            />
+          );
+  
         break;
-      case 2://GameEnvironment
-        return (
-          <GameEnvironment
-            storyVars={this.state.storyVars}
-            actualNode={this.state.actualNode}
-            gameScript={this.gameScript}
-            changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-
-            loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
-            aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
-          />
-        );
-        break;
-
-      case 3:
-        return (
-          <Config
-            changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-            aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
-          />
-        );
-
-      break;
-      case 4:
-        return (
-          <NodesWatch
-            changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-            gameScript={this.gameScript}
-          />
-        );
-
-      break;
+      }
     }
+    
   }
   render() {
     return (

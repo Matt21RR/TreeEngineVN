@@ -236,8 +236,12 @@ class NodePropsEditor extends React.Component {
       return (
         <div className="ml-2 pt-1" style={{ borderLeft: "#40404075 solid 1px", borderTop: "#40404075 dotted 2px" }}>
           {this.renderLista(info, ruta)}
-          {/* FIN LISTA */}
-
+          <div className=" flex">
+            FIN LISTA
+            <MenuButton text={"Lista"} action={()=>{console.log("Add a list after last index of :"+ruta)}}/>
+            <MenuButton text={"Objeto"}  action={()=>{console.log("Add a object after last index of :"+ruta)}}/>
+            <MenuButton text={"Propiedad"}  action={()=>{console.log("Add a property after last index of :"+ruta)}}/>
+          </div>
         </div>
       );
     } else if (typeof info == "object") {
@@ -246,7 +250,12 @@ class NodePropsEditor extends React.Component {
       return (
         <div className="ml-2 pl-1 pt-1" style={{ borderLeft: "#40404075 solid 1px", borderTop: "#40404075 dotted 2px", backgroundColor: rgbColor }}>
           {this.renderObjeto(info, ruta)}
-          {/* FIN OBJETO */}
+          <div className=" flex">
+            FIN OBJETO
+            <MenuButton text={"Lista"} action={()=>{console.log("Add list in:"+ruta)}}/>
+            <MenuButton text={"Objeto"}  action={()=>{console.log("Add object in:"+ruta)}}/>
+            <MenuButton text={"Propiedad"}  action={()=>{console.log("Add property in:"+ruta)}}/>
+          </div>
         </div>
       );
     } else {
@@ -295,6 +304,7 @@ class NodePropsEditor extends React.Component {
             <MenuButton text="Guardar" action={() => { this.props.saveNode() }}  hide={this.props.node == this.state.nodeInfo}/>
           </div>
         </div>
+        
       </div>
     )
   }
