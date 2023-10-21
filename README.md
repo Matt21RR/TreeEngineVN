@@ -17,3 +17,5 @@ Also.... something something related to
 The engine code is not very well documented (or commented, whatever). 
 
 Sometimes a very rare bug appears. Basically, if you tab out of the engine window and, after a long time, tab back into the window (without clicking inside it), the engine seems to call the draw function twice. This is fixed by simply clicking inside the window, but that's not a decent fix.
+
+The code itself is a mess because the project files are a combination of a very old (and particularly inefficient) first attempt to build a game engine and the current approach, but that can be fixed by simply finding and removing the files that are no longer used.
