@@ -1,16 +1,19 @@
+import { GPU } from "gpu.js"; //for create shaders spicific for each graphObject with texture
+import { ExtendedObjects } from "../logic/ExtendedObjects";
+
 var ease = require("ease-component"); 
-console.log(Object.keys(ease));
+console.log("Easing options: ",Object.keys(ease));
 class graphArr{
   static create(){
     var graphArray = new Object({
-      _graphObjects : new Array(),
+      _objects : new Array(),
       push: function(newGraphObj) {graphArr.push(this,newGraphObj)},
       remove: function(objectId) {graphArr.remove(this,objectId)},
       get: function(objectId) {return graphArr.get(this,objectId)}
     });
     Object.defineProperties(graphArray,{
-      graphObjects:{
-        get: function () {return this._graphObjects;}
+      objects:{
+        get: function () {return this._objects;}
       }
     });
     return graphArray;
@@ -30,59 +33,146 @@ class graphArr{
     }
 
   }
-  static push(graphArray = new Array(),graphObj = new Object()){
-    graphArray._graphObjects.push(graphObj);
+  static push(graphArray = new Array(),GraphObj = new Object()){
+    graphArray._objects.push(GraphObj);
   }
   static remove(graphArray = new Array(), objectId = new String()){
-    const graphIds = graphArray._graphObjects.map(e=>e.id);
+    const graphIds = graphArray._objects.map(e=>e.id);
 
     if(graphIds.indexOf(objectId) != -1)
-    graphArray._graphObjects.splice(graphIds.indexOf(objectId),1);
+    graphArray._objects.splice(graphIds.indexOf(objectId),1);
   }
   static get(graphArray = new Array(), objectId = new String()){
-    const graphIds = graphArray._graphObjects.map(e=>e.id);
+    const graphIds = graphArray._objects.map(e=>e.id);
     if(graphIds.indexOf(objectId) != -1)
-    return graphArray._graphObjects[graphIds.indexOf(objectId)].get();
+    if(Object.keys(graphArray._objects[graphIds.indexOf(objectId)]).indexOf("get") != -1){
+      return graphArray._objects[graphIds.indexOf(objectId)].get();
+    }else{
+      return graphArray._objects[graphIds.indexOf(objectId)];
+    }
+    
   }
 }
 class Animation{
-  static create(aInfo = new Object(),graphObject = graphObj){
+  static create(aInfo = new Object(),graphObject = GraphObj){
     var animation = new Object({
+      _id:aInfo.id?aInfo.id:"undefined",
+      _relatedTo:aInfo.relatedTo?aInfo.relatedTo:null, //the gO related to the animation
       _ease:aInfo.ease?aInfo.ease:"linear",
       _done:aInfo.done?aInfo.done:false,
-      _loops:aInfo.loops?aInfo.loops:0,
+      _loops:aInfo.loops?aInfo.loops*(aInfo.loopback?2:1):1,//by default 1 loop
+      _reverse:aInfo.reverse?1:0,//if the animation are played in reverse
+      _looped:1,
       _infinite:aInfo.infinite?aInfo.infinite:false,//infinite looping
+      _loopback:aInfo.loopback?1:0,//repeat the animation in reverse after end
       _duration:aInfo.duration?aInfo.duration:0,
-      _elapsed:aInfo.elapsed?aInfo.elapsed:0,
+      _elapsed:0,
+      _tElapsed:0,//total time elapsed
+      _enabled:aInfo.enabled?aInfo.enabled:false,
+      _pendingTimersFix:false,
+      _startedAt:NaN,
+      _dStartedAt:NaN,
+      _delay:aInfo.delay?aInfo.delay:NaN,
       _to:aInfo.to?aInfo.to:{},
-      updateState : function (gObject,elapsed) {
+      _onComplete:aInfo.onComplete?aInfo.onComplete:null,
+      updateState : function (eTime,gObjectFun){//engine time
+        if(this._enabled && !this._done){
+          if(this._delay > 0){
+            this.updateDelay(eTime);
+          }else{
+            var gObject = gObjectFun(this._relatedTo);
+            this.updateAnimation(gObject,eTime);
+          }
+          return false;
+        }else{
+          return true;
+        }
+      },
+      updateDelay : function (delay) {
+        if(isNaN(this._dStartedAt)){
+          this._dStartedAt = delay;
+          return;
+        }
+        if(this._pendingTimersFix){
+          this._dStartedAt = delay-this._delay;
+          this._pendingTimersFix = false;
+        }
+        const dO = delay;
+        delay -= this._dStartedAt;
+        this._delay -=delay;
+        this._dStartedAt = dO;
+      },
+      updateAnimation : function (gObject,elapsed) {
+        const eTemp =elapsed;
+        if(isNaN(this._startedAt)){
+          //Esta instanciacion se debe de realizar justo antes de iniciar la animacion
+          var gOD;
+          //Si se trata de la camara
+          if(gObject.id == "engineCamera"){
+            gOD = ExtendedObjects.buildObjectsWithRoutes(gObject);
+            this._to = ExtendedObjects.buildObjectsWithRoutes(this._to);
+            console.log(gOD,this._to);
+          }else{
+            gOD = gObject.dump();
+          }
+          var f = new Object();
+          Object.keys(this._to).forEach(toKey=>{
+            f[toKey] = gOD[toKey];
+          });
+          this._from =  f;
+          //ajustar el tiempo de inicio de la animacion
+          this._startedAt = elapsed;
+          return;
+        }
+        if(this._pendingTimersFix){
+          this._startedAt = elapsed-(this._tElapsed%this._duration);
+          this._pendingTimersFix = false;
+        }
+        elapsed-=this._startedAt;
         if(!this._done){
-          console.warn(this);
+          this._tElapsed += elapsed-this._elapsed;
           this._elapsed += elapsed-this._elapsed;
-          const progress = this._elapsed/this._duration;
+          const progress = this._reverse ? this._reverse-(this._elapsed/this._duration):(this._elapsed/this._duration);
           const eConstant = ease[this._ease](progress);//easing constant
-          console.warn("eConstant: "+ eConstant);
           const k = Object.keys(this._to);
           k.forEach(toKey =>{
-            gObject["_"+toKey] = this._from[toKey] + (this._to[toKey] - this._from[toKey])*eConstant;
+            if(gObject.id == "engineCamera"){
+              const newValue = this._from[toKey] + (this._to[toKey] - this._from[toKey])*eConstant;
+              // console.log(this._from,this._to,toKey,newValue);
+              ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
+            }else{
+              gObject["_"+toKey] = this._from[toKey] + (this._to[toKey] - this._from[toKey])*eConstant;
+            }
           });
-          if(progress >= 1){
-            console.log(gObject);
-            console.log("animation done!!");
-            this._done=true;
+          if(progress >= 1 || (this._reverse && (progress <= 0))){
+            //si no se han hecho todos los loops o está en loop infinito
+            if(this._looped < this._loops || this._infinite){
+              //reset timers
+              this._startedAt = eTemp;
+              this._elapsed = 0;
+              this._looped++;
+              if(this._loopback)
+                this._reverse = !this._reverse;
+            }else{
+              this._done=true;
+              if(typeof this._onComplete == "function")
+                this._onComplete();
+              //exec on complete
+
+              return;
+            }
           }
         }
       }
     });
-    
-    const gOD = graphObject.dump();
-    var f = new Object();
-    Object.keys(aInfo.to).forEach(toKey=>{
-      f[toKey] = gOD[toKey];
-    });
-    animation._from =  f;
 
     Object.defineProperties(animation,{
+      id:{
+        get: function(){return this._id;}
+      },
+      relatedTo:{
+        get: function(){return this._relatedTo;}
+      },
       ease:{
         get: function () {return ease[this._ease];},
         set: function (x) {
@@ -124,19 +214,31 @@ class Animation{
         get: function () {return this._elapsed;},
         set: function (x) {this._elapsed = parseFloat(x);}
       },
+      enabled:{
+        get: function () {return this._enabled;},
+        set: function (x) {
+          //if the value are different and x=true, the startedAt, dStartedAt must be changed
+          if(this._enabled != x){
+            if(x){
+              this._pendingTimersFix = true;
+            }
+            this._enabled = x;
+          }
+        }
+      },
       to:{
         get: function () {return this._to;},
         set: function (x) {this._to = x;}
       },
-      // from:{
-      //   get: function () {return this._from;},
-      //   set: function (x) {this._from = x;}
-      // }
+      delay:{
+        get: function () {return this._delay;},
+        set: function (x) {this._delay = x;}
+      }
     });
     return animation;
   }
 }
-class graphObj{
+class GraphObj{
   static create(graphInfo = new Object()){
     var graphObject = new Object({
       //is text
@@ -145,14 +247,20 @@ class graphObj{
       _font:graphInfo.font != undefined ? graphInfo.font:"Arial",
       _fontSize:graphInfo.fontSize != undefined ? parseFloat(graphInfo.fontSize):18,
       _boxColor:graphInfo.boxColor != undefined ? graphInfo.boxColor : "black",
-      _imgFile:graphInfo.imgFile != undefined ? graphInfo.imgFile:null,
+      _texture:graphInfo.texture != undefined ? graphInfo.texture:null,
       //Properties of the graph
       _id:graphInfo.id != undefined ? graphInfo.id: "error",
       _brightness: graphInfo.brightness != undefined ? graphInfo.brightness: 1,
       _contrast: graphInfo.contrast != undefined ? graphInfo.contrast: 1,
       _grayscale: graphInfo.grayscale != undefined ? graphInfo.grayscale: 0,
       _hueRotate: graphInfo.hueRotate != undefined ? parseFloat(graphInfo.hueRotate): 0,//deg
+      //***SHADERS
       _blur: graphInfo.blur != undefined ? parseFloat(graphInfo.blur): 0,//px
+      _aberration: graphInfo.aberration != undefined ? parseFloat(graphInfo.aberration): 0,
+      _aberrationType: graphInfo.aberrationType != undefined ? graphInfo.aberrationType: "static",
+      //static or shaky
+      // _dither:graphInfo.dither != undefined ? graphInfo.dither : 1,
+      //***END SHADERS
       _dropShadow : graphInfo.dropShadow != undefined ? {offsetX:parseFloat(graphInfo.dropShadow.offsetX), offsetY:parseFloat(graphInfo.dropShadow.offsetY), blurRadius:parseFloat(graphInfo.dropShadow.blurRadius), color:graphInfo.dropShadow.color} : {offsetX: 0, offsetY:0,blurRadius:0,color:"transparent"},
       _invert : graphInfo.invert != undefined ? graphInfo.invert : 0,
       _saturate : graphInfo.saturate != undefined ? graphInfo.saturate : 1,
@@ -168,30 +276,23 @@ class graphObj{
       _scale : graphInfo.scale != undefined ? graphInfo.scale: 1,
       //imageRotation
       _rotate : graphInfo.rotate != undefined ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0,
-      //zPos
-      _zPos : graphInfo.zPos != undefined ? parseFloat(graphInfo.zPos) : 0,
+      //z
+      _z : graphInfo.z != undefined ? parseFloat(graphInfo.z) : 0,
       //ignoreParallax forces the object to ignore the camera parallax movement
-      _ignoreParallax : graphInfo.zPos != undefined ? graphInfo.ignoreParallax : false,
+      _ignoreParallax : graphInfo.z != undefined ? (graphInfo.ignoreParallax!=undefined?graphInfo.ignoreParallax:false) : true,
       //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
       //Todo: force the engine to use this when it's a text object.
       _widthScale: graphInfo.widthScale != undefined ? graphInfo.widthScale: 1,
       _heightScale: graphInfo.heightScale != undefined ? graphInfo.heightScale: 1,
-      //render type properties
-      _static : graphInfo.animation != undefined? (graphInfo.static != undefined ? graphInfo.static : true):true,//the element will render only 1 time(with the initial params)
-      _recursiveAnimation : graphInfo.recursiveAnimation != undefined ? graphInfo.recursiveAnimation : false,//the animation will play only 1 time(ideal for the fadeIn,fadeOut animation)
-      _animation: null,//animation are a object with three parts:duration,ease,graphPropertiesFinalValue
 
-      //duration are the time elapsed to change the variables values, from initial to the final values determined in the animation
-      //ease determine the "rythm" of change of the values across the time
-      //graphPropertiesFinalValue = literaly the name describes itself
       //*Object methods
-      dump : function() {return graphObj.dump(this);},
+      dump : function() {return GraphObj.dump(this);},
       clone: function(cloneId = null) {
         if(cloneId == null)
         throw new Error("the id for the clonning operation that uses the object with id '"+this._id+"' is not defined");
-        return graphObj.clone(this,cloneId);
+        return GraphObj.clone(this,cloneId);
       },
-      get : function() {return graphObj.get(this);}
+      get : function() {return GraphObj.get(this);}
     });
     //Todo: add a throw error to ensure every graphObject created have it's own id
     if(graphObject._widthScale != 1 || graphObject._heightScale != 1){//reset the scale value and alert of the scale re-instantiation
@@ -235,10 +336,10 @@ class graphObj{
         get: function() {return this._boxColor},
         set: function(x) {this._boxColor = typeof x == "string"? x : "black"}
       },
-      imgFile: {
-        get: function() { return this._imgFile; },
+      texture: {
+        get: function() { return this._texture; },
         set: function(x) { 
-          this._imgFile = x != undefined ? x : null;
+          this._texture = x != undefined ? x : null;
         }
       },
       id:{
@@ -297,7 +398,7 @@ class graphObj{
         get: function() {return this._hueRotate;}
       },
       blur:{
-        get: function() {return (!!window.chrome)?(this._blur>=4 ? this._blur : (this._blur>=2)?this._blur/2 :this._blur/1.7)+"px" : this._blur+"px"},//1/4 blur
+        get: function() {return this._blur+"px"},//1/4 blur
         set: function(x) {
           if(typeof x == "string"){
             if(x.indexOf("px") != -1){
@@ -316,6 +417,22 @@ class graphObj{
       blurNumeric:{
         get: function() {return this._blur;},
         set: function(x) {this._blur = parseFloat(x);}
+      },
+      aberration:{
+        get: function() {return this._aberration},//1/4 blur
+        set: function(x) {
+          if(!isNaN(x)){
+            if(x<0){
+              this._aberration = 0;
+            }else{
+              this._aberration = x;
+            }
+          }
+        }
+      },
+      aberrationType:{
+        get: function() {return this._aberrationType;},
+        set: function(x) {this._aberrationType = x;}
       },
       dropShadow:{
         get: function() {const s = this._dropShadow; return s.offsetX+"px "+s.offsetY+"px "+s.blurRadius+"px "+s.color;},
@@ -448,12 +565,12 @@ class graphObj{
         set: function(x) {this._scale = !isNaN(x)? (x >= 0 ? x : 1 ) : 1}
       },
       rotate:{
-        get: function () {return this._rotate;},
+        get: function () {return (this._rotate*180)/Math.PI;},
         set: function(x) {this._rotate = parseFloat(x)*Math.PI/180;}
       },
-      zPos:{
-        get: function () {return this._zPos;},
-        set: function(x) {this._zPos = parseFloat(x);}
+      z:{
+        get: function () {return this._z;},
+        set: function(x) {this._z = parseFloat(x);}
       },
       ignoreParallax:{
         get: function() {return this._ignoreParallax;},
@@ -469,17 +586,150 @@ class graphObj{
       }
 
     });
-    //*Add animation
-    graphObject._animation = graphInfo.animation != undefined ? Animation.create(graphInfo.animation,graphObject) : null;
+
+    //*************SHADERS********************
+    if(graphObject._texture !=null){
+      //*******reduction shader
+      const width = graphInfo.texture.naturalWidth,height = graphInfo.texture.naturalHeight;
+      var canvas = document.createElement('canvas');
+      canvas.width=width;
+      canvas.height = height;
+      const gl = canvas.getContext('webgl2', { premultipliedAlpha: false });
+      const gpu = new GPU({
+        canvas,
+        context: gl
+      });
+      const image = graphInfo.texture;
+      var resolution = {width:width,height:height}
+      graphObject._reducedTexture = image
+      if(width >1500 || height >1500){
+        const reduceFactor = Math.floor((resolution[["width","height"][width/height >1?0:1]]) /1500);
+        //crear el shader de reduccion
+        //*Las comillas son para evitar que se minifique el codigo de la funcion kernely
+        const reduceShader = gpu.createKernel(`function (){
+          const pixel = this.constants.image[(this.thread.y*this.constants.reduceFactor) * this.constants.width + (this.thread.x*this.constants.reduceFactor)];
+          if(pixel[3] != 0){
+            this.color(pixel[0],pixel[1],pixel[2],pixel[3])
+          }else{
+            this.color(0,0,0,0)
+          }
+        }`).setGraphical(true).setOutput([width/reduceFactor,height/reduceFactor]).setConstants({reduceFactor:reduceFactor,image:image,width:width});
+        reduceShader();
+        graphObject._reducedTexture = reduceShader.canvas;
+        
+        resolution.width /= reduceFactor;
+        resolution.height /= reduceFactor;
+      }
+      const red = graphObject._reducedTexture;
+      // //**bLUR shader
+      graphObject._blurShader = gpu.createKernel(`function (radius) {
+        let sum = [0, 0, 0, 0];
+        for (let i = -1*radius; i <= 1*radius; i++) {
+          for (let j = -1*radius; j <= 1*radius; j++) {
+            const pixel = this.constants.image[(this.thread.y + j) * this.constants.width + (this.thread.x + i)];
+            if(pixel[3] != 0){
+              sum[0] += pixel[0];
+              sum[1] += pixel[1];
+              sum[2] += pixel[2];
+              sum[3] += pixel[3];
+            }
+          }
+        }
+        const numPixels = (2 * radius +1) * (2 * radius + 1);
+        sum[0] /= numPixels;
+        sum[1] /= numPixels;
+        sum[2] /= numPixels;
+        sum[3] /= numPixels;
+        if(sum[3] != 0){
+          this.color(
+            sum[0],
+            sum[1],
+            sum[2],
+            sum[3]
+          );
+        }
+        else{
+          this.color(0,0,0,0);
+        }
+      }`)
+      .setOutput([resolution.width,resolution.height]).setGraphical(true).setConstants({image:red,width:resolution.width,height:resolution.height});
+      //*CHROMATIC ABERRATION
+      graphObject._chromaticShader = gpu.createKernel(`function (redShift, greenShift, blueShift) {
+        const x = this.thread.x;
+        const y = this.thread.y; 
+        
+        // Calcula las coordenadas desplazadas para los canales de color
+        const xOffsetRed = x + redShift;
+        const yOffsetRed = y - redShift;
+        const xOffsetGreen = x - greenShift;
+        const yOffsetGreen = y - greenShift;
+        const xOffsetBlue = x ;
+        const yOffsetBlue = y + blueShift;
+      
+        // Obtiene los valores de color para cada canal desplazado
+        const rShifted = this.constants.image[yOffsetRed * this.constants.width + xOffsetRed];
+        const gShifted = this.constants.image[yOffsetGreen * this.constants.width + xOffsetGreen];
+        const bShifted = this.constants.image[yOffsetBlue * this.constants.width + xOffsetBlue];
+      
+        // Combina los canales de color desplazados para obtener el resultado final
+        const outputR = rShifted[0];
+        const outputG = gShifted[1];
+        const outputB = bShifted[2];
+        const alpha = (rShifted[3]+gShifted[3]+bShifted[3])/3;
+      
+        // Devuelve el color resultante
+        this.color(outputR, outputG, outputB,alpha);}`)
+      .setOutput([resolution.width,resolution.height]).setGraphical(true).setConstants({image:red,width:resolution.width,height:resolution.height});
+      
+      //*** DITHERING SHADER
+      graphObject._ditheringShader = gpu.createKernel(function (intensity,half,intensityHalf) {
+        
+        const x = this.thread.x;
+        const y = this.thread.y; 
+        const pixel = this.constants.image[(y) * this.constants.width + (x)];
+        if(x%intensity==0 && y%intensity == 0){
+          this.color(pixel[0],pixel[1],pixel[2],pixel[3])
+        }else if(half){
+          if((x+(intensityHalf))%intensity==0 && (y+(intensityHalf))%intensity == 0){
+            this.color(pixel[0],pixel[1],pixel[2],pixel[3])
+          }
+        }
+      })
+      .setOutput([resolution.width,resolution.height]).setGraphical(true).setConstants({image:red,width:resolution.width,height:resolution.height});
+
+      //*********SHADERS UTILITIES
+      graphObject._blurAplied = 0;
+      graphObject._aberrationAplied = 0;
+      graphObject.getTexture = ()=>{
+        if(graphObject._aberration != 0){
+            const intensity = graphObject._aberration;
+            if(graphObject._aberrationType == "static" && graphObject._aberrationAplied != intensity){
+              graphObject._aberrationAplied = intensity;
+              graphObject._chromaticShader(intensity,intensity,intensity);
+            }else if(graphObject._aberrationType != "static"){
+              const goofier = ()=>(Math.floor(Math.random()*intensity)-Math.round(intensity/2))
+              graphObject._chromaticShader(goofier(),goofier(),goofier());
+            }
+            return graphObject._chromaticShader.canvas;
+        }else if (graphObject._blurAplied!=0){
+          if(graphObject._blurAplied != graphObject._blur){
+            graphObject._blurAplied = graphObject._blur;
+            graphObject._blurShader(graphObject._blur);
+            return graphObject._blurShader.canvas;
+          }else{
+            return graphObject._blurShader.canvas;
+          }
+        }else{
+
+            return graphObject._texture;
+        }
+      }
+    }
+
+    //*BLUR SHADER
     return graphObject;
   }
   static get(graphObject = new Object()){
-    // var graphData = new Object();
-    // Object.keys(graphObject).forEach(element => {
-    //   if(element.indexOf("_") != -1)
-    //     Object.assign(graphData,{[element.replace("_","")] : graphObject[element]});
-    // });
-    // return graphData;
     return graphObject;
   }
   /**
@@ -511,4 +761,4 @@ class graphObj{
     return d
   }
 }
-export {graphObj,graphArr}
+export {GraphObj,graphArr as ObjectArray,Animation}

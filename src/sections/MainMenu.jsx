@@ -24,7 +24,7 @@ class MainMenu extends React.Component{
           <RenderEngine />
         </div>
           
-        <div className="absolute mx-16 h-auto bottom-[4%]">
+        <div className="absolute ml-16 h-auto bottom-[4%] hidden">
           <MenuButton text="Continuar" hide={GameSaveLogic.getSavedGames().length  == 0} action={()=>{
             var lastSavedGame = GameSaveLogic.getSavedGames().at(-1);
             this.props.loadSavedGame(lastSavedGame.node,lastSavedGame.storyVars,()=>{this.props.changeSection(2);});

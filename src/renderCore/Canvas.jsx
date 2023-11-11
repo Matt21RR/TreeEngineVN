@@ -1,16 +1,15 @@
 import React from "react";
 import $ from "jquery";
 import { rAF } from "../logic/rAF";
+import { canvasInstances } from "../logic/canvasInstaces";
 class Canvas extends React.Component{
   constructor(props){
     super(props);
+    this.CELGF = this.props.CELGF != undefined ? this.props.CELGF : (error)=>console.error(error);
     this.id = "canvas"+performance.now();
     this.mounted = false;
 
-    this.propsValues = this.props;
-    this.constants = this.props.constants;
     this.static = this.props.static ? this.props.static : false;
-    this.speed = this.props.speed ? this.props.speed : 1;//animation internal speed
     this.fps = this.props.fps ? (this.props.fps > 0 ? this.props.fps : 24) : 24;//suggesed max fps = 24
     this.scale = this.props.scale ? (this.props.scale>0? (this.props.scale<2?this.props.scale:2):(this.static?1:0.55)):(this.static ? 1 :0.55);//suggested scale for animated canvas = 0.55 | static canvas = 1
     
@@ -21,8 +20,8 @@ class Canvas extends React.Component{
 
     this.aspectRatio = this.props.aspectRatio ? this.props.aspectRatio : "";
 
-    this.resolutionHeight = window.innerHeight * this.scale;
-    this.resolutionWidth = window.innerWidth * this.scale;
+    this.resolutionHeight = Math.floor(window.innerHeight * this.scale *window.devicePixelRatio);
+    this.resolutionWidth = Math.floor(window.innerWidth * this.scale *window.devicePixelRatio); 
 
     this.element = React.createRef();
 
@@ -54,6 +53,7 @@ class Canvas extends React.Component{
       canvas.context.fillText("Interval: "+fps.elapsed, 5, 60*this.scale);
       canvas.context.fillText("Threads: "+this.engineThreads, 5, 75*this.scale);
       canvas.context.fillText("Resolution: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 90*this.scale);
+      canvas.context.fillText("scale: "+this.scale, 5, 105*this.scale);
       canvas.context.closePath();
       canvas.context.fill();
     }
@@ -61,28 +61,24 @@ class Canvas extends React.Component{
 
     //*Debug
     this.debug = false;
-    this.showFps = false;
+    this.showFps = this.props.showFps;
     this.debugSelectorFunc = (e) => { return false };
     this.debugParameterPrintFunc = (e) => { return 1 };
 
     window.setFps = (x) => { this.fps = x; this.stopEngine = (x == 0) && !this.stopEngine; this.interval = Math.floor(1000 / x); if (!this.stopEngine) this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight}); }
-    window.setSpeed = (x) => { this.speed = x;            const canvas = this.element.current;
-            this.resolutionWidth = canvas.offsetWidth * this.scale;
-            this.resolutionHeight = canvas.offsetHeight * this.scale;
-            //set dimensions
-            this.previousFrame.width = this.resolutionWidth;
-            this.previousFrame.height = this.resolutionHeight;
-            canvas.width = this.resolutionWidth;
-            canvas.height = this.resolutionHeight; this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight}); }
+    window.getFps = () => {return this.fps;}
     window.setScale = (x) => { this.scale = (x>0? (x<2?x:2):0);
       const canvas = this.element.current;
-      this.resolutionWidth = canvas.offsetWidth * this.scale;
-      this.resolutionHeight = canvas.offsetHeight * this.scale;
+      this.resolutionWidth = Math.floor(canvas.offsetWidth * this.scale *window.devicePixelRatio);
+      this.resolutionHeight =Math.floor( canvas.offsetHeight * this.scale *window.devicePixelRatio);
       //set dimensions
       this.previousFrame.width = this.resolutionWidth;
       this.previousFrame.height = this.resolutionHeight;
       canvas.width = this.resolutionWidth;
-      canvas.height = this.resolutionHeight; this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight}); if(this.static)this.engine(); }
+      canvas.height = this.resolutionHeight; 
+      this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight}); 
+      if(this.static)this.engine(); 
+    }
     window.setDebug = (x) => { this.debug = x; }
     window.setShowFps = (x) => { this.showFps = x; }
     window.setDebugSelectorFunc = (x) => { this.debugSelectorFunc = x; }
@@ -92,13 +88,29 @@ class Canvas extends React.Component{
   }
   
   componentDidMount(){
-    if (!this.mounted) {
-      console.log(this.props);
-      console.log("calling engine");
+    if (!this.mounted) { 
       this.mounted = true;
+      //check if a CELGF was provided
+      if(this.props.CELGF == undefined){
+        console.warn("a CELGF - Critical Error Log Graphic Interface, wasn't provided");
+        console.warn("fallbacking to console output")
+      }
+
+      //Check if a hardcoded id was asigned
+      if(this.props.id == undefined){
+        this.CELGF("Critical error");
+        this.CELGF("hardcoded id wasn't provided");
+        return;
+      }
+      canvasInstances.loader(this.props.id,this.id);
+      const sFps = localStorage.getItem("FPS");
+      if(sFps != null)window.setFps(sFps);
+      const sEngineScale = localStorage.getItem("EngineScale");
+      if(sEngineScale != null)window.setScale(sEngineScale);
+
       //set resolution
-      this.resolutionHeight = document.getElementById(this.id).offsetHeight * this.scale;
-      this.resolutionWidth = document.getElementById(this.id).offsetWidth * this.scale;
+      this.resolutionHeight = Math.floor(document.getElementById(this.id).offsetHeight * this.scale *window.devicePixelRatio);
+      this.resolutionWidth = Math.floor(document.getElementById(this.id).offsetWidth * this.scale *window.devicePixelRatio);
       //set dimensions
       this.previousFrame.width = this.resolutionWidth;
       this.previousFrame.height = this.resolutionHeight;
@@ -106,14 +118,14 @@ class Canvas extends React.Component{
       document.getElementById(this.id).height = this.resolutionHeight;
 
       window.addEventListener('resize', () => {
-        if(!this.engineKilled){
+        if(!this.engineKilled && canvasInstances.checker(this.props.id,this.id)){
           clearTimeout(this.resizeTimeout);
           this.resizeTimeout = setTimeout(
             () => {
               //reset the canvas resolution
               const canvas = this.element.current;
-              this.resolutionWidth = canvas.offsetWidth * this.scale;
-              this.resolutionHeight = canvas.offsetHeight * this.scale;
+              this.resolutionWidth = Math.floor(canvas.offsetWidth * this.scale *window.devicePixelRatio);
+              this.resolutionHeight =Math.floor( canvas.offsetHeight * this.scale *window.devicePixelRatio);
               //set dimensions
               this.previousFrame.width = this.resolutionWidth;
               this.previousFrame.height = this.resolutionHeight;
@@ -124,20 +136,20 @@ class Canvas extends React.Component{
               if(this.props.static)
                 this.engine();
             }, 1000);
-        }
+        }   
       });
-
+      const a=""
       if(!this.props.static){
         let self = this;
         $(window).on("blur", function (e) {
-          console.log("click out");
           if(!self.engineKilled){
             self.stopEngine = true;
-          }          
+            console.log("click out");
+          }
         });
         $(window).on("focus", function (e) {
-          console.log("click in");
-          if(!self.engineKilled){
+          if(!self.engineKilled && canvasInstances.checker(self.props.id,self.id)){
+            console.log("click in");
             self.stopEngine = true;
             setTimeout(() => {
               self.stopEngine = false;
@@ -161,7 +173,12 @@ class Canvas extends React.Component{
       this.element = React.createRef();
     }
     const canvas = this.element.current;
+    if(canvas == null){
+      return;
+    }
+    //If canvas is null, kill engine(Maybe this can fix the "multithreading" problem)
     var context = canvas.getContext("2d");
+
     if(this.props.static){
       try {
         this.renderGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
@@ -206,7 +223,7 @@ class Canvas extends React.Component{
     var animator = (fps) => {
       //*ANIMATE
       try {
-        this.animateGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
+        this.props.animateGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps.averageFps});
       } catch (error) {//!KILL ENGINE
         context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
         context.filter = 'none';
@@ -260,6 +277,7 @@ class Canvas extends React.Component{
         this.stopEngine = true;
         this.engineKilled = true;
         console.error("Engine Killed due fatal error during rendering process");
+        console.log(error);
       }
     }
     var renderer = (fps) => {
@@ -283,20 +301,19 @@ class Canvas extends React.Component{
         dummyContext.drawImage(canvas, 0, 0);
       }
 
-      if(this.props.showFps){
+      if(this.showFps){
         context.filter = 'none';
         context.globalAlpha = 1;
         context.beginPath();
         context.fillStyle = "orange";
         context.font = (12*this.scale)+"px Terminal";
-        context.fillText("RenderEngine v0.0.0", 5, 15*this.scale);
-        context.fillText("maxFps: "+fps.averageFps, 5, 30*this.scale);
-        context.fillText("FpsAdjustValue: "+fps.fpsAdjustValue, 5, 45*this.scale);
-        context.fillText("AverageFps(Last 5 seconds): "+fps.promedio, 5, 60*this.scale);
-        context.fillText("Interval: "+fps.elapsed, 5, 75*this.scale);
-        context.fillText("Threads: "+this.engineThreads, 5, 90*this.scale);
-        context.fillText("Chromium based browser: "+this.isChromiumBased, 5, 105*this.scale)
-        context.fillText("Resolution: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 120*this.scale);
+        context.fillText("Redengine v0.0.0", 5, 15*this.scale);
+        context.fillText("FpsAdjustValue: "+fps.fpsAdjustValue, 5, 30*this.scale);
+        context.fillText("Fps: "+fps.promedio, 5, 45*this.scale);
+        context.fillText("Interval: "+fps.elapsed.toFixed(4), 5, 60*this.scale);
+        context.fillText("Threads: "+this.engineThreads, 5, 75*this.scale);
+        context.fillText("Res: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 90*this.scale);
+        context.fillText("scale: "+this.scale+" : "+(Math.floor(window.devicePixelRatio*100)/100), 5, 105*this.scale);
         context.closePath();
         context.fill();
         context.globalAlpha = actualGlobalAlpha;
@@ -306,7 +323,12 @@ class Canvas extends React.Component{
     var fpsArray = [], fpsAdjustValue = 1.01,promedio = this.fps;
     var drawnFrames = 0, startTimer = 0, now,averageFps = 0;
     var draw = (newtime) => {
-      if (this.stopEngine || this.speed == 0){
+      if(!canvasInstances.checker(this.props.id,this.id)){
+        console.log("killing engine recall")
+        return;
+      }
+      // console.log("rendering")               
+      if (this.stopEngine){
         this.engineThreads--;
         return;
       }
@@ -344,32 +366,7 @@ class Canvas extends React.Component{
               promedio +=element;
             });
             promedio/=5;
-            // if(promedio<this.fps-2.5){
-            //   fpsAdjustValue+=0.00457;
-            // }
-            // if(promedio<this.fps-1.8){
-            //   fpsAdjustValue+=0.00157;
-            // }
-            // if(promedio<this.fps-0.9){
-            //   fpsAdjustValue+=0.00027;
-            // }
-            // if(promedio<this.fps-0.2){
-            //   fpsAdjustValue+=0.00008;
-            // }
-            // if(promedio>this.fps+2.5){
-            //   fpsAdjustValue-=0.00457;
-            // }
-            // if(promedio>this.fps+1.8){
-            //   fpsAdjustValue-=0.00157;
-            // }
-            // if(promedio>this.fps+0.9){
-            //   fpsAdjustValue-=0.00027;
-            // }
-            // if(promedio>this.fps+0.2){
-            //   fpsAdjustValue-=0.00007;
-            // }
           }
-          // console.info("averageFps: "+averageFps,"fpsAdjustValue :"+fpsAdjustValue.toFixed(4),"promedio : "+ promedio+" : "+elapsed);
         }
         checkEvents({averageFps:averageFps,fpsAdjustValue:fpsAdjustValue.toFixed(4),promedio:promedio,elapsed:elapsed});
       }

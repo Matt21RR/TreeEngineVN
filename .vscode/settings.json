@@ -2,5 +2,6 @@
   "files.associations": {
     "iostream": "cpp",
     "*.tcc": "cpp"
-  }
+  },
+  "better-comments.highlightPlainText": true
 }

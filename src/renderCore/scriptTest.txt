@@ -1,0 +1,127 @@
+SCENE ID testScene
+
+CONFIG CAMERA {}
+
+PUSH TEXTURES {aishaImg:"aishaImg",background:"background"} 
+//TODO:Use z of the camera as Zoom
+PUSH GRAPHOBJECT{
+  id:"back",   
+  texture:"background",
+  top:-.15,
+  left:0,
+  scale:1,
+  dither:0.1,
+//  blur:1,
+//  aberration:15,
+//  aberrationType:"shaky",
+          z:1,
+  }
+PUSH GRAPHOBJECT {text:"Desactivar shake",
+          fontSize:120,
+          color: "white",
+          boxColor: "rgba(217, 57, 65)",
+          top:0.01,
+          left:0.9,
+          scale:0.1,
+          widthScale:1,
+          heightScale:.5,
+          id:"button",}
+PUSH GRAPHOBJECT {
+            id:"charAisha",
+            texture:"aishaImg",
+            opacity:1,
+            scale:0.5,
+            top:0.3,
+            left:-.1}
+PUSH GRAPHOBJECT {
+          text:"Activar Shake",
+          fontSize:120,
+          color: "white",
+          boxColor: "rgba(217, 57, 65)",
+          top:0.07,
+          left:0.9,
+          scale:0.1,
+          widthScale:1,
+          heightScale:.5,
+          id:"testButton"
+        }
+PUSH GRAPHOBJECT {
+          text:"Listar Información",
+          fontSize:120,
+          color: "white",
+          boxColor: "red",
+          top:0.14,
+          left:0.9,
+          scale:0.1,
+          widthScale:1,
+          heightScale:.5,
+          id:"graphDumpButton"
+        }
+//*Animaciones
+PUSH ANIMATION {
+  relatedTo:"textBox",
+  id:"a1",
+  ease:"outBounce",
+  duration:2000,
+  to:{scale:0.8,top:0.1,left:0.1,opacity:1},
+  loopback:false,
+  reverse:false,
+  loops:1
+}
+//*Triggers
+//DevTrigger
+PUSH TRIGGER {
+  id:"tDebug2",
+  relatedTo:"display",
+  onMove:(engine,gObject)=>{
+      if(gObject.id != engine.gameVars.targetedObject){
+        engine.consolClean();
+      }else{return;}
+      engine.objectToDebug = gObject.id;
+      engine.gameVars.targetedObject = gObject.id;
+
+      Object.keys(gObject.dump()).filter(e=>{return gObject[e] != 0}).forEach((element,index) => {
+        engine.consol(element +" : "+gObject[element]);
+      });
+  }
+}
+PUSH TRIGGER {
+  id:"tDebug",
+  relatedTo:"graphDumpButton",
+  onRelease:(engine)=>{
+    engine.consolClean();
+    engine.consol("TEXTURES","green");
+    Object.keys(engine.texturesArray).forEach((e)=>{engine.consol("->"+e)});
+    engine.consol("GRAPHOBJECTS","green");
+    engine.graphArray._objects.forEach((e)=>{engine.consol("->"+e.id+"("+e.left+","+e.top+")")});
+    engine.consol("TRIGGERS","green");
+    engine.triggers._objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
+    engine.consol("ANIMATIONS","green");
+    engine.anims._objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
+  }
+}
+PUSH TRIGGER {
+      id:"t1",
+      relatedTo:"button",
+      onRelease:(engine)=>{
+        engine.graphArray.get("back").aberrationType = "static";
+      }
+    }
+PUSH TRIGGER {
+      id:"t2",
+      relatedTo:"testButton",
+      onRelease:(engine)=>{
+        engine.graphArray.get("back").aberrationType = "shaky";
+      }
+    }
+SET GRAPHOBJECT objectId {opacity:1,text:"4 peras"}
+SET TRIGGER triggerId {
+  onClick:(engine)=>{
+    SET VAR varId 4
+    SET CAMERA {}
+    SET TRIGGER triggerId {enabled:false}
+    SET GRAPHOBJECT objectId {opacity:0}
+  }
+}
+SET GRAPHOBJECT objectMessageId {text:"compraste $varId peras"}
+END FILE

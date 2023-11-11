@@ -73,7 +73,7 @@ class Characters extends React.Component {
           <div className="relative h-full w-full">
             <div className={"absolute pointer-events-none "+(this.props.capaSuperior != undefined ? "character" : "capaSuperior")}
               style={Array.isArray(this.state.styleElements)?this.state.styleElements[index]:{}}
-              layerzpos={"zPos" in character? character.zPos : null}
+              layerzpos={"z" in character? character.z : null}
             />
           </div>
         </div>
