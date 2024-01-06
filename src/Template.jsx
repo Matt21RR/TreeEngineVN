@@ -26,7 +26,6 @@ class Template extends React.Component {
     this.componentMounted = false;
   }
   componentDidMount() {
-    console.log(charsFiles);
     if (!this.componentMounted) {
       this.componentMounted = true;
 
@@ -49,15 +48,7 @@ class Template extends React.Component {
               gsap.to(document.getElementById("display"), 0.3, { opacity: 1 });
             }, 1000);
         });
-        // $(window).on("blur", function (e) {
-        //   document.getElementById("display").style.display = "none";
-        // });
-        // $(window).on("focus", function (e) {
-        //   document.getElementById("display").style.display = "";
-        // });
-        console.log(NodesBuilder.getRequiredNodesList(NodesBuilder.getUninterpretedGameScript()));
         this.gameScript = NodesBuilder.buildGameScript();
-        console.log(this.gameScript);
       }, 200);
     }
   }

@@ -144,18 +144,15 @@ class Canvas extends React.Component{
         $(window).on("blur", function (e) {
           if(!self.engineKilled){
             self.stopEngine = true;
-            console.log("click out");
           }
         });
         $(window).on("focus", function (e) {
           if(!self.engineKilled && canvasInstances.checker(self.props.id,self.id)){
-            console.log("click in");
             self.stopEngine = true;
             setTimeout(() => {
               self.stopEngine = false;
               if(self.engineThreads != 0)
                 self.engineThreads = 0;
-              console.log("restarting engine with "+self.engineThreads+" engine threads");
               self.engine();
             }, 0.7);
           }

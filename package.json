@@ -12,8 +12,10 @@
     "gpu.js": "^2.16.0",
     "howler": "^2.2.3",
     "jquery": "^3.6.4",
+    "livereload": "^0.9.3",
     "localforage": "^1.10.0",
     "node-webshot": "^1.0.4",
+    "nodemon": "^3.0.1",
     "react": "^18.2.0",
     "react-app-polyfill": "^3.0.0",
     "react-dom": "^18.2.0",
@@ -27,6 +29,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "startNodemon": "nodemon server.js -e ejs,js,css,html,jpg,png,scss",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

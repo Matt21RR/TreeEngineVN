@@ -1,0 +1,29 @@
+SCENE ID mapa
+
+PUSH TEXTURES {
+  mapa:"mapa",
+  tienda:"tienda"
+}
+
+PUSH GRAPHOBJECT {
+  id:"mapa",
+  texture:"mapa",
+  scale:1
+}
+
+PUSH GRAPHOBJECT {
+  id:"tienda",
+  texture:"tienda",
+  scale:0.1,
+  left:.57,
+  top:.55
+}
+PUSH TRIGGER {
+  id:"entrarTienda",
+  relatedTo:"tienda",
+  onRelease:(engine)=>{
+    console.log("Cargar escena de tienda");
+  }
+}
+
+END FILE
