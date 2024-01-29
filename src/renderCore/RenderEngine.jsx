@@ -1,4 +1,6 @@
 import React from "react";
+import $ from "jquery";
+import {Howl, Howler} from 'howler';
 
 import { Canvas } from "./Canvas";
 import { GraphObj, ObjectArray, Animation } from "./graphObj";
@@ -25,19 +27,31 @@ class RenderEngine extends React.Component{
     this.graphArray = ObjectArray.create();//array de objetos, un objeto para cada imagen en pantalla
     this.graphObj = GraphObj;
     this.animation = Animation;
-    this.texturesArray = new Object();
     this.anims = ObjectArray.create();
-    this.codedRoutines = ObjectArray.create();
     this.triggers = ObjectArray.create();
     this.gameVars = {};//Y guardar esto tambien
     this.texturesList = ObjectArray.create();
+    this.soundsList = ObjectArray.create();
+
+    this.codedRoutines = ObjectArray.create();
+    this.routines = new Array();
+    this.flags = new Object();
+    this.routineNumber = -1;
+    this.continue = true;
+    //Dialogs
+    this.voiceFrom = "";
+    this.paragraphNumber = -1;
+    this.paragraph = "Hello, Mr.White";
+    this.dialogNumber = -1;
+    this.dialog = [];
+    this.narration = "";
 
     this.camera = {
       id:"engineCamera",
       maxZ:10000,
       origin:{x:.5,y:.5},
       position:{top:.5,left:.5,z:0,angle:0},
-      sphericalRotation:{x:0,y:0,z:0,center:0},
+      sphericalRotation:{x:0,y:0,z:0,center:5000},
       actualAngles:{x:0,y:0,z:0},//Rotation matrix actual angles
       rotationMatrix:{
         "Axx": 1,
@@ -63,7 +77,7 @@ class RenderEngine extends React.Component{
     this.showListedData = false;
     this.drawObjectLimits = true;
     this.showObjectsInfo = false;
-    this.showCanvasGrid = true;
+    this.showCanvasGrid = false;
 
     this.objectToDebug = null;//id of the object
     window.setUsePerspective = (x) =>{this.camera.usePerspective = x;}
@@ -87,48 +101,94 @@ class RenderEngine extends React.Component{
   loadGame(masterScript){
     this.masterScript = masterScript;
     if(this.actualSceneId == ""){
-      this.actualSceneId = Object.keys(this.masterScript)[0];
+      this.actualSceneId = Object.keys(this.masterScript)[2];
     }
     this.loadScene(this.actualSceneId);
   }
-  loadTextures(texturesData,fun = null){
-    Promise.all(Object.keys(texturesData).map(textureName=>
-      new Promise(resolve=>{
-        const image = new Image();
-        image.src = texturesData[textureName];
-        image.addEventListener('load',()=>{
-          const res = new Object({[textureName]:image});
-          this.texturesList.push(Shader.create(image,textureName))
-          resolve(res);
+  loadSounds(sndsData,fun = null){
+    if(sndsData != null){
+      Promise.all(Object.keys(sndsData).map(sndName=>
+        new Promise(resolve=>{
+          fetch(sndsData[sndName]).then(res=>res.blob()).then( blob =>{
+            var reader = new FileReader() ;
+            reader.onload = function(){ resolve({Base64:this.result,ext:sndsData[sndName].split('.').at(-1),id:sndName}) } ; // <--- `this.result` contains a base64 data URI
+            reader.readAsDataURL(blob) ;
+          });
+        })
+      )).then(sounds => {
+        sounds.forEach(snd => {
+          var sound = new Howl({
+            src: [snd.Base64],
+            format: snd.ext
+          });
+          this.soundsList.push({sound:sound,id:snd.id})
         });
-      })
-    )).then(textures => {
-      textures.forEach(texture => {
-        Object.assign(this.texturesArray,texture);
+
+        if(typeof fun == "function")
+          fun();
+      }).catch(reason =>{
+        console.error("===============================");
+        console.error("Error during sounds load phase:");
+        console.error(reason);
+        console.error("===============================");
       });
+    }else{
+      console.warn("No sounds in this scene");
       if(typeof fun == "function")
-        fun();
-    }).catch(reason =>{
-      console.error("===============================");
-      console.error("Error during textures load phase:");
-      console.error(reason);
-      console.error("===============================");
-    });
+          fun();
+    }
+    
+  }
+  loadTextures(texturesData,fun = null){
+    if(texturesData != null){
+      Promise.all(Object.keys(texturesData).map(textureName=>
+        new Promise(resolve=>{
+          const image = new Image();
+          image.src = texturesData[textureName];
+          image.addEventListener('load',()=>{
+            const res = new Object({[textureName]:image});
+            this.texturesList.push(Shader.create(image,textureName))
+            resolve(res);
+          });
+        })
+      )).then(textures => {
+        if(typeof fun == "function")
+          fun();
+      }).catch(reason =>{
+        console.error("===============================");
+        console.error("Error during textures load phase:");
+        console.error(reason);
+        console.error("===============================");
+      });
+    }else{
+      console.warn("No sounds in this scene");
+      if(typeof fun == "function")
+          fun();
+    }
+    
   }
   loadScene(sceneId){
+    //TODO: Check the textures object and destroy all gpu instances
+    while(this.texturesList._objects.length > 0){
+      this.texturesList._objects[0].destroy();
+      this.texturesList.remove(this.texturesList._objects[0].id)
+    }
+
     this.actualSceneId = sceneId;
     let scene = this.masterScript[sceneId];
-    console.log(scene.sounds);
-    console.log(scene.textures);
     this.setState({isReady:false},()=>{
       //reset values
       this.graphArray = ObjectArray.create();//array de objetos, un objeto para cada imagen en pantalla
       this.graphObj = GraphObj;
       this.animation = Animation;
-      this.texturesArray = new Object();
       this.anims = ObjectArray.create();
-      this.codedRoutines = ObjectArray.create();
       this.triggers = ObjectArray.create();
+
+      this.codedRoutines = ObjectArray.create();
+      this.routines = new Array();
+      this.flags = new Object();
+      this.routineNumber = -1;
+
       this.camera = {
         id:"engineCamera",
         maxZ:10000,
@@ -150,19 +210,23 @@ class RenderEngine extends React.Component{
         usePerspective:false,
         aspectRatio:"16:9"
       }
-
-      this.loadTextures(scene.textures,()=>{
-        //change texture reference with the actual file
-        Object.assign(this.gameVars,scene.gameVars);
-
-        scene.graphObjects.map(object =>{object.textureFile = this.texturesArray[object.texture]; object.textureName=object.texture; return object});
-
-        scene.graphObjects.forEach(object => this.graphArray.push(GraphObj.create(object)));
-        scene.triggers.forEach(trigger => this.triggers.push(trigger));
-        scene.animations.forEach(animation => this.anims.push(Animation.create(animation)));
-        scene.codedRoutines.forEach(codedAnim => this.codedRoutines.push(codedAnim));
-
-        this.setState({isReady:true})
+      console.log(scene);
+      this.loadSounds(scene.sounds,()=>{
+        this.loadTextures(scene.textures,()=>{
+          //change texture reference with the actual file
+          Object.assign(this.gameVars,scene.gameVars);
+  
+          scene.graphObjects.map(object =>{object.textureName=object.texture; return object});
+  
+          scene.graphObjects.forEach(object => this.graphArray.push(GraphObj.create(object)));
+          scene.triggers.forEach(trigger => this.triggers.push(trigger));
+          scene.animations.forEach(animation => this.anims.push(Animation.create(animation)));
+          scene.codedRoutines.forEach(codedAnim => this.codedRoutines.push(codedAnim));
+          this.routines = scene.routines;
+          this.flags = scene.flags;
+          
+          this.setState({isReady:true})
+        });
       });
     });
 
@@ -186,7 +250,6 @@ class RenderEngine extends React.Component{
       consol: [],
     })
   }
-  
   checkObjectBoundaries(oTopLeftCorner,objectRes,canvasRes){
     //check for very big images
     const sDims = {width:objectRes.width/canvasRes.width,height:objectRes.height/canvasRes.height};
@@ -265,13 +328,58 @@ class RenderEngine extends React.Component{
       return h(this);
     })
   }
+  // @description: wrapText wraps HTML canvas text onto a canvas of fixed width
+  // @param ctx - the context for the canvas we want to wrap text on
+  // @param text - the text we want to wrap.
+  // @param x - the X starting point of the text on the canvas.
+  // @param y - the Y starting point of the text on the canvas.
+  // @param maxWidth - the width at which we want line breaks to begin - i.e. the maximum width of the canvas.
+  // @param lineHeight - the height of each line, so we can space them below each other.
+  // @returns an array of [ lineText, x, y ] for all lines
+  wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    // First, start by splitting all of our text into words, but splitting it into an array split by spaces
+    let words = text.replaceAll('\n',(a)=>{return ' \n \n '}).split(' ');
+    let line = ''; // This will store the text of the current line
+    let testLine = ''; // This will store the text when we add a word, to test if it's too long
+    let lineArray = []; // This is an array of lines, which the function will return
+
+    // Lets iterate over each word
+    for(var n = 0; n < words.length; n++) {
+      // Create a test line, and measure it..
+      testLine += `${words[n]} `;
+      let metrics = ctx.measureText(testLine);
+      let testWidth = metrics.width;
+      // If the width of this test line is more than the max width
+      //console.log(line)
+      if ((testWidth > maxWidth && n > 0) || line.indexOf('\n') != -1) {
+          // Then the line is finished, push the current line into "lineArray"
+          lineArray.push([line, x, y]);
+          // Increase the line height, so a new line is started
+          y += lineHeight;
+          // Update line and test line to use this word as the first word on the next line
+          line = `${words[n]} `;
+          testLine = `${words[n]} `;
+      }
+      else {
+          // If the test line is still less than the max width, then add the word to the current line
+          line += `${words[n]} `;
+      }
+      // If we never reach the full max width, then there is only one line.. so push it into the lineArray so we return something
+      if(n === words.length - 1) {
+          lineArray.push([line, x, y]);
+      }
+    }
+    // Return the line array
+    return lineArray;
+  }
   renderScene(){
     if(this.state.isReady){
       return(
-        <Canvas CELGF={(error)=>this.consol(error)} id={"renderCanvas"} aspectRatio={this.camera.aspectRatio} fps={30} scale={1} showFps={true}
+        <Canvas CELGF={(error)=>this.consol(error)} id={"renderCanvas"} aspectRatio={this.camera.aspectRatio} fps={100} scale={1} showFps={true}
         renderGraphics={(canvas)=>{
           this.canvasRef = canvas;
           canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
+          //console.log(canvas.resolutionWidth, canvas.resolutionHeight);
 
           const clientUnitaryHeightPercentageConstant = 100 / canvas.resolutionHeight;
           const tangencialConstant = this.camera.position.angle;//Uses camera angle
@@ -306,7 +414,7 @@ class RenderEngine extends React.Component{
 
               objectLeft = (rM.Axx*px + rM.Axy*py + rM.Axz*pz);
               objectTop = (rM.Ayx*px + rM.Ayy*py + rM.Ayz*pz);
-              objectZ = rM.Azx*px + rM.Azy*py + rM.Azz*pz+this.camera.sphericalRotation.center  + this.camera.position.z;
+              objectZ = rM.Azx*(px+(objectScale*gObject.widthScale*.5)) + rM.Azy*(py+(objectScale*gObject.heightScale*.5)) + rM.Azz*pz + this.camera.sphericalRotation.center  + this.camera.position.z;
             }
             
             var testD = 0.95;
@@ -340,8 +448,8 @@ class RenderEngine extends React.Component{
 
             var objectWidth = canvas.resolutionWidth*objectScale*gObject.widthScale;
             var objectHeight;
-            if(gObject.texture!=null && this.preserveTexturesAspectRatio){
-              objectHeight = (gObject.texture.naturalHeight/gObject.texture.naturalWidth)*canvas.resolutionWidth*objectScale*gObject.heightScale;
+            if(gObject.textureName!=null && this.preserveTexturesAspectRatio){
+              objectHeight = (this.texturesList.get(gObject.textureName).texture.naturalHeight/this.texturesList.get(gObject.textureName).texture.naturalWidth)*canvas.resolutionWidth*objectScale*gObject.heightScale;
             }else{
               objectHeight = canvas.resolutionHeight*objectScale*gObject.heightScale;
             }
@@ -357,7 +465,7 @@ class RenderEngine extends React.Component{
               }
 
               //*preparatives for part three: if the image need to be rotated
-              //with testD > 0.005 we ensure the very far of|behind the camera elements won't be rendered
+              //with testD > 0.003 we ensure the very far of|behind the camera elements won't be rendered
 
               if(testD>0.003 && gObject.rotate != 0){
                 canvas.context.save();
@@ -369,6 +477,8 @@ class RenderEngine extends React.Component{
                   (objectLeft)+(objectWidth / 2), 
                     (objectTop)+(objectHeight / 2)); // sets scale and origin
                 canvas.context.rotate(gObject._rotate);
+
+
                 canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
                 if(gObject.text != null){
                   if(gObject.boxColor != "transparent"){
@@ -376,59 +486,69 @@ class RenderEngine extends React.Component{
                     canvas.context.fillRect(
                       -(objectWidth)/2,
                       -(objectHeight)/2,
-                      (objectWidth),
-                      (objectHeight)
+                      objectWidth,
+                      objectHeight
                       );
                   }
                   canvas.context.fillStyle = gObject.color;
-                  canvas.context.font = (gObject.fontSize*objectScale)+"px "+gObject.font;//Relate fontsize to canvs res
-                  canvas.context.fillText(
-                    gObject.text,
-                    -(objectWidth)*1/2,
-                    (-(objectHeight- (gObject.fontSize*objectScale))*1/2));
+                  canvas.context.font = (gObject.fontSize*objectScale*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
+                  const texts = this.replaceCodedExpresions(gObject.text).split("/n");
+                  texts.forEach((text,index) => {
+                    canvas.context.fillText(
+                      text,
+                      -(objectWidth)/2,
+                      -(objectHeight)/2 + (gObject.fontSize*objectScale*canvas.scale*(1+index)*(canvas.resolutionHeight/700))
+                    );
+                  });
                 }
-                if(gObject.texture!=null)
+                if(gObject.textureName!=null)
                 canvas.context.drawImage(
-                  gObject.getTexture(),
+                  this.texturesList.get(gObject.textureName).getTexture(gObject),
                   -(objectWidth)/2,
                   -(objectHeight)/2,
-                  (objectWidth),
-                  (objectHeight)
+                  objectWidth,
+                  objectHeight
                 );
                 canvas.context.restore();
               }else if(testD>0.003){
               //*part three: draw image
-                  canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
-                  if(gObject.text != null){
-                    if(gObject.boxColor != "transparent"){
-                      canvas.context.fillStyle = gObject.boxColor;
-                      canvas.context.fillRect(
-                        objectLeft,
-                        objectTop,
-                        objectWidth,
-                        objectHeight
-                        );
-                    }
-                    canvas.context.fillStyle = gObject.color;
-                    canvas.context.font = (gObject.fontSize*objectScale*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
-                    const texts = this.replaceCodedExpresions(gObject.text).split("/n");
-                    texts.forEach((text,index) => {
-                      canvas.context.fillText(
-                        text,
-                        objectLeft,
-                        objectTop + (gObject.fontSize*objectScale*canvas.scale*(1+index)*(canvas.resolutionHeight/700))
+                canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
+                if(gObject.text != null){
+                  if(gObject.boxColor != "transparent"){
+                    canvas.context.fillStyle = gObject.boxColor;
+                    canvas.context.fillRect(
+                      Math.floor(objectLeft),
+                      Math.floor(objectTop),
+                      Math.floor(objectWidth),
+                      Math.floor(objectHeight)
                       );
-                    });
                   }
-                  if(gObject.texture!=null){
-                    canvas.context.drawImage(
-                      this.texturesList.get(gObject.textureName).getTexture(gObject),
-                      //gObject.getTexture(),
-                      objectLeft,
-                      objectTop,
-                      objectWidth,
-                      objectHeight);
-                  }
+                  canvas.context.fillStyle = gObject.color;
+                  canvas.context.font = (gObject.fontSize*objectScale*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
+                  const texts = this.wrapText(
+                    canvas.context,
+                    this.replaceCodedExpresions(gObject.text),
+                    (gObject.margin*objectWidth) + objectLeft,
+                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSize*objectScale*canvas.scale*(canvas.resolutionHeight/700)),
+                    objectWidth - (gObject.margin*objectWidth)*2,
+                    (gObject.fontSize*objectScale*canvas.scale*(canvas.resolutionHeight/700))
+                  );
+                  texts.forEach((text) => {
+                    canvas.context.fillText(
+                      text[0],
+                      Math.floor(text[1]),
+                      Math.floor(text[2])
+                    );
+                  });
+                }
+                if(gObject.textureName!=null){
+                  canvas.context.drawImage(
+                    this.texturesList.get(gObject.textureName).getTexture(gObject),
+                    Math.floor(objectLeft),
+                    Math.floor(objectTop),
+                    Math.floor(objectWidth),
+                    Math.floor(objectHeight));
+                }
               }else{
                 this.noRenderedItemsCount++;
               }
@@ -541,7 +661,7 @@ class RenderEngine extends React.Component{
                   
                   //show 0<->1 coords
                   canvas.context.fillStyle = "green";
-                  canvas.context.font = (12*this.scale)+"px Harry";
+                  canvas.context.font = (12*canvas.scale)+"px Harry";
                   for (let horizontal = 0; horizontal < 1; horizontal+=.1) {
                     for (let vertical = 0; vertical < 1; vertical+=.1) {
                       canvas.context.fillText(
@@ -555,50 +675,50 @@ class RenderEngine extends React.Component{
                 canvas.context.stroke();
                 canvas.context.restore();
               }
-              //*part seven: draw canvas grid
-              if(this.showCanvasGrid){
-                if(this.drawPerspectiveLayersLimits && this.camera.usePerspective){}else{
-                  canvas.context.beginPath();
-                  canvas.context.strokeStyle = "green";
-                  //create grid
-                  for (let line = 0; line < 1; line +=.1) {
-                    //vertical
-                    canvas.context.moveTo(
-                      canvas.resolutionWidth*line,
-                      0
-                    );
-                    canvas.context.lineTo(
-                      canvas.resolutionWidth*line,
-                      canvas.resolutionHeight
-                    );
-                    //horizontal
-                    canvas.context.moveTo(
-                      0,
-                      canvas.resolutionHeight*line
-                    );
-                    canvas.context.lineTo(
-                      canvas.resolutionWidth,
-                      canvas.resolutionHeight*line
-                    );
-                  }
-                  
-                  //show 0<->1 coords
-                  canvas.context.fillStyle = "green";
-                  canvas.context.font = (12*this.scale)+"px Harry";
-                  for (let horizontal = 0; horizontal < 1; horizontal+=.1) {
-                    for (let vertical = 0; vertical < 1; vertical+=.1) {
-                      canvas.context.fillText(
-                        Math.round(horizontal*10)/10+", "+Math.round(vertical*10)/10,
-                        (canvas.resolutionWidth*horizontal)-45,
-                        (canvas.resolutionHeight*vertical)-8 );
-                    }
-                  }
-                  canvas.context.stroke();
+            }
+          }
+          // console.warn("Objects excluded: ",this.noRenderedItemsCount);
+          //*part seven: draw canvas grid
+          if(this.showCanvasGrid){
+            if(this.drawPerspectiveLayersLimits && this.camera.usePerspective){}else{
+              canvas.context.beginPath();
+              canvas.context.strokeStyle = "black";
+              //create grid
+              for (let line = 0; line < 1; line +=.1) {
+                //vertical
+                canvas.context.moveTo(
+                  canvas.resolutionWidth*line,
+                  0
+                );
+                canvas.context.lineTo(
+                  canvas.resolutionWidth*line,
+                  canvas.resolutionHeight
+                );
+                //horizontal
+                canvas.context.moveTo(
+                  0,
+                  canvas.resolutionHeight*line
+                );
+                canvas.context.lineTo(
+                  canvas.resolutionWidth,
+                  canvas.resolutionHeight*line
+                );
+              }
+              canvas.context.closePath();
+              canvas.context.stroke();
+              //show 0<->1 coords
+              canvas.context.fillStyle = "black";
+              canvas.context.font = "900 "+(15*canvas.scale)+"px Calibri";
+              for (let horizontal = 0; horizontal < 1; horizontal+=.1) {
+                for (let vertical = 0; vertical < 1; vertical+=.1) {
+                  canvas.context.fillText(
+                    Math.round(horizontal*10)/10+", "+Math.round(vertical*10)/10,
+                    (canvas.resolutionWidth*horizontal)-45,
+                    (canvas.resolutionHeight*vertical)-8 );
                 }
               }
             }
           }
-          // console.warn("Objects excluded: ",this.noRenderedItemsCount);
         }} 
         onLoad={(canvas)=>{
           window.deltarg = 0;
@@ -624,8 +744,18 @@ class RenderEngine extends React.Component{
           }  
         }}
         animateGraphics={(canvas)=>{
+          //console.log(this.routines,this.routineNumber);
+          if(this.continue){
+            if((this.routineNumber+1)<this.routines.length){
+              this.routineNumber++;
+              this.routines[this.routineNumber](this);
+              console.log(this.routines[this.routineNumber].toString())
+            }
+          }
+
           this.codedRoutines._objects.forEach(element => {
             element.code(this);//I really dunno if someone will need the canvas data
+            //* Answer: DEFINITELY YES!!
           });
         }}
         />
@@ -676,8 +806,8 @@ class RenderEngine extends React.Component{
         // // devmode end
         //recalculate using texture boundaries (if the graphobject have texture)
         var objectHeight;
-        if(gO.texture!=null && this.preserveTexturesAspectRatio){
-          objectHeight = (gO.texture.naturalHeight/gO.texture.naturalWidth)*gO.scale*gO.heightScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
+        if(gO.textureName!=null && this.preserveTexturesAspectRatio){
+          objectHeight = (this.texturesList.get(gO.textureName).texture.naturalHeight/this.texturesList.get(gO.textureName).texture.naturalWidth)*gO.scale*gO.heightScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
         }else{
           objectHeight = gO.scale*gO.heightScale;
         }
@@ -687,7 +817,12 @@ class RenderEngine extends React.Component{
             if(mY<(gO.top+(objectHeight))){
               if(mX<(gO.left+(gO.scale*gO.widthScale))){
                   if(action != "onMove"){
-                    trigger[action](this); 
+                    try {
+                      trigger[action](this);   
+                    } catch (error) {
+                      console.log("Error on trigger execution:",error,trigger[action])
+                    }
+                    
                     return;
                   }else if(Object.keys(trigger).indexOf("onMove") != -1){
                     trigger[action](this,gO)

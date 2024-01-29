@@ -125,7 +125,7 @@ class Canvas extends React.Component{
               //reset the canvas resolution
               const canvas = this.element.current;
               this.resolutionWidth = Math.floor(canvas.offsetWidth * this.scale *window.devicePixelRatio);
-              this.resolutionHeight =Math.floor( canvas.offsetHeight * this.scale *window.devicePixelRatio);
+              this.resolutionHeight = Math.floor(canvas.offsetHeight * this.scale *window.devicePixelRatio);
               //set dimensions
               this.previousFrame.width = this.resolutionWidth;
               this.previousFrame.height = this.resolutionHeight;
@@ -133,8 +133,8 @@ class Canvas extends React.Component{
               canvas.height = this.resolutionHeight;
               //set the reset function for every graphic object
               this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
-              if(this.props.static)
-                this.engine();
+              // if(this.props.static)
+              //   this.engine();
             }, 1000);
         }   
       });
@@ -142,12 +142,14 @@ class Canvas extends React.Component{
       if(!this.props.static){
         let self = this;
         $(window).on("blur", function (e) {
+          console.log("clickout");
           if(!self.engineKilled){
             self.stopEngine = true;
           }
         });
         $(window).on("focus", function (e) {
           if(!self.engineKilled && canvasInstances.checker(self.props.id,self.id)){
+            console.log("clickin");
             self.stopEngine = true;
             setTimeout(() => {
               self.stopEngine = false;
@@ -167,10 +169,12 @@ class Canvas extends React.Component{
   }
   engine() {
     if(this.element == null){
+      console.log("element reference error")
       this.element = React.createRef();
     }
     const canvas = this.element.current;
     if(canvas == null){
+      console.log("canvas reference error")
       return;
     }
     //If canvas is null, kill engine(Maybe this can fix the "multithreading" problem)
@@ -245,7 +249,7 @@ class Canvas extends React.Component{
         context.fill();
         this.stopEngine = true;
         this.engineKilled = true;
-        console.error("Engine Killed due fatal error during animating process process");
+        console.error("Engine Killed due fatal error during animating process process",error);
         return;
       }
       //*RENDER

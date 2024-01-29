@@ -47,6 +47,7 @@ class Animation{
       _done:aInfo.done?aInfo.done:false,
       _loops:aInfo.loops?aInfo.loops*(aInfo.loopback?2:1):1,//by default 1 loop
       _reverse:aInfo.reverse?1:0,//if the animation are played in reverse
+      _reversing:aInfo.reverse?1:0,//control Var
       _looped:1,
       _infinite:aInfo.infinite?aInfo.infinite:false,//infinite looping
       _loopback:aInfo.loopback?1:0,//repeat the animation in reverse after end
@@ -60,13 +61,18 @@ class Animation{
       _delay:aInfo.delay?aInfo.delay:NaN,
       _to:aInfo.to?aInfo.to:{},
       _onComplete:aInfo.onComplete?aInfo.onComplete:null,
-      updateState : function (eTime,gObjectFun,engineRef){//engine time
+
+      _keyframes:aInfo.keyframes?aInfo.keyframes:{},
+      _keyFrameNumber: -1,
+      _timeline:[],//controla los tiempos de cada frame de forma independiente
+
+      updateState : function (engineTime,gObjectFun,engine){//engine time
         if(this._enabled && !this._done){
           if(this._delay > 0){
-            this.updateDelay(eTime);
+            this.updateDelay(engineTime);
           }else{
             var gObject = gObjectFun(this._relatedTo);
-            this.updateAnimation(gObject,eTime,engineRef);
+            this.updateAnimation(gObject,engineTime,engine);
           }
           return false;
         }else{
@@ -87,80 +93,149 @@ class Animation{
         this._delay -=delay;
         this._dStartedAt = dO;
       },
-      updateAnimation : function (gObject,elapsed,engineRef) {
-        const eTemp =elapsed;
-        if(isNaN(this._startedAt)){
-          //Esta instanciacion se debe de realizar justo antes de iniciar la animacion
-          var gOD;
-          //Si se trata de la camara
-          if(gObject.id == "engineCamera"){
-            gOD = ExtendedObjects.buildObjectsWithRoutes(gObject);
-            this._to = ExtendedObjects.buildObjectsWithRoutes(this._to);
-            console.log(gOD,this._to);
-          }else{
-            gOD = gObject.dump();
+      updateAnimation : function (gObject,elapsed,engine) {
+        const setAnimationVars = (forced = false)=>{
+          if(isNaN(this._startedAt) || forced){
+            //Esta instanciacion se debe de realizar justo antes de iniciar la animacion
+            var gOD;
+  
+            //Si se trata de la camara
+            console.log(this._relatedTo);
+            if(gObject.id == "engineCamera"){
+              gOD = ExtendedObjects.buildObjectsWithRoutes(gObject);
+              this._to = ExtendedObjects.buildObjectsWithRoutes(this._to);
+            }else{
+              gOD = gObject.dump();
+            }
+  
+            var f = new Object();
+            console.log("this to",this._to)
+            Object.keys(this._to).forEach(toKey=>{
+              f[toKey] = gOD[toKey];
+            });
+            this._from =  f;//estado inicial del objeto
+            console.log("this from", this._from)
+            
+            //ajustar el tiempo de inicio de la animacion
+            this._startedAt = elapsed;
+            return;
           }
-          var f = new Object();
-          Object.keys(this._to).forEach(toKey=>{
-            f[toKey] = gOD[toKey];
-          });
-          this._from =  f;
-          //ajustar el tiempo de inicio de la animacion
-          this._startedAt = elapsed;
-          return;
         }
+        const setKeyFrame = (frameNumber)=>{
+          const keyOfTheKeyFrame = Object.keys(this._keyframes)[frameNumber];
+          const frame = this._keyframes[keyOfTheKeyFrame];
+          this._keyFrameNumber = frameNumber;
+          this._to = frame;
+          this._duration = frameNumber == 0 ? keyOfTheKeyFrame*1: (keyOfTheKeyFrame)*1 - (Object.keys(this._keyframes)[frameNumber-1])*1;
+          console.log("adjusting frame",frameNumber,keyOfTheKeyFrame,this._duration);
+        }
+
+        const engineTime = elapsed;
+
+        if(Object.keys(this._keyframes).length != 0){
+          if(this._keyFrameNumber == -1){
+            console.log("calling here");
+            setKeyFrame(0);
+          }
+        }
+        
+        //*NO KEYFRAMES=============================================================
+        setAnimationVars();
         if(this._pendingTimersFix){
           this._startedAt = elapsed-(this._tElapsed%this._duration);
           this._pendingTimersFix = false;
         }
+
         elapsed-=this._startedAt;
-        //TODO:Avoid of looping or looping back or use the infinite mode if the duration are zero
-        if(!this._done && this._duration == 0){
+
+        if(!this._done && this._duration == 0){//Si es una animacion instantanea
+
           const k = Object.keys(this._to);
           k.forEach(toKey =>{
+            const newValue = this._to[toKey];
             if(gObject.id == "engineCamera"){
-              const newValue = this._to[toKey];
-              // console.log(this._from,this._to,toKey,newValue);
               ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
             }else{
-              gObject["_"+toKey] = this._to[toKey];
+              gObject["_"+toKey] = newValue;
             }
           });
-          this._done=true;
+          if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
+            setKeyFrame(this._keyFrameNumber+1);
+            setAnimationVars(true);
+          }else{
+            this._done = true;
+          }
+
           this._pendingTimersFix = true;
+
           if(typeof this._onComplete == "function")
-            this._onComplete(engineRef);
+            this._onComplete(engine);
           return;
+
         }else if(!this._done){
+
           this._tElapsed += elapsed-this._elapsed;
           this._elapsed += elapsed-this._elapsed;
-          const progress = this._reverse ? this._reverse-(this._elapsed/this._duration):(this._elapsed/this._duration);
+          const progress = this._reversing ? this._reversing-(this._elapsed/this._duration):(this._elapsed/this._duration);
+
           const eConstant = ease[this._ease](progress);//easing constant
-          const k = Object.keys(this._to);
+
+          const k = Object.keys(this._to);//Para cada elemento a cambiar en el .to
           k.forEach(toKey =>{
+            const newValue = this._from[toKey] + (this._to[toKey] - this._from[toKey])*eConstant;
             if(gObject.id == "engineCamera"){
-              const newValue = this._from[toKey] + (this._to[toKey] - this._from[toKey])*eConstant;
-              // console.log(this._from,this._to,toKey,newValue);
               ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
             }else{
-              gObject["_"+toKey] = this._from[toKey] + (this._to[toKey] - this._from[toKey])*eConstant;
+              gObject["_"+toKey] = newValue;
             }
           });
-          if(progress >= 1 || (this._reverse && (progress <= 0))){
+
+          if(progress >= 1 || (this._reversing && (progress <= 0))){
+            k.forEach(toKey =>{
+              const newValue = this._from[toKey] + (this._to[toKey] - this._from[toKey])*(this._reversing ? 0 : 1);
+              if(gObject.id == "engineCamera"){
+                ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
+              }else{
+                gObject["_"+toKey] = newValue;
+              }
+            });
             //si no se han hecho todos los loops o está en loop infinito
             if(this._looped < this._loops || this._infinite){
               //reset timers
-              this._startedAt = eTemp;
+              this._startedAt = engineTime;
               this._elapsed = 0;
-              this._looped++;
-              if(this._loopback)
-                this._reverse = !this._reverse;
+
+              if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
+                setKeyFrame(this._keyFrameNumber+1);
+                setAnimationVars(true);
+              }else{
+                this._looped++;
+                if(this._loopback)
+                  this._reversing = !this._reversing;
+              }
+
             }else{
-              this._done=true;
-              this._pendingTimersFix = true;
-              if(typeof this._onComplete == "function")
-                this._onComplete(engineRef);
-              return;
+              if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
+                this._startedAt = engineTime;
+                this._elapsed = 0;
+                setKeyFrame(this._keyFrameNumber+1);
+                setAnimationVars(true);
+              }else{
+                this._done = true;
+                // this._pendingTimersFix = true;
+                this._startedAt = NaN;
+                this._tElapsed = 0;
+                this._looped = 1;
+                this._reversing = this._reverse;
+                if(typeof this._onComplete == "function"){//add onComplete per keyframe
+                  try {
+                    this._onComplete(engine);
+                  } catch (error) {
+                    console.log("Error on onComplete:",error,this._onComplete)
+                  }
+                }
+                return;
+              }
             }
           }
         }
@@ -172,7 +247,8 @@ class Animation{
         get: function(){return this._id;}
       },
       relatedTo:{
-        get: function(){return this._relatedTo;}
+        get: function(){return this._relatedTo;},
+        set: function(x){this._relatedTo = x;}
       },
       ease:{
         get: function () {return ease[this._ease];},
@@ -218,6 +294,13 @@ class Animation{
       enabled:{
         get: function () {return this._enabled;},
         set: function (x) {
+          // console.log("hh")
+          // const k = Object.keys(this).filter((e)=>e.indexOf("_")!=-1)
+          // var d = new Object();
+          // k.forEach(key => {
+      
+          //   console.log(key.replace("_",""), "=", this[key]);
+          // });
           //if the value are different and x=true, the startedAt, dStartedAt must be changed
           if(this._enabled != x){
             this._enabled = x;
@@ -233,6 +316,7 @@ class Animation{
         set: function (x) {this._delay = x;}
       }
     });
+
     return animation;
   }
 }
@@ -245,6 +329,7 @@ class GraphObj{
       _font:graphInfo.font != undefined ? graphInfo.font:"Arial",
       _fontSize:graphInfo.fontSize != undefined ? parseFloat(graphInfo.fontSize):18,
       _boxColor:graphInfo.boxColor != undefined ? graphInfo.boxColor : "rgba(0,0,0,.5)",
+      _margin:graphInfo.margin != undefined ? graphInfo.margin : 0,
       _texture:graphInfo.textureFile != undefined ? graphInfo.textureFile:null,
       _textureName:graphInfo.textureName != undefined ? graphInfo.textureName:null,
       //Properties of the graph
@@ -335,6 +420,10 @@ class GraphObj{
       boxColor:{
         get: function() {return this._boxColor},
         set: function(x) {this._boxColor = typeof x == "string"? x : "black"}
+      },
+      margin:{
+        get: function() {return this._margin;},
+        set: function(x) {this._margin = parseFloat(x);}
       },
       texture: {
         get: function() { return this._texture; },
@@ -590,167 +679,6 @@ class GraphObj{
       }
 
     });
-    //TODO: PROCESS THE DAM TEXTURES IN RENDERENGINE, NOT HERE!!!!!!
-    //*************SHADERS********************
-    if(graphObject._texture !=null){
-      //*******reduction shader
-      const width = graphInfo.texture.naturalWidth,height = graphInfo.texture.naturalHeight;
-      var canvas = document.createElement('canvas');
-      canvas.width=width;
-      canvas.height=height;
-      const gl = canvas.getContext('webgl2', { premultipliedAlpha: false, antialias:false });
-      const gpu = new GPU({
-        canvas,
-        context: gl
-      });
-      const image = graphInfo.texture;
-      var resolution = {width:width,height:height}
-      graphObject._reducedTexture = image
-      if(width >1000 || height >1000){ 
-        const reduceFactor = Math.round((resolution[["width","height"][width/height >1?0:1]]) /1000);
-        //crear el shader de reduccion
-        //*Las comillas son para evitar que se minifique el codigo de la funcion kernely
-        const reduceShader = gpu.createKernel(`function (){
-          const pixel = this.constants.image[Math.floor(this.thread.y*this.constants.reduceFactor) * this.constants.width + Math.floor(this.thread.x*this.constants.reduceFactor)];
-          if(pixel[3] != 0){
-            this.color(pixel[0],pixel[1],pixel[2],pixel[3])
-          }else{
-            this.color(0,0,0,0)
-          }
-        }`)
-          .setGraphical(true)
-          .setOutput([width/reduceFactor,height/reduceFactor])
-          .setConstants({reduceFactor:reduceFactor,image:image,width:width});
-
-        reduceShader();
-        graphObject._reducedTexture = reduceShader.canvas;
-        
-        resolution.width /= reduceFactor;
-        resolution.height /= reduceFactor;
-      }
-      const red = graphObject._reducedTexture;
-      // //**bLUR shader
-      graphObject._blurShader = gpu.createKernel(`function (radius) {
-        let sum = [0, 0, 0, 0];
-        for (let i = -1*radius; i <= 1*radius; i++) {
-          for (let j = -1*radius; j <= 1*radius; j++) {
-            const pixel = this.constants.image[(this.thread.y + j) * this.constants.width + (this.thread.x + i)];
-            if(pixel[3] != 0){
-              sum[0] += pixel[0];
-              sum[1] += pixel[1];
-              sum[2] += pixel[2];
-              sum[3] += pixel[3];
-            }
-          }
-        }
-        const numPixels = (2 * radius +1) * (2 * radius + 1);
-        sum[0] /= numPixels;
-        sum[1] /= numPixels;
-        sum[2] /= numPixels;
-        sum[3] /= numPixels;
-        if(sum[3] != 0){
-          this.color(
-            sum[0],
-            sum[1],
-            sum[2],
-            sum[3]
-          );
-        }
-        else{
-          this.color(0,0,0,0);
-        }
-      }`)
-        .setOutput([resolution.width,resolution.height])
-        .setGraphical(true)
-        .setConstants({image:red,width:resolution.width,height:resolution.height});
-      //*CHROMATIC ABERRATION
-      graphObject._chromaticShader = gpu.createKernel(`function (redShift, greenShift, blueShift) {
-        const x = this.thread.x;
-        const y = this.thread.y; 
-        
-        // Calcula las coordenadas desplazadas para los canales de color
-        const xOffsetRed = x + redShift;
-        const yOffsetRed = y - redShift;
-        const xOffsetGreen = x - greenShift;
-        const yOffsetGreen = y - greenShift;
-        const xOffsetBlue = x ;
-        const yOffsetBlue = y + blueShift;
-      
-        // Obtiene los valores de color para cada canal desplazado
-        const rShifted = this.constants.image[yOffsetRed * this.constants.width + xOffsetRed];
-        const gShifted = this.constants.image[yOffsetGreen * this.constants.width + xOffsetGreen];
-        const bShifted = this.constants.image[yOffsetBlue * this.constants.width + xOffsetBlue];
-      
-        // Combina los canales de color desplazados para obtener el resultado final
-        const outputR = rShifted[0];
-        const outputG = gShifted[1];
-        const outputB = bShifted[2];
-        const alpha = (rShifted[3]+gShifted[3]+bShifted[3])/3;
-      
-        // Devuelve el color resultante
-        this.color(outputR, outputG, outputB,alpha);}`)
-        .setOutput([resolution.width,resolution.height])
-        .setGraphical(true)
-        .setTactic("speed")
-        .setConstants({image:red,width:resolution.width,height:resolution.height});
-      
-      //*** DITHERING SHADER
-      graphObject._ditheringShader = gpu.createKernel(function (intensity,half,intensityHalf) {
-        
-        const x = this.thread.x;
-        const y = this.thread.y; 
-        const pixel = this.constants.image[(y) * this.constants.width + (x)];
-        if(x%intensity==0 && y%intensity == 0){
-          this.color(pixel[0],pixel[1],pixel[2],pixel[3])
-        }else if(half){
-          if((x+(intensityHalf))%intensity==0 && (y+(intensityHalf))%intensity == 0){
-            this.color(pixel[0],pixel[1],pixel[2],pixel[3],)
-          }
-        }
-      })
-      .setOutput([resolution.width,resolution.height]).setGraphical(true).setConstants({image:red,width:resolution.width,height:resolution.height});
-
-      //*BLACK N WHITE SHADER
-      graphObject._colorscale = gpu.createKernel(function () {
-        
-        const x = this.thread.x;
-        const y = this.thread.y; 
-        const pixel = this.constants.image[(y) * this.constants.width + (x)];
-        const bleh = (pixel[0]+pixel[1]+pixel[2])/3;
-        if(pixel[3] != 0){
-          if(bleh>0.3)
-          this.color(pixel[0],pixel[1],pixel[2],Math.round(bleh));
-        }
-        
-      })
-      .setOutput([resolution.width,resolution.height]).setGraphical(true).setConstants({image:red,width:resolution.width,height:resolution.height});
-      //*********SHADERS UTILITIES
-      graphObject._blurAplied = 0;
-      graphObject._aberrationAplied = 0;
-      graphObject.getTexture = ()=>{
-        if(graphObject._aberration != 0){
-            const intensity = graphObject._aberration;
-            if(graphObject._aberrationType == "static" && graphObject._aberrationAplied != intensity){
-              graphObject._aberrationAplied = intensity;
-              graphObject._chromaticShader(intensity,intensity,intensity);
-            }else if(graphObject._aberrationType != "static"){
-              const goofier = ()=>(Math.floor(Math.random()*intensity)-Math.round(intensity/2))
-              graphObject._chromaticShader(goofier(),goofier(),goofier());
-            }
-            return graphObject._chromaticShader.canvas;
-        }else if (graphObject._blurAplied!=0){
-          if(graphObject._blurAplied != graphObject._blur){
-            graphObject._blurAplied = graphObject._blur;
-            graphObject._blurShader(graphObject._blur);
-          }
-          return graphObject._blurShader.canvas;
-        }else{
-          return graphObject._texture;
-        }
-      }
-    }
-
-    //*BLUR SHADER
     return graphObject;
   }
   static get(graphObject = new Object()){

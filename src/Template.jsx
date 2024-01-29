@@ -1,13 +1,10 @@
 import gsap from 'gsap';
 import React from 'react';
-import { NodesBuilder } from './logic/NodesBuilder';
 import { Config } from './sections/Config';
 import { GameEnvironment } from './sections/GameEnvironment';
 import { MainMenu } from "./sections/MainMenu";
 import { SavedGamesScreen } from "./sections/SavedGamesScreen";
 import $ from "jquery";
-import { NodesWatch } from './developTools/NodesWatch';
-import { charsFiles } from './res/gameRes/characters/chars';
 
 
 class Template extends React.Component {
@@ -48,7 +45,6 @@ class Template extends React.Component {
               gsap.to(document.getElementById("display"), 0.3, { opacity: 1 });
             }, 1000);
         });
-        this.gameScript = NodesBuilder.buildGameScript();
       }, 200);
     }
   }
@@ -121,15 +117,6 @@ class Template extends React.Component {
             <Config
               changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
               aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
-            />
-          );
-  
-        break;
-        case 4:
-          return (
-            <NodesWatch
-              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-              gameScript={this.gameScript}
             />
           );
   

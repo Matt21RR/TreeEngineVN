@@ -1,6 +1,9 @@
 import { GPU } from "gpu.js";
 import { ObjectArray } from "./graphObj";
 
+function rectangle(){
+  
+}
 class Shader {
   static create(texture,id){
     var s = new Object({
@@ -19,7 +22,7 @@ class Shader {
     });
     const image = texture;
     var resolution = {width:width,height:height}
-    s._reducedTexture = image
+    s._reducedTexture = image;
     if(width >1000 || height >1000){ 
       const reduceFactor = Math.round((resolution[["width","height"][width/height >1?0:1]]) /1000);
       //crear el shader de reduccion
@@ -44,38 +47,35 @@ class Shader {
     }
     const red = s._reducedTexture;
     // //**bLUR shader
-    s._blurShader = gpu.createKernel(`function (radius) {
-      let sum = [0, 0, 0, 0];
-      for (let i = -1*radius; i <= 1*radius; i++) {
-        for (let j = -1*radius; j <= 1*radius; j++) {
+    s._blurShader = gpu.createKernel(`function (radius, area) {
+      let sum0 = 0;
+      let sum1 = 0;
+      let sum2 = 0;
+      let sum3 = 0;
+      for (let i = -radius; i <= radius; i++) {
+        for (let j = -radius; j <= radius; j++) {
           const pixel = this.constants.image[(this.thread.y + j) * this.constants.width + (this.thread.x + i)];
           if(pixel[3] != 0){
-            sum[0] += pixel[0];
-            sum[1] += pixel[1];
-            sum[2] += pixel[2];
-            sum[3] += pixel[3];
+            sum0 += pixel[0];
+            sum1 += pixel[1];
+            sum2 += pixel[2];
+            sum3 += pixel[3];
           }
         }
       }
-      const numPixels = (2 * radius +1) * (2 * radius + 1);
-      sum[0] /= numPixels;
-      sum[1] /= numPixels;
-      sum[2] /= numPixels;
-      sum[3] /= numPixels;
-      if(sum[3] != 0){
-        this.color(
-          sum[0],
-          sum[1],
-          sum[2],
-          sum[3]
-        );
-      }
-      else{
+      sum0 /= area;
+      sum1 /= area;
+      sum2 /= area;
+      sum3 /= area;
+      if(sum3 != 0){
+        this.color(sum0,sum1,sum2,sum3);
+      }else{
         this.color(0,0,0,0);
       }
     }`)
       .setOutput([resolution.width,resolution.height])
       .setGraphical(true)
+      .setTactic("speed")
       .setConstants({image:red,width:resolution.width,height:resolution.height});
     //*CHROMATIC ABERRATION
     s._chromaticShader = gpu.createKernel(`function (redShift, greenShift, blueShift) {
@@ -156,12 +156,18 @@ class Shader {
       }else if (graphObject._blur!=0){
         if(s._blurAplied != graphObject._blur){
           s._blurAplied = graphObject._blur;
-          s._blurShader(graphObject._blur);
+          const radius = Math.round(graphObject._blur);
+          const area = (2 * radius +1) * (2 * radius + 1);
+          s._blurShader(radius,area);
         }
         return s._blurShader.canvas;
       }else{
         return s.texture;
       }
+    }
+    //*Destruction function
+    s.destroy = function(){
+      gpu.destroy()
     }
     return s;
   }

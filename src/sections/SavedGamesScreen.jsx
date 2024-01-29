@@ -14,9 +14,6 @@ class SavedGamesScreen extends React.Component {
       this.setState({
         thumbnails: thumbnails
       });
-      // Object.keys(thumbnails).forEach(thumb => {
-      //   console.log(thumbnails[thumb]);
-      // });
     });
   }
   savedGamesList() {
