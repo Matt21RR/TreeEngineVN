@@ -24,9 +24,10 @@ class RenderEngine extends React.Component{
     this.actualSceneId = "";//Guardar esto
     this.masterScript = {};
 
-    this.graphArray = ObjectArray.create();//array de objetos, un objeto para cada imagen en pantalla
     this.graphObj = GraphObj;
     this.animation = Animation;
+
+    this.graphArray = ObjectArray.create();//array de objetos, un objeto para cada imagen en pantalla
     this.anims = ObjectArray.create();
     this.triggers = ObjectArray.create();
     this.gameVars = {};//Y guardar esto tambien
@@ -749,7 +750,6 @@ class RenderEngine extends React.Component{
             if((this.routineNumber+1)<this.routines.length){
               this.routineNumber++;
               this.routines[this.routineNumber](this);
-              console.log(this.routines[this.routineNumber].toString())
             }
           }
 

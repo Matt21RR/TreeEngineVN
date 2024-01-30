@@ -123,9 +123,11 @@ class ScriptInterpreter {
         case "GRAPHOBJECT":
           //change the texture reference to the actual file
           res = "var "+dynaVar+"= "+params+";";
+          //Comentado porque probablemente ya no sea necesario usarlo
           if(Object.keys(parsedParams).indexOf("texture") != -1){//para objetos graficos que no son de texto
             res += dynaVar+".texture = engine.texturesArray['"+parsedParams.texture+"'];";
           }
+
           res += "engine.graphArray.push(engine.graphObj.create("+dynaVar+"));";
           break;
         case "TRIGGER":
@@ -245,6 +247,9 @@ class ScriptInterpreter {
         //Las siguientes dos ordenes le indicaran al motor cuando dejar de ejecutar las ordenes en secuencia
         if(commandType[0] == "WAIT"){
           scene.routines.push((engine)=>{
+            if(!isNaN(command.WAIT)){
+              setTimeout(()=>{engine.continue = true},command.WAIT*1)
+            }
             engine.continue = false;
           });
         }else if(commandType[0] == "CONTINUE"){
@@ -265,7 +270,6 @@ class ScriptInterpreter {
         
         
         if(passFlag){
-          console.error(commandType[0]);
           if(commandType[0] == "SHOW"){
             if(commandType[1] == "DIALOG"){
               console.log(commandType[2],value);
@@ -288,6 +292,49 @@ class ScriptInterpreter {
 
                   engine.continue = false;
                 });
+            }
+          }else if(commandType[0] == "PUSH"){
+            switch (commandType[1]) {
+              case "GAMEVARS":
+                scene.gameVars = value;
+                break;
+              //*No se permite añadir texturas o sunidos tras creada la escena
+              case "GRAPHOBJECT":
+                scene.routines.push(engine=>{
+                  engine.graphArray.push(engine.graphObj.create(value));
+                });
+                break;
+              case "TRIGGER":
+                
+                break;
+              case "ANIMATION":
+                scene.routines.push(engine=>{
+                  engine.anims.push(engine.animation.create(value))
+                });
+
+                break;
+              case "CODEDROUTINE":
+                
+                break;
+            
+              default:
+                //throw new Error("Command #"+comNumber+" ,is not a registered command: "+Object.keys(command)[0]);
+                break;
+            }
+          }else if(commandType[0] == "SET"){//This chunk of the code probabily isnt being used
+            switch (commandType[1]) {
+              case "GRAPHOBJECT":
+                break;
+              case "TRIGGER":
+                break;
+              case "ANIMATION":
+                break;
+              case "CODED_ANIMATION":
+                break;
+              case "SCENE":
+              default:
+                // throw new Error("Command #"+comNumber+" ,is not a registered command: "+Object.keys(command)[0]);
+                break;
             }
           }
         }else if(commandType[0] == "PUSH"){

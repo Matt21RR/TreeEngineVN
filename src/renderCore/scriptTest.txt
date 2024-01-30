@@ -275,9 +275,14 @@ PUSH ANIMATION {
 //  code:(engine)=>{$($peras++)$}
 //}
 
-//*============================ESCENA PARA PROBAR LOS TEXTOS=============================
+//*===========================================ESCENA PARA PROBAR LOS TEXTOS=========================================
 SCENE ID oficinaPostal
 
+PUSH TEXTURES {
+  aishaImg:"aishaImg"} 
+PUSH SOUNDS {
+  openning:"openning"
+}
 PUSH GRAPHOBJECT{
   id:"dialogbox",
   boxColor:"rgb(20,80,190)",
@@ -378,7 +383,6 @@ PUSH CODEDROUTINE{
 }
 //*Significa que a partir de aqui se empieza la ejecucion ciclica
 END DECLARATION
-WAIT
 SHOW NARRATION [
   "Hello, Mr.White",
   "Lorem ipsum dolor sit amet consectetur adipisicing elit.",
@@ -398,11 +402,34 @@ SHOW DIALOG Adam [
   "Hola",
   "A todos."
 ]
-WAIT
+WAIT 1500
 SHOW DIALOG Ernie [
   "Ya pero",
   "Pero quien ha apagado la luz?"
 ]
+PUSH GRAPHOBJECT {
+  id:"titletest",
+  scale:1,
+  boxColor:"white",
+  opacity:0,
+  text:""
+}
+PUSH ANIMATION {
+  relatedTo:"titletest",
+  enabled:true,
+  keyframes:{
+    0:{
+      onComplete:(engine)=>{
+        engine.soundsList.get("openning").sound.play();
+      }
+    },4000:{opacity:1,
+      onComplete:(engine)=>{
+        PUSH GRAPHOBJECT {id:"title",scale:1,text:"AAAAAAAA",fontSize:100,boxColor:"transparent",margin:.25,color:"white"}
+      }
+    },8000:{opacity:0}
+  }
+}
+
 //*Inicia con dolar = operacion que se encapsula en una funcion
 //CONTINUE
 END FILE

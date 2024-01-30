@@ -24,5 +24,6 @@ const requiredTextures = {
 const requiredSounds = {
   cierrePuerta: require('../res/gameRes/snd/doorClose.wav'),
   aperturaPuerta: require('../res/gameRes/snd/doorOpen.wav'),
+  openning: require('../res/gameRes/snd/sinnombre32.mp3')
 }
 export {requiredTextures,requiredSounds}

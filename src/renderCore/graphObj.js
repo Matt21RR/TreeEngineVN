@@ -94,13 +94,21 @@ class Animation{
         this._dStartedAt = dO;
       },
       updateAnimation : function (gObject,elapsed,engine) {
+        const executeOnCompleteKeyframe = () => {
+          if(typeof this._to.onComplete == "function"){//add onComplete per keyframe
+            try {
+              this._to.onComplete(engine);
+            } catch (error) {
+              console.log("Error on onComplete:",error,this._to.onComplete)
+            }
+          }
+        }
         const setAnimationVars = (forced = false)=>{
           if(isNaN(this._startedAt) || forced){
             //Esta instanciacion se debe de realizar justo antes de iniciar la animacion
             var gOD;
   
             //Si se trata de la camara
-            console.log(this._relatedTo);
             if(gObject.id == "engineCamera"){
               gOD = ExtendedObjects.buildObjectsWithRoutes(gObject);
               this._to = ExtendedObjects.buildObjectsWithRoutes(this._to);
@@ -109,15 +117,15 @@ class Animation{
             }
   
             var f = new Object();
-            console.log("this to",this._to)
             Object.keys(this._to).forEach(toKey=>{
-              f[toKey] = gOD[toKey];
+              if(toKey != "onComplete")
+                f[toKey] = gOD[toKey];
             });
             this._from =  f;//estado inicial del objeto
-            console.log("this from", this._from)
             
+            console.log(this._from,this._to,this._elapsed,this._duration,this._keyFrameNumber,this._startedAt,this._tElapsed);
             //ajustar el tiempo de inicio de la animacion
-            this._startedAt = elapsed;
+            //this._startedAt = elapsed;
             return;
           }
         }
@@ -127,7 +135,6 @@ class Animation{
           this._keyFrameNumber = frameNumber;
           this._to = frame;
           this._duration = frameNumber == 0 ? keyOfTheKeyFrame*1: (keyOfTheKeyFrame)*1 - (Object.keys(this._keyframes)[frameNumber-1])*1;
-          console.log("adjusting frame",frameNumber,keyOfTheKeyFrame,this._duration);
         }
 
         const engineTime = elapsed;
@@ -152,14 +159,18 @@ class Animation{
 
           const k = Object.keys(this._to);
           k.forEach(toKey =>{
-            const newValue = this._to[toKey];
-            if(gObject.id == "engineCamera"){
-              ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
-            }else{
-              gObject["_"+toKey] = newValue;
+            if(toKey != "onComplete"){
+              const newValue = this._to[toKey];
+              if(gObject.id == "engineCamera"){
+                ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
+              }else{
+                gObject["_"+toKey] = newValue;
+              }
             }
           });
           if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
+            //?onComplete
+            executeOnCompleteKeyframe();
             setKeyFrame(this._keyFrameNumber+1);
             setAnimationVars(true);
           }else{
@@ -182,21 +193,27 @@ class Animation{
 
           const k = Object.keys(this._to);//Para cada elemento a cambiar en el .to
           k.forEach(toKey =>{
-            const newValue = this._from[toKey] + (this._to[toKey] - this._from[toKey])*eConstant;
-            if(gObject.id == "engineCamera"){
-              ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
-            }else{
-              gObject["_"+toKey] = newValue;
-            }
-          });
-
-          if(progress >= 1 || (this._reversing && (progress <= 0))){
-            k.forEach(toKey =>{
-              const newValue = this._from[toKey] + (this._to[toKey] - this._from[toKey])*(this._reversing ? 0 : 1);
+            if(toKey != "onComplete"){
+              const newValue = this._from[toKey] + (this._to[toKey] - this._from[toKey])*eConstant;
               if(gObject.id == "engineCamera"){
                 ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
               }else{
                 gObject["_"+toKey] = newValue;
+              }
+            }
+          
+          });
+
+          if(progress >= 1 || (this._reversing && (progress <= 0))){
+            k.forEach(toKey =>{
+              if(toKey != "onComplete"){
+                console.log(toKey);
+                const newValue = this._from[toKey] + (this._to[toKey] - this._from[toKey])*(this._reversing ? 0 : 1);
+                if(gObject.id == "engineCamera"){
+                  ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
+                }else{
+                  gObject["_"+toKey] = newValue;
+                }
               }
             });
             //si no se han hecho todos los loops o está en loop infinito
@@ -206,6 +223,8 @@ class Animation{
               this._elapsed = 0;
 
               if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
+                //?onComplete
+                executeOnCompleteKeyframe();
                 setKeyFrame(this._keyFrameNumber+1);
                 setAnimationVars(true);
               }else{
@@ -218,11 +237,13 @@ class Animation{
               if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
                 this._startedAt = engineTime;
                 this._elapsed = 0;
+                //?onComplete
+                console.warn("here");
+                executeOnCompleteKeyframe();
                 setKeyFrame(this._keyFrameNumber+1);
                 setAnimationVars(true);
               }else{
                 this._done = true;
-                // this._pendingTimersFix = true;
                 this._startedAt = NaN;
                 this._tElapsed = 0;
                 this._looped = 1;
@@ -294,13 +315,6 @@ class Animation{
       enabled:{
         get: function () {return this._enabled;},
         set: function (x) {
-          // console.log("hh")
-          // const k = Object.keys(this).filter((e)=>e.indexOf("_")!=-1)
-          // var d = new Object();
-          // k.forEach(key => {
-      
-          //   console.log(key.replace("_",""), "=", this[key]);
-          // });
           //if the value are different and x=true, the startedAt, dStartedAt must be changed
           if(this._enabled != x){
             this._enabled = x;
