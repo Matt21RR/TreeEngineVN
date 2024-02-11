@@ -22,6 +22,7 @@ class Canvas extends React.Component{
 
     this.resolutionHeight = Math.floor(window.innerHeight * this.scale *window.devicePixelRatio);
     this.resolutionWidth = Math.floor(window.innerWidth * this.scale *window.devicePixelRatio); 
+    // console.log(this.resolutionHeight, this.resolutionWidth);
 
     this.element = React.createRef();
 
@@ -109,8 +110,10 @@ class Canvas extends React.Component{
       if(sEngineScale != null)window.setScale(sEngineScale);
 
       //set resolution
+      //console.log(this.resolutionHeight, this.resolutionWidth);
       this.resolutionHeight = Math.floor(document.getElementById(this.id).offsetHeight * this.scale *window.devicePixelRatio);
       this.resolutionWidth = Math.floor(document.getElementById(this.id).offsetWidth * this.scale *window.devicePixelRatio);
+      console.log(this.resolutionWidth,this.resolutionHeight);
       //set dimensions
       this.previousFrame.width = this.resolutionWidth;
       this.previousFrame.height = this.resolutionHeight;
@@ -118,6 +121,7 @@ class Canvas extends React.Component{
       document.getElementById(this.id).height = this.resolutionHeight;
 
       window.addEventListener('resize', () => {
+        window.finalWarn = 0;
         if(!this.engineKilled && canvasInstances.checker(this.props.id,this.id)){
           clearTimeout(this.resizeTimeout);
           this.resizeTimeout = setTimeout(
@@ -132,7 +136,7 @@ class Canvas extends React.Component{
               canvas.width = this.resolutionWidth;
               canvas.height = this.resolutionHeight;
               //set the reset function for every graphic object
-              this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
+              //this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
               // if(this.props.static)
               //   this.engine();
             }, 1000);
@@ -151,12 +155,13 @@ class Canvas extends React.Component{
           if(!self.engineKilled && canvasInstances.checker(self.props.id,self.id)){
             console.log("clickin");
             self.stopEngine = true;
+            window.finalWarn = 0;
             setTimeout(() => {
-              self.stopEngine = false;
-              if(self.engineThreads != 0)
-                self.engineThreads = 0;
-              self.engine();
-            }, 0.7);
+                self.stopEngine = false;
+                if(self.engineThreads != 0)
+                  self.engineThreads = 0;
+                self.engine();
+            }, 200);
           }
         });
       }

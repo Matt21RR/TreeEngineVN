@@ -10,14 +10,29 @@ class canvasInstances {
       Object.assign(window.canvasInstances,{[hardcodedId]:null});
     
     window.canvasInstances[hardcodedId] = dynamicId;
+
+    window.finalWarn = 0;
     console.log(window.canvasInstances);
   }
   static checker(hardcodedId, dynamicId){ 
-    // console.log(window.canvasInstances[hardcodedId]);
-    const res = window.canvasInstances[hardcodedId] == undefined? false : window.canvasInstances[hardcodedId] == dynamicId;
+    const tPrev = window.scafford;
+    window.scafford = window.performance.now();
+
+    var res = window.canvasInstances[hardcodedId] == undefined? false : window.canvasInstances[hardcodedId] == dynamicId;
+    if(tPrev != undefined){
+       //console.log(window.canvasInstances[hardcodedId],window.scafford-tPrev);
+      if(window.scafford-tPrev<6)
+        if(window.finalWarn>3){
+          res = false;
+          window.finalWarn = 0;
+        }else{
+          window.finalWarn++;
+        }
+        
+    }
     // console.log(res) 
     if(!res)console.warn("refusing engine start from prebult canvas")
     return res;
-  } 
+  }    
 }
 export{canvasInstances}

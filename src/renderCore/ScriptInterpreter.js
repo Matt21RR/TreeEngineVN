@@ -98,7 +98,6 @@ class ScriptInterpreter {
       }
 
     });
-    console.log(ar);
     return(ar);
   }
   setReplacer(line,lIndex){
@@ -241,7 +240,7 @@ class ScriptInterpreter {
         flags:{}
       }
       commandStack[sceneId].forEach((command,comNumber)=>{
-        console.log(command);
+        //console.log(command);
         const commandType = Object.keys(command)[0].split(" ");
         let value;
         //Las siguientes dos ordenes le indicaran al motor cuando dejar de ejecutar las ordenes en secuencia
@@ -398,7 +397,6 @@ class ScriptInterpreter {
           }
         }
       });
-      console.log(scene)
       Object.assign(roadMap.scenes,{[sceneId]:scene})
     });
     return roadMap.scenes;

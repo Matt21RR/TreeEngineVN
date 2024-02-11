@@ -9,7 +9,10 @@ class graphArr{
       _objects : new Array(),
       push: function(newGraphObj) {graphArr.push(this,newGraphObj)},
       remove: function(objectId) {graphArr.remove(this,objectId)},
-      get: function(objectId) {return graphArr.get(this,objectId)}
+      get: function(objectId) {return graphArr.get(this,objectId)},
+      ids: function() {return graphArr.ids(this)},
+      relatedToList: function() {return graphArr.relatedToList(this)},
+      relatedToReversedList: function() {return graphArr.relatedToReversedList(this)},
     });
     Object.defineProperties(graphArray,{
       objects:{
@@ -36,6 +39,56 @@ class graphArr{
       return graphArray._objects[graphIds.indexOf(objectId)];
     }
     
+  }
+  static ids(graphArray = new Array()){
+    return graphArray._objects.map(e => {return e.id;});
+  }
+  static relatedToList(graphArray = new Array()){
+    return graphArray._objects.map(e => {return {[e.id]:e.relatedTo};});
+  }
+  static relatedToReversedList(graphArray = new Array()){
+    var list = {};
+    graphArray._objects.forEach(element => {
+      if(element.relatedTo in list){
+        list[element.relatedTo].push(element.id);
+      }else{
+        Object.assign(list,{[element.relatedTo]:[element.id]});
+      }
+    });
+    return list;
+  }
+}
+class Trigger{
+  static create(tInfo = new Object(),graphObject = GraphObj){
+    if(!("id" in tInfo))
+      throw new Error("Trying to create a Trigger without id");
+    var trigger = new Object({
+      id: tInfo.id,
+      relatedTo: tInfo.relatedTo, 
+      enabled: tInfo.enabled != undefined ? tInfo.enabled : true,
+      //if superposition is true the engine will ignore the graphObjects that are over the graphobject related to the trigger
+      //superposition: tInfo.superposition != undefined ? tInfo.superposition : false,
+      onHold: tInfo.onHold != undefined ? tInfo.onHold : null,
+      onRelease: tInfo.onRelease != undefined ? tInfo.onRelease : null,
+      onEnter: tInfo.onEnter != undefined ? tInfo.onEnter : null,
+      onLeave: tInfo.onLeave != undefined ? tInfo.onLeave : null,
+      mouseAreInside: false,//Value to check the execution of onEnter/onLeave
+      check: function(engineRef,graphObjectRef,action){//Si no existe en el trigger tal accion retorna falso, si no verdadero
+        if(action == "mouseMove")//check onEnter
+          action = "onEnter";
+        if(this[action] == null)
+          return;
+        const numberOfArguments = this[action].length;
+        if(numberOfArguments == 1){
+          this[action](engineRef);
+        }else if (numberOfArguments == 2){
+          this[action](engineRef,graphObjectRef);
+        }else{
+          throw new Error("Too much arguments (",numberOfArguments,") for the funtion defined to the action ",action,", for the trigger",this.id)
+        }
+      }
+    });
+    return trigger;
   }
 }
 class Animation{
@@ -123,9 +176,10 @@ class Animation{
             });
             this._from =  f;//estado inicial del objeto
             
-            console.log(this._from,this._to,this._elapsed,this._duration,this._keyFrameNumber,this._startedAt,this._tElapsed);
-            //ajustar el tiempo de inicio de la animacion
-            //this._startedAt = elapsed;
+            //console.log(this._from,this._to,this._elapsed,this._duration,this._keyFrameNumber,this._startedAt,this._tElapsed);
+            //ajustar el tiempo de inicio de la animacion,solo cuando no se trate de una animacion con varios keyframes
+            if(!forced)
+              this._startedAt = elapsed;
             return;
           }
         }
@@ -152,7 +206,6 @@ class Animation{
           this._startedAt = elapsed-(this._tElapsed%this._duration);
           this._pendingTimersFix = false;
         }
-
         elapsed-=this._startedAt;
 
         if(!this._done && this._duration == 0){//Si es una animacion instantanea
@@ -207,7 +260,6 @@ class Animation{
           if(progress >= 1 || (this._reversing && (progress <= 0))){
             k.forEach(toKey =>{
               if(toKey != "onComplete"){
-                console.log(toKey);
                 const newValue = this._from[toKey] + (this._to[toKey] - this._from[toKey])*(this._reversing ? 0 : 1);
                 if(gObject.id == "engineCamera"){
                   ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
@@ -222,16 +274,19 @@ class Animation{
               this._startedAt = engineTime;
               this._elapsed = 0;
 
+              executeOnCompleteKeyframe();
               if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
                 //?onComplete
-                executeOnCompleteKeyframe();
+
                 setKeyFrame(this._keyFrameNumber+1);
-                setAnimationVars(true);
+
               }else{
+                setKeyFrame(0);
                 this._looped++;
-                if(this._loopback)
+                if(this._loopback)//Loopback wasn't tested with loopback
                   this._reversing = !this._reversing;
               }
+              setAnimationVars(true);
 
             }else{
               if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
@@ -248,6 +303,7 @@ class Animation{
                 this._tElapsed = 0;
                 this._looped = 1;
                 this._reversing = this._reverse;
+                executeOnCompleteKeyframe();
                 if(typeof this._onComplete == "function"){//add onComplete per keyframe
                   try {
                     this._onComplete(engine);
@@ -336,14 +392,17 @@ class Animation{
 }
 class GraphObj{
   static create(graphInfo = new Object()){
+    console.log(graphInfo)
     var graphObject = new Object({
       //is text
       _text:graphInfo.text != undefined ? graphInfo.text:null,
+      _center:graphInfo.center != undefined ? graphInfo.center : false,
       _color:graphInfo.color != undefined ? graphInfo.color:"gray",
       _font:graphInfo.font != undefined ? graphInfo.font:"Arial",
       _fontSize:graphInfo.fontSize != undefined ? parseFloat(graphInfo.fontSize):18,
-      _boxColor:graphInfo.boxColor != undefined ? graphInfo.boxColor : "rgba(0,0,0,.5)",
+      _boxColor:graphInfo.boxColor != undefined ? graphInfo.boxColor : "transparent",
       _margin:graphInfo.margin != undefined ? graphInfo.margin : 0,
+
       _texture:graphInfo.textureFile != undefined ? graphInfo.textureFile:null,
       _textureName:graphInfo.textureName != undefined ? graphInfo.textureName:null,
       //Properties of the graph
@@ -401,6 +460,10 @@ class GraphObj{
       text:{
         get: function() {return this._text;},
         set: function(x) {this._text = typeof x == "string"? x : null}
+      },
+      center:{
+        get: function() {return this._center},
+        set: function(x) {this._center = typeof x == "boolean"? x : false}
       },
       color:{
         get: function() {return this._color},
@@ -728,4 +791,4 @@ class GraphObj{
     return d
   }
 }
-export {GraphObj,graphArr as ObjectArray,Animation}
+export {GraphObj,graphArr as ObjectArray,Animation,Trigger}

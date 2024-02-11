@@ -37,12 +37,12 @@ class Template extends React.Component {
         }
 
         window.addEventListener('resize', () => {
-          gsap.to(document.getElementById("display"), 0.3, { opacity: 0 });
+          gsap.to(document.getElementById("display"), 0, { opacity: 0 });
           clearTimeout(this.resizeTimeout);
           this.resizeTimeout = setTimeout(
             () => {
               this.aspectRatioCalc();
-              gsap.to(document.getElementById("display"), 0.3, { opacity: 1 });
+              gsap.to(document.getElementById("display"), 0, { opacity: 1 });
             }, 1000);
         });
       }, 200);
@@ -55,8 +55,8 @@ class Template extends React.Component {
       op = this.state.aspectRatio;
     }
     if (op != "unset") {
-      let newWidth = (window.innerHeight / (op.split(":")[1] * 1)) * (op.split(":")[0] * 1);
-      let newHeight = (window.innerWidth / (op.split(":")[0] * 1)) * (op.split(":")[1] * 1);
+      let newWidth = Math.floor((window.innerHeight / (op.split(":")[1] * 1)) * (op.split(":")[0] * 1));
+      let newHeight = Math.floor((window.innerWidth / (op.split(":")[0] * 1)) * (op.split(":")[1] * 1));
       if (newWidth <= window.innerWidth) {
         document.getElementById("display").style.width = newWidth + "px";
         document.getElementById("display").style.height = window.innerHeight + "px";
@@ -69,6 +69,8 @@ class Template extends React.Component {
       document.getElementById("display").style.width = "";
       document.getElementById("display").style.height = "";
     }
+    console.log(document.getElementById("display").style.width,
+    document.getElementById("display").style.height);
     if(fun != null){
       fun();
     }

@@ -16,7 +16,7 @@ const requiredTextures = {
   puertaCerrada:require("../res/gameRes/puertaCerrada.png"),
   puertaAbierta:require("../res/gameRes/puertaAbierta.png"),
   
-  mapa:require("../res/gameRes/mapa.png"),
+  mapa:require("../res/gameRes/parsel.png"),
   tienda:require("../res/gameRes/tienda.png"),
   restaurante:require("../res/gameRes/restaurante.png"),
   correo:require("../res/gameRes/correo.png"),

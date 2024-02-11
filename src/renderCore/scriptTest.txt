@@ -10,6 +10,7 @@ PUSH TEXTURES {
 PUSH GRAPHOBJECT {
   id:"mapa",
   texture:"mapa",
+  brightness:0,
   scale:1
 }
 
@@ -37,6 +38,7 @@ PUSH GRAPHOBJECT {
 PUSH TRIGGER {
   id:"entrarCorreo",
   relatedTo:"correo",
+  enabled:true,
   onRelease:(engine)=>{
     engine.loadScene("oficinaPostal");
   }
@@ -51,13 +53,10 @@ PUSH TRIGGER {
 PUSH ANIMATION {
   relatedTo:"mapa",
   id:"test",
-//  to:{blur:12},
   keyframes:{
-    0:{blur:4},
-    2000:{blur:0},
-    4000:{blur:4},
-    6000:{blur:0},
-    8000:{blur:4}
+    0:{blur:0,brightness:0},
+    3000:{blur:6,brightness:6},
+    6000:{blur:0,brightness:0}
   },
   enabled:true,
   infinite:true
@@ -100,7 +99,7 @@ PUSH GRAPHOBJECT{
     top:0,
     left:0,
     scale:1,
-    z:1,
+    z:4,
   }
 PUSH GRAPHOBJECT {
   id:"tiendaAviso",
@@ -117,14 +116,14 @@ PUSH GRAPHOBJECT{
 PUSH TRIGGER {
   id:"puerta",
   relatedTo:"puerta",
-  onMouseOut:(engine,gObject)=>{
+  onLeave:(engine,gObject)=>{
     if($puertaAbierta){
       gObject.textureName = "puertaCerrada";
       $puertaAbierta = false;
       engine.soundsList.get("cierrePuerta").sound.play();
     }
   },
-  onMove:(engine,gObject)=>{
+  onEnter:(engine,gObject)=>{
     if(!$puertaAbierta){
       gObject.textureName = "puertaAbierta";
       $puertaAbierta = true;
@@ -141,7 +140,7 @@ PUSH GRAPHOBJECT {
   scale:0.14,
   top:0.8,
   left:.15,
-  z:1}
+  z:3}
 
 PUSH GRAPHOBJECT {
   text:"Test basic 3D",
@@ -170,12 +169,13 @@ PUSH GRAPHOBJECT {
   scale:0.2,
   widthScale:1.4,
   heightScale:.65,
-  id:"textInnerCommandsButton"
+  id:"textRecibo"
 }
 //*Triggers
 
 //3D TRIGGER
-PUSH TRIGGER triggerId {
+PUSH TRIGGER {
+  id:"triggerId",
   relatedTo:"textInnerCommandsButton",
   onRelease:(engine)=>{
     SET CAMERA {to:{usePerspective:true}}
@@ -237,24 +237,31 @@ PUSH GRAPHOBJECT {
   top:0.85,
   left:.15}
 
-PUSH TRIGGER aumentoProducto{
+PUSH TRIGGER {
+  id:"aumentoProducto",
   relatedTo:"pera",
   onRelease:(engine)=>{
     $productoAMover = 'pera';
-    SET ANIMATION a1 {enabled:true,relatedTo:$productoAMover,duration:500}
+    console.log("Trying to enable a animation");
+    SET ANIMATION a1 {enabled:true,relatedTo:$productoAMover}
     }
 }
 //Animacion cuando se agrega una pera al carrito
 PUSH ANIMATION {
   id:"a1",
   ease:"linear",
-  duration:500,
-  to:{left:0.8, opacity:.01},
-  onComplete:(engine)=>{
-    SET GRAPHOBJECT $productoAMover {left:.15,opacity:1}
-    SET ANIMATION a1 {done:false,enabled:false}
-    SET ANIMATION meterProducto {enabled:true}
-    $productos[$productoAMover]++;
+  keyframes:{
+    500:{
+      left:0.8, 
+      opacity:.01,
+      onComplete:(engine)=>{
+        console.warn("Escopeta de feria");
+        SET GRAPHOBJECT $productoAMover {left:.15,opacity:1}
+        SET ANIMATION a1 {done:false,enabled:false}
+        SET ANIMATION meterProducto {enabled:true}
+        $productos[$productoAMover]++;
+      }
+    }
   }
 }
 //animacion al meter algo al carrito
@@ -308,13 +315,13 @@ PUSH GRAPHOBJECT{
   top:.9
 }
 PUSH TRIGGER{
+  id:"avanzarDialogo",
   relatedTo:"botonAvanzarDialogo",
   onRelease:(engine)=>{
+    engine.graphArray.get("dialogbox").text = "";
     if(engine.dialogNumber+1<engine.dialog.length){
       engine.dialogNumber++;
-      engine.graphArray.get("dialogbox").text = "";
     }else{
-      engine.graphArray.get("dialogbox").text = "";
       engine.graphArray.get("dialogbox").opacity = 0;
       engine.continue = true;
       engine.dialogNumber = 0;
@@ -331,9 +338,7 @@ PUSH GRAPHOBJECT{
   left:.15,
   fontSize:30,
   text:"",
-  margin:.1,
-  opacity:0
-  //Will be related to the box dimensions
+  margin:.1
 }
 PUSH GRAPHOBJECT{
   id:"boton",
@@ -345,7 +350,8 @@ PUSH GRAPHOBJECT{
   left:.8,
   top:.75
 }
-PUSH TRIGGER avanzar {
+PUSH TRIGGER {
+  id:"avanzarNarracion",
   relatedTo:"boton",
   onRelease:(engine)=>{
     engine.paragraphNumber++;
@@ -424,7 +430,7 @@ PUSH ANIMATION {
       }
     },4000:{opacity:1,
       onComplete:(engine)=>{
-        PUSH GRAPHOBJECT {id:"title",scale:1,text:"AAAAAAAA",fontSize:100,boxColor:"transparent",margin:.25,color:"white"}
+        PUSH GRAPHOBJECT {id:"title",text:"AAAAAAAA",fontSize:100,color:"white",center:true}
       }
     },8000:{opacity:0}
   }

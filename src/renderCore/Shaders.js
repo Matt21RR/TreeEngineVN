@@ -1,5 +1,6 @@
 import { GPU } from "gpu.js";
 import { ObjectArray } from "./graphObj";
+import { halfRounder } from "../logic/Misc";
 
 function rectangle(){
   
@@ -15,7 +16,14 @@ class Shader {
     var canvas = document.createElement('canvas');
     canvas.width=width;
     canvas.height=height;
-    const gl = canvas.getContext('webgl2', { premultipliedAlpha: false, antialias:false });
+    const gl = canvas.getContext('webgl2', { 
+      premultipliedAlpha: false, 
+      antialias:false, 
+      preserveDrawingBuffer: false, 
+      depth: false, 
+      stencil: false,
+      powerPreference : "high-performance"});
+
     const gpu = new GPU({
       canvas,
       context: gl
@@ -23,12 +31,12 @@ class Shader {
     const image = texture;
     var resolution = {width:width,height:height}
     s._reducedTexture = image;
-    if(width >1000 || height >1000){ 
-      const reduceFactor = Math.round((resolution[["width","height"][width/height >1?0:1]]) /1000);
+    if(width >1500 || height >1500){ 
+      const reduceFactor = Math.round((resolution[["width","height"][width/height >1?0:1]]) /1500);
       //crear el shader de reduccion
       //*Las comillas son para evitar que se minifique el codigo de la funcion kernely
       const reduceShader = gpu.createKernel(`function (){
-        const pixel = this.constants.image[Math.floor(this.thread.y*this.constants.reduceFactor) * this.constants.width + Math.floor(this.thread.x*this.constants.reduceFactor)];
+        const pixel = this.constants.image[Math.floor((this.thread.y*this.constants.reduceFactor* this.constants.width) + (this.thread.x*this.constants.reduceFactor))];
         if(pixel[3] != 0){
           this.color(pixel[0],pixel[1],pixel[2],pixel[3])
         }else{
@@ -36,14 +44,14 @@ class Shader {
         }
       }`)
         .setGraphical(true)
-        .setOutput([width/reduceFactor,height/reduceFactor])
+        .setOutput([Math.floor(width/reduceFactor),height/reduceFactor])
         .setConstants({reduceFactor:reduceFactor,image:image,width:width});
 
       reduceShader();
       s._reducedTexture = reduceShader.canvas;
       
-      resolution.width /= reduceFactor;
-      resolution.height /= reduceFactor;
+      resolution.width = Math.floor(resolution.width / reduceFactor);
+      resolution.height = Math.floor(resolution.height / reduceFactor);
     }
     const red = s._reducedTexture;
     // //**bLUR shader
@@ -76,7 +84,9 @@ class Shader {
       .setOutput([resolution.width,resolution.height])
       .setGraphical(true)
       .setTactic("speed")
+      .setPrecision("single")
       .setConstants({image:red,width:resolution.width,height:resolution.height});
+      
     //*CHROMATIC ABERRATION
     s._chromaticShader = gpu.createKernel(`function (redShift, greenShift, blueShift) {
       const x = this.thread.x;
@@ -154,18 +164,19 @@ class Shader {
           }
           return s._chromaticShader.canvas;
       }else if (graphObject._blur!=0){
-        if(s._blurAplied != graphObject._blur){
-          s._blurAplied = graphObject._blur;
-          const radius = Math.round(graphObject._blur);
-          const area = (2 * radius +1) * (2 * radius + 1);
+        if(s._blurAplied != Math.round(graphObject._blur)){
+          s._blurAplied = Math.round(graphObject._blur);
+          const radius = s._blurAplied;
+          const area = (2 * radius +1) * (2 * radius +1);
           s._blurShader(radius,area);
         }
         return s._blurShader.canvas;
       }else{
-        return s.texture;
+        return s._reducedTexture;
       }
     }
-    //*Destruction function
+    //TODO: Manage here the classic filter parameters aswell. We don't need to re apply the same efect over and over
+    //*Destruction function: No se usa en ningun lado LOL
     s.destroy = function(){
       gpu.destroy()
     }
