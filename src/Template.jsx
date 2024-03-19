@@ -4,6 +4,7 @@ import { Config } from './sections/Config';
 import { GameEnvironment } from './sections/GameEnvironment';
 import { MainMenu } from "./sections/MainMenu";
 import { SavedGamesScreen } from "./sections/SavedGamesScreen";
+
 import $ from "jquery";
 
 
@@ -21,6 +22,7 @@ class Template extends React.Component {
     this.resizeTimeout = 0;
     this.gameScript = null;
     this.componentMounted = false;
+
   }
   componentDidMount() {
     if (!this.componentMounted) {
@@ -134,7 +136,6 @@ class Template extends React.Component {
           {this.renderSection()}
         </div>
       </div>
-
     );
   }
 }

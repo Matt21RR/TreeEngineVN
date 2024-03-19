@@ -7,12 +7,15 @@ class graphArr{
   static create(){
     var graphArray = new Object({
       _objects : new Array(),
+      _enabled : new Object(),
       push: function(newGraphObj) {graphArr.push(this,newGraphObj)},
       remove: function(objectId) {graphArr.remove(this,objectId)},
       get: function(objectId) {return graphArr.get(this,objectId)},
       ids: function() {return graphArr.ids(this)},
       relatedToList: function() {return graphArr.relatedToList(this)},
       relatedToReversedList: function() {return graphArr.relatedToReversedList(this)},
+      enable: function(objectId,bool) {return graphArr.enable(this,objectId,bool)},
+      enabledList: function() {return graphArr.enabledList(this)}
     });
     Object.defineProperties(graphArray,{
       objects:{
@@ -57,6 +60,22 @@ class graphArr{
     });
     return list;
   }
+  static enable(graphArray = new Object(), objectId = new String(),bool = new Boolean()){
+    if(objectId in graphArray._enabled){
+      graphArray._enabled[objectId] = bool;
+    }else{
+      Object.assign(graphArray._enabled,{[objectId]:bool});
+    }
+  }
+  static enabledList(graphArray = new Object()){
+    var res = Object.assign({},graphArray._enabled);
+    this.ids(graphArray).forEach(id => {
+      if(!(id in res)){
+        Object.assign(res,{[id]:false})
+      }
+    });
+    return res;
+  }
 }
 class Trigger{
   static create(tInfo = new Object(),graphObject = GraphObj){
@@ -76,8 +95,9 @@ class Trigger{
       check: function(engineRef,graphObjectRef,action){//Si no existe en el trigger tal accion retorna falso, si no verdadero
         if(action == "mouseMove")//check onEnter
           action = "onEnter";
-        if(this[action] == null)
+        if(this[action] == null || !this.enabled)
           return;
+        
         const numberOfArguments = this[action].length;
         if(numberOfArguments == 1){
           this[action](engineRef);
@@ -147,6 +167,8 @@ class Animation{
         this._dStartedAt = dO;
       },
       updateAnimation : function (gObject,elapsed,engine) {
+        const engineTime = elapsed;
+        
         const executeOnCompleteKeyframe = () => {
           if(typeof this._to.onComplete == "function"){//add onComplete per keyframe
             try {
@@ -191,8 +213,6 @@ class Animation{
           this._duration = frameNumber == 0 ? keyOfTheKeyFrame*1: (keyOfTheKeyFrame)*1 - (Object.keys(this._keyframes)[frameNumber-1])*1;
         }
 
-        const engineTime = elapsed;
-
         if(Object.keys(this._keyframes).length != 0){
           if(this._keyFrameNumber == -1){
             console.log("calling here");
@@ -201,7 +221,8 @@ class Animation{
         }
         
         //*NO KEYFRAMES=============================================================
-        setAnimationVars();
+        if(Object.keys(this._keyframes).length == 0)
+           setAnimationVars();
         if(this._pendingTimersFix){
           this._startedAt = elapsed-(this._tElapsed%this._duration);
           this._pendingTimersFix = false;
@@ -240,7 +261,9 @@ class Animation{
 
           this._tElapsed += elapsed-this._elapsed;
           this._elapsed += elapsed-this._elapsed;
+
           const progress = this._reversing ? this._reversing-(this._elapsed/this._duration):(this._elapsed/this._duration);
+          
 
           const eConstant = ease[this._ease](progress);//easing constant
 
@@ -270,23 +293,25 @@ class Animation{
             });
             //si no se han hecho todos los loops o está en loop infinito
             if(this._looped < this._loops || this._infinite){
-              //reset timers
-              this._startedAt = engineTime;
-              this._elapsed = 0;
 
               executeOnCompleteKeyframe();
               if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
                 //?onComplete
-
                 setKeyFrame(this._keyFrameNumber+1);
 
               }else{
+                console.warn("restarting");
                 setKeyFrame(0);
                 this._looped++;
                 if(this._loopback)//Loopback wasn't tested with loopback
                   this._reversing = !this._reversing;
               }
               setAnimationVars(true);
+
+              //reset timers
+              this._startedAt = engineTime;
+              this._tElapsed = 0;
+              this._elapsed = 0;
 
             }else{
               if(Object.keys(this._keyframes).length != 0 && this._keyFrameNumber<(Object.keys(this._keyframes).length-1)){
@@ -395,6 +420,7 @@ class GraphObj{
     console.log(graphInfo)
     var graphObject = new Object({
       //is text
+      _enabled:graphInfo.enabled != undefined ? graphInfo.enabled : true,//exclude from calculation and rendering
       _text:graphInfo.text != undefined ? graphInfo.text:null,
       _center:graphInfo.center != undefined ? graphInfo.center : false,
       _color:graphInfo.color != undefined ? graphInfo.color:"gray",
@@ -457,6 +483,10 @@ class GraphObj{
     //   console.warn("Object scale reinstantiation /n","scale, widthScale and height values are being defined at same time");
     // }
     Object.defineProperties(graphObject,{
+      enabled:{
+        get: function() {return this._enabled},
+        set: function(x) {this._enabled = typeof x == "boolean"? x : false}
+      },
       text:{
         get: function() {return this._text;},
         set: function(x) {this._text = typeof x == "string"? x : null}
@@ -670,9 +700,9 @@ class GraphObj{
             contrast:"contrast",
             grayscale:"grayscale",
             hueRotate:"hue-rotate",
-            blur:"blur",
             dropShadow:"dropShadow",
             invert:"invert",
+            //blur:"blur",
             saturate:"saturate",
             sepia:"sepia",
           }
@@ -683,10 +713,10 @@ class GraphObj{
           if(this._contrast != 1){filters.push("contrast");}
           if((this._grayscale % 360) != 0){filters.push("grayscale");}
           if(this._invert != 0){filters.push("invert");}
+          //if(this._blur != 0){filters.push("blur")}
           if(this._saturate != 1){filters.push("saturate");}
           if(this._sepia != 0){filters.push("sepia");}
 
-          if(this._blur != 0){filters.push("blur");}
           if(this._hueRotate != 0){filters.push("hueRotate");}
           if(!(this._dropShadow.offsetX == 0 && this._dropShadow.offsetY == 0 && this._dropShadow.blurRadius == 0)){
             if(this._dropShadow.color != "transparent"){//if isnt transparent check in rgba code

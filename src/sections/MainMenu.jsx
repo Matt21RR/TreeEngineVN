@@ -1,14 +1,12 @@
 import React from "react";
 import { GameSaveLogic } from "../logic/GameSaveLogic";
 import {MenuButton} from "../components/buttons";
-import {all} from "../components/alert";
-import { gameFiles } from "../res/gameRes/files";
 import {RenderEngine} from "../renderCore/RenderEngine";
 
 class MainMenu extends React.Component{
   render(){
     return(
-      <div className="flex-row absolute w-full h-full"
+      <div className="flex-row absolute w-full h-full "
         >
           {/* <div
           className="absolute h-full w-full"

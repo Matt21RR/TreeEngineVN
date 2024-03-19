@@ -11,10 +11,7 @@ class Canvas extends React.Component{
 
     this.static = this.props.static ? this.props.static : false;
     this.fps = this.props.fps ? (this.props.fps > 0 ? this.props.fps : 24) : 24;//suggesed max fps = 24
-    this.scale = this.props.scale ? (this.props.scale>0? (this.props.scale<2?this.props.scale:2):(this.static?1:0.55)):(this.static ? 1 :0.55);//suggested scale for animated canvas = 0.55 | static canvas = 1
-    
-    this.ghostMode = this.props.ghostMode ? this.props.ghostMode : false;
-    this.previousFrame = document.createElement('canvas');
+    this.scale = this.props.scale ? this.props.scale : 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
 
     this.interval = Math.round(1000 / this.fps);
 
@@ -30,20 +27,11 @@ class Canvas extends React.Component{
     this.resizeTimeout = 0; 
     this.engineThreads = 0;
     this.engineKilled = false;
-    this.isChromiumBased = !!window.chrome;
 
     this.onLoad = this.props.onLoad ? this.props.onLoad : (canvas)=>{}//Do something after the canvas params have been set
     this.onResize = this.props.onResize ? this.props.onResize : (canvas)=>{}//Do something after the canvas have been resized
     this.animateGraphics = this.props.animateGraphics ? this.props.animateGraphics : (canvas)=>{}
-    this.renderGraphics = this.props.renderGraphics ? this.props.renderGraphics : this.static ? (canvas)=>{
-      canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
-      canvas.context.beginPath();
-      canvas.context.fillStyle = "orange";
-      canvas.context.font = (12*this.scale)+"px Verdana";
-      canvas.context.fillText("Resolution: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 15*this.scale);
-      canvas.context.closePath();
-      canvas.context.fill();
-    } : (canvas,fps)=>{
+    this.renderGraphics = this.props.renderGraphics ? this.props.renderGraphics : (canvas,fps)=>{
       canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
       canvas.context.beginPath();
       canvas.context.fillStyle = "orange";
@@ -58,6 +46,8 @@ class Canvas extends React.Component{
       canvas.context.closePath();
       canvas.context.fill();
     }
+
+    this.afterEffects = this.props.afterEffects ? this.props.afterEffects : (canvas)=>{}
     
 
     //*Debug
@@ -71,21 +61,17 @@ class Canvas extends React.Component{
     window.setScale = (x) => { this.scale = (x>0? (x<2?x:2):0);
       const canvas = this.element.current;
       this.resolutionWidth = Math.floor(canvas.offsetWidth * this.scale *window.devicePixelRatio);
-      this.resolutionHeight =Math.floor( canvas.offsetHeight * this.scale *window.devicePixelRatio);
+      this.resolutionHeight =Math.floor(canvas.offsetHeight * this.scale *window.devicePixelRatio);
       //set dimensions
-      this.previousFrame.width = this.resolutionWidth;
-      this.previousFrame.height = this.resolutionHeight;
       canvas.width = this.resolutionWidth;
       canvas.height = this.resolutionHeight; 
       this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight}); 
-      if(this.static)this.engine(); 
     }
     window.setDebug = (x) => { this.debug = x; }
     window.setShowFps = (x) => { this.showFps = x; }
     window.setDebugSelectorFunc = (x) => { this.debugSelectorFunc = x; }
     window.setDebugParameterPrintFunc = (x) => { this.debugParameterPrintFunc = x; }
     window.getEngineThreads = ()=>{return this.engineThreads;}
-    window.setGhostMode = (x) => {this.ghostMode = x;}
   }
   
   componentDidMount(){
@@ -110,13 +96,10 @@ class Canvas extends React.Component{
       if(sEngineScale != null)window.setScale(sEngineScale);
 
       //set resolution
-      //console.log(this.resolutionHeight, this.resolutionWidth);
       this.resolutionHeight = Math.floor(document.getElementById(this.id).offsetHeight * this.scale *window.devicePixelRatio);
       this.resolutionWidth = Math.floor(document.getElementById(this.id).offsetWidth * this.scale *window.devicePixelRatio);
       console.log(this.resolutionWidth,this.resolutionHeight);
       //set dimensions
-      this.previousFrame.width = this.resolutionWidth;
-      this.previousFrame.height = this.resolutionHeight;
       document.getElementById(this.id).width = this.resolutionWidth;
       document.getElementById(this.id).height = this.resolutionHeight;
 
@@ -131,40 +114,31 @@ class Canvas extends React.Component{
               this.resolutionWidth = Math.floor(canvas.offsetWidth * this.scale *window.devicePixelRatio);
               this.resolutionHeight = Math.floor(canvas.offsetHeight * this.scale *window.devicePixelRatio);
               //set dimensions
-              this.previousFrame.width = this.resolutionWidth;
-              this.previousFrame.height = this.resolutionHeight;
               canvas.width = this.resolutionWidth;
               canvas.height = this.resolutionHeight;
-              //set the reset function for every graphic object
-              //this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
-              // if(this.props.static)
-              //   this.engine();
+              //set the reset function
+              this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")});
             }, 1000);
         }   
       });
-      const a=""
-      if(!this.props.static){
-        let self = this;
-        $(window).on("blur", function (e) {
-          console.log("clickout");
-          if(!self.engineKilled){
-            self.stopEngine = true;
-          }
-        });
-        $(window).on("focus", function (e) {
-          if(!self.engineKilled && canvasInstances.checker(self.props.id,self.id)){
-            console.log("clickin");
-            self.stopEngine = true;
-            window.finalWarn = 0;
-            setTimeout(() => {
-                self.stopEngine = false;
-                if(self.engineThreads != 0)
-                  self.engineThreads = 0;
-                self.engine();
-            }, 200);
-          }
-        });
-      }
+      let self = this;
+      $(window).on("blur", function (e) {
+        if(!self.engineKilled){
+          self.stopEngine = true;
+        }
+      });
+      $(window).on("focus", function (e) {
+        if(!self.engineKilled && canvasInstances.checker(self.props.id,self.id)){
+          self.stopEngine = true;
+          window.finalWarn = 0;
+          setTimeout(() => {
+              self.stopEngine = false;
+              if(self.engineThreads != 0)
+                self.engineThreads = 0;
+              self.engine();
+          }, 200);
+        }
+      });
       //set the every graphic object data
       this.onLoad({context:this.element.current.getContext("2d"),scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
       //call engine
@@ -182,38 +156,8 @@ class Canvas extends React.Component{
       console.log("canvas reference error")
       return;
     }
-    //If canvas is null, kill engine(Maybe this can fix the "multithreading" problem)
     var context = canvas.getContext("2d");
 
-    if(this.props.static){
-      try {
-        this.renderGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
-      } catch (error) {
-        context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
-        context.filter = 'none';
-        context.globalAlpha = 1;
-        context.beginPath();
-        context.fillStyle = "orange";
-        context.font = (12*this.scale)+"px Terminal";
-        context.fillText("Engine Killed due fatal error during rendering process in line: "+error.lineNumber, 5, 15*this.scale);
-        context.fillText("-error message:", 5, 35*this.scale);
-        context.fillText("  "+error, 5, 50*this.scale);
-        context.fillText("-function executed when the engine crashed:", 5, 70*this.scale);
-        context.fillText("=============================================================================================================================", 5, 85*this.scale);
-        const funcCode = error.stack.toString().split("\n");
-        // const funcCode = this.renderGraphics.toString().split("\n");
-        funcCode.forEach((codeLine,index) => {
-          context.fillText(codeLine, 5, (100*this.scale)+(15*index));
-        });
-        context.fillText("=============================================================================================================================", 5, (100*this.scale)+(funcCode.length*15));
-        context.closePath();
-        context.fill();
-        this.stopEngine = true;
-        this.engineKilled = true;
-        console.error("engine killed");
-      }
-      return;
-    }
     var checkEvents = (fps) => {
       try {
         this.props.events({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
@@ -244,7 +188,6 @@ class Canvas extends React.Component{
         context.fillText("=============================================================================================================================",
                         5, 85*this.scale);
         const funcCode = error.stack.toString().split("\n");
-        // const funcCode = this.animateGraphics.toString().split("\n");
         funcCode.forEach((codeLine,index) => {
           context.fillText(codeLine, 5, (100*this.scale)+(15*index));
         });
@@ -292,20 +235,8 @@ class Canvas extends React.Component{
       this.renderGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
 
       const actualGlobalAlpha = context.globalAlpha;
-      if(this.ghostMode){//Ghostmode: draw the previous previuos frame, with semi-transparency, over the actual frame
-        //draw the ghost
-        context.filter = "none";
-        context.globalAlpha = 0.4;
-        context.drawImage(this.previousFrame,0,0);
-        context.globalAlpha = 1;
 
-        this.previousFrame.width = this.resolutionWidth;
-        //clone the canvas
-        var dummyContext = this.previousFrame.getContext('2d');
-
-        //apply the old canvas to the new one
-        dummyContext.drawImage(canvas, 0, 0);
-      }
+      this.afterEffects({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
 
       if(this.showFps){
         context.filter = 'none';
@@ -332,9 +263,8 @@ class Canvas extends React.Component{
       if(!canvasInstances.checker(this.props.id,this.id)){
         console.log("killing engine recall")
         return;
-      }
-      // console.log("rendering")               
-      if (this.stopEngine){
+      }            
+      if(this.stopEngine){
         this.engineThreads--;
         return;
       }
@@ -344,10 +274,8 @@ class Canvas extends React.Component{
         fpsArray = []; fpsAdjustValue = 1;promedio = this.fps;
         drawnFrames = 0; startTimer = 0; averageFps = 0;
       }
-      // rAF.modelOne(draw);
       rAF.modelTwo(draw,this.interval);
       
-      // requestAnimationFrame(draw);
       now = newtime;
 
       const elapsed = newtime - then;

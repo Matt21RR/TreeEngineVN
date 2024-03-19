@@ -20,6 +20,7 @@ const requiredTextures = {
   tienda:require("../res/gameRes/tienda.png"),
   restaurante:require("../res/gameRes/restaurante.png"),
   correo:require("../res/gameRes/correo.png"),
+  parsel1:require("../res/gameRes/parsel1.png"),
 }
 const requiredSounds = {
   cierrePuerta: require('../res/gameRes/snd/doorClose.wav'),

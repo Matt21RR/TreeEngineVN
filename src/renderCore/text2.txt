@@ -1,0 +1,137 @@
+
+SCENE ID mapa
+
+SET TEXTURES [
+  "mapa",
+  "tienda",
+  "restaurante",
+  "correo"
+]
+
+mapa = new GraphObject ({
+  texture:"mapa",
+  brightness:1,
+  scale:1
+})
+
+tienda = new GraphObject ({
+  texture:"tienda",
+  scale:0.1,
+  left:.45,
+  top:.18
+})
+restaurante = new GraphObject  ({
+  texture:"restaurante",
+  scale:0.1,
+  left:.56,
+  top:.75
+})
+correo = new GraphObject ({
+  texture:"correo",
+  scale:0.1,
+  left:.08,
+  top:.27
+})
+entrarCorreo = new Trigger ({ 
+  relatedTo:"correo",
+  enabled:true,
+  onRelease:(engine)=>{
+    engine.loadScene("oficinaPostal");
+  }
+})
+entrarTienda = new Trigger ({
+  relatedTo:"tienda",
+  onRelease:(engine)=>{
+    engine.loadScene("testScene");
+  }
+})
+
+test = new Animation ("mapa",{
+    0:{blur:0,brightness:0},
+    4000:{blur:7,brightness:4},
+    6000:{blur:0,brightness:0}
+},{enabled:true,infinite:true})
+
+test1 = new Animation ("mapa",{
+    0:{left:-.002,top:.002,scale:1},
+    500:{left:.002,top:-.001,scale:1.0025},
+    1000:{left:.001,top:-.002,scale:1.005},
+    1500:{left:-.001,top:.001,scale:1.0025},
+    2000:{left:-.002,top:.002,scale:1}
+},{enabled:true,infinite:true})
+
+editButton = new GraphObject ({
+    text:"Drag n Drop",
+    fontSize:20,
+    color: "white",
+    boxColor: "red",
+    top:0.08,
+    left:0.9,
+    scale:0.1,
+    widthScale:1,
+    heightScale:.5,
+  })
+
+tDebug2 = new Trigger ({
+  relatedTo:"display",
+  mouseMove:(engine,gObject)=>{
+      if(gObject.id != engine.gameVars.targetedObject){
+        engine.consolClean();
+      }else{return;}
+      engine.objectToDebug = gObject.id;
+      engine.gameVars.targetedObject = gObject.id;
+
+      Object.keys(gObject.dump()).filter(e=>{return gObject[e] != 0}).forEach((element,index) => {
+        engine.consol(element +" : "+gObject[element]);
+      });
+  }
+})
+
+graphDumpButton = new GraphObject ({
+    text:"Listar Información",
+    fontSize:20,
+    color: "white",
+    boxColor: "red",
+    top:0.14,
+    left:0.9,
+    scale:0.1,
+    widthScale:1,
+    heightScale:.5,
+  })
+
+deleteDumpButton = new GraphObject ({
+    text:"Borrar consola",
+    fontSize:20,
+    color: "white",
+    boxColor: "red",
+    top:0.20,
+    left:0.9,
+    scale:0.1,
+    widthScale:1,
+    heightScale:.5,
+  })
+
+dDump = new Trigger ({
+  relatedTo:"deleteDumpButton",
+  onRelease:(engine)=>{
+    engine.consolClean();
+  }
+})
+
+tDebug = new Trigger ({
+  relatedTo:"graphDumpButton",
+  onRelease:(engine)=>{
+    engine.consolClean();
+    engine.consol("TEXTURES","green");
+    engine.texturesList.ids().forEach((e)=>{engine.consol("->"+e)});
+    engine.consol("GRAPHOBJECTS","green");
+    engine.graphArray._objects.forEach((e)=>{engine.consol("->"+e.id+"("+e.left+","+e.top+")")});
+    engine.consol("TRIGGERS","green");
+    engine.triggers._objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
+    engine.consol("ANIMATIONS","green");
+    engine.anims._objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
+  }
+})
+
+
+END FILE

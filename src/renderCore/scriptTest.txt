@@ -1,120 +1,201 @@
+
 SCENE ID mapa
 
-PUSH TEXTURES {
-  mapa:"mapa",
-  tienda:"tienda",
-  restaurante:"restaurante",
-  correo:"correo"
-}
+new TEXTURES [
+  "mapa",
+  "tienda",
+  "restaurante",
+  "correo"
+]
 
-PUSH GRAPHOBJECT {
-  id:"mapa",
+new GRAPHOBJECT mapa {
   texture:"mapa",
-  brightness:0,
+  brightness:1,
   scale:1
 }
 
-PUSH GRAPHOBJECT {
-  id:"tienda",
+new GRAPHOBJECT tienda {
   texture:"tienda",
   scale:0.1,
   left:.45,
   top:.18
 }
-PUSH GRAPHOBJECT {
-  id:"restaurante",
+new GRAPHOBJECT restaurante {
   texture:"restaurante",
   scale:0.1,
   left:.56,
   top:.75
 }
-PUSH GRAPHOBJECT {
-  id:"correo",
+new GRAPHOBJECT correo {
   texture:"correo",
   scale:0.1,
   left:.08,
   top:.27
 }
-PUSH TRIGGER {
-  id:"entrarCorreo",
+new TRIGGER entrarCorreo { 
   relatedTo:"correo",
   enabled:true,
   onRelease:(engine)=>{
     engine.loadScene("oficinaPostal");
   }
-}
-PUSH TRIGGER {
-  id:"entrarTienda",
+} 
+new TRIGGER entrarTienda {
   relatedTo:"tienda",
   onRelease:(engine)=>{
     engine.loadScene("testScene");
   }
 }
-PUSH ANIMATION {
+new ANIMATION test {
   relatedTo:"mapa",
-  id:"test",
   keyframes:{
     0:{blur:0,brightness:0},
-    3000:{blur:6,brightness:6},
+    4000:{blur:7,brightness:4},
     6000:{blur:0,brightness:0}
   },
   enabled:true,
   infinite:true
 }
+new ANIMATION test1 {
+  relatedTo:"mapa",
+  keyframes:{
+    0:{left:-.002,top:.002,scale:1},
+    500:{left:.002,top:-.001,scale:1.0025},
+    1000:{left:.001,top:-.002,scale:1.005},
+    1500:{left:-.001,top:.001,scale:1.0025},
+    2000:{left:-.002,top:.002,scale:1}
+  },
+  enabled:true,
+  infinite:true
+}
+
+new GRAPHOBJECT editButton {
+    text:"Drag n Drop",
+    fontSize:20,
+    color: "white",
+    boxColor: "red",
+    top:0.08,
+    left:0.9,
+    scale:0.1,
+    widthScale:1,
+    heightScale:.5,
+  }
+
+new TRIGGER tDebug2 {
+  relatedTo:"display",
+  mouseMove:(engine,gObject)=>{
+      if(gObject.id != engine.gameVars.targetedObject){
+        engine.consolClean();
+      }else{return;}
+      engine.objectToDebug = gObject.id;
+      engine.gameVars.targetedObject = gObject.id;
+
+      Object.keys(gObject.dump()).filter(e=>{return gObject[e] != 0}).forEach((element,index) => {
+        engine.consol(element +" : "+gObject[element]);
+      });
+  }
+}
+
+new GRAPHOBJECT graphDumpButton {
+    text:"Listar Información",
+    fontSize:20,
+    color: "white",
+    boxColor: "red",
+    top:0.14,
+    left:0.9,
+    scale:0.1,
+    widthScale:1,
+    heightScale:.5,
+  }
+
+new GRAPHOBJECT deleteDumpButton {
+    text:"Borrar consola",
+    fontSize:20,
+    color: "white",
+    boxColor: "red",
+    top:0.20,
+    left:0.9,
+    scale:0.1,
+    widthScale:1,
+    heightScale:.5,
+  }
+
+new TRIGGER dDump {
+  relatedTo:"deleteDumpButton",
+  onRelease:(engine)=>{
+    engine.consolClean();
+  }
+}
+
+new TRIGGER tDebug {
+  relatedTo:"graphDumpButton",
+  onRelease:(engine)=>{
+    engine.consolClean();
+    engine.consol("TEXTURES","green");
+    engine.texturesList.ids().forEach((e)=>{engine.consol("->"+e)});
+    engine.consol("GRAPHOBJECTS","green");
+    engine.graphArray._objects.forEach((e)=>{engine.consol("->"+e.id+"("+e.left+","+e.top+")")});
+    engine.consol("TRIGGERS","green");
+    engine.triggers._objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
+    engine.consol("ANIMATIONS","green");
+    engine.anims._objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
+  }
+}
 
 //*==================================ESCENA DE LA TIENDA==============================
 SCENE ID testScene
 
-PUSH GAMEVARS {
+new GAMEVARS {
   peras:4,
   precioPeras:1500,
   puertaAbierta:false,
   productos:{pera:0}
 }
 
-PUSH TEXTURES {
-  aishaImg:"aishaImg",
-  background:"background",
+new TEXTURES [
+  "aishaImg",
+  "background",
+  "parsel1",
 
-  pera:"pera",
-  arroz:"arroz",
-  agua:"agua",
-  frijol:"frijol",
-  res:"res",
-  pescado:"pescado",
+  "pera",
+  "arroz",
+  "agua",
+  "frijol",
+  "res",
+  "pescado",
 
-  carrito:"carrito",
-  tiendaAviso:"tiendaAviso",
-  puertaCerrada:"puertaCerrada",
-  puertaAbierta:"puertaAbierta"} 
+  "carrito",
+  "tiendaAviso",
+  "puertaCerrada",
+  "puertaAbierta"
+]
 
-PUSH SOUNDS {
-  cierrePuerta:"cierrePuerta",
-  aperturaPuerta:"aperturaPuerta"
+new SOUNDS [
+  "cierrePuerta",
+  "aperturaPuerta"
+]
+new GRAPHOBJECT parsel {
+  texture:"parsel1",
+  scale:1,
+  z:1
 }
-
-PUSH GRAPHOBJECT{
-    id:"back",   
+new GRAPHOBJECT back {
     texture:"background",
     top:0,
     left:0,
     scale:1,
     z:4,
   }
-PUSH GRAPHOBJECT {
-  id:"tiendaAviso",
+new GRAPHOBJECT tiendaAviso {
   texture:"tiendaAviso",
   scale:0.5,
   left:0.1
 }
-PUSH GRAPHOBJECT{
-  id:"puerta",
+new GRAPHOBJECT puerta {
   texture:"puertaCerrada",
   scale:0.15,
   top:0.3
 }
-PUSH TRIGGER {
-  id:"puerta",
+new TRIGGER tPuerta {
   relatedTo:"puerta",
   onLeave:(engine,gObject)=>{
     if($puertaAbierta){
@@ -133,8 +214,7 @@ PUSH TRIGGER {
   onRelease:(engine)=>{engine.loadScene("mapa");}
 }
 
-PUSH GRAPHOBJECT {
-  id:"carrito",
+new GRAPHOBJECT carrito {
   texture:"carrito",
   opacity:1,
   scale:0.14,
@@ -142,26 +222,25 @@ PUSH GRAPHOBJECT {
   left:.15,
   z:3}
 
-PUSH GRAPHOBJECT {
+new GRAPHOBJECT textInnerCommandsButton {
   text:"Test basic 3D",
-  fontSize:140,
+  fontSize:20,
   color: "white",
   boxColor: "red",
   top:0.2,
   left:0.9,
   scale:0.1,
   widthScale:1,
-  heightScale:.5,
-  id:"textInnerCommandsButton"
+  heightScale:.5
 }
-PUSH GRAPHOBJECT {
+new GRAPHOBJECT textRecibo {
   text:$("Tienes en tu carrito:"
   +
   Object.keys($productos).map((e,key)=>{return 
       "\n"+e+": \t"+$productos[e]
     }) 
   )$,
-  fontSize:100,
+  fontSize:20,
   color: "white",
   boxColor: "red",
   top:0.85,
@@ -169,13 +248,11 @@ PUSH GRAPHOBJECT {
   scale:0.2,
   widthScale:1.4,
   heightScale:.65,
-  id:"textRecibo"
 }
 //*Triggers
 
 //3D TRIGGER
-PUSH TRIGGER {
-  id:"triggerId",
+new TRIGGER triggerId {
   relatedTo:"textInnerCommandsButton",
   onRelease:(engine)=>{
     SET CAMERA {to:{usePerspective:true}}
@@ -200,44 +277,40 @@ PUSH TRIGGER {
   }
 }
 //Trigger que aumenta la cantidad de peras
-PUSH GRAPHOBJECT {
-  id:"pera",
+new GRAPHOBJECT pera {
   texture:"pera",
   scale:0.06,
   top:.4,
   left:.7}
-PUSH GRAPHOBJECT {
-  id:"arroz",
+new GRAPHOBJECT arroz {
   texture:"arroz",
   scale:0.06,
   top:0.85,
   left:.15}
-PUSH GRAPHOBJECT {
-  id:"agua",
+new GRAPHOBJECT agua {
   texture:"agua",
   scale:0.06,
   top:0.85,
   left:.15}
-PUSH GRAPHOBJECT {
-  id:"frijol",
+new GRAPHOBJECT frijol {
   texture:"frijol",
   scale:0.06,
   top:0.85,
   left:.15}
-PUSH GRAPHOBJECT {
+new GRAPHOBJECT {
   id:"res",
   texture:"res",
   scale:0.06,
   top:0.85,
   left:.15}
-PUSH GRAPHOBJECT {
+new GRAPHOBJECT {
   id:"pescado",
   texture:"pescado",
   scale:0.06,
   top:0.85,
   left:.15}
 
-PUSH TRIGGER {
+new TRIGGER {
   id:"aumentoProducto",
   relatedTo:"pera",
   onRelease:(engine)=>{
@@ -247,7 +320,7 @@ PUSH TRIGGER {
     }
 }
 //Animacion cuando se agrega una pera al carrito
-PUSH ANIMATION {
+new ANIMATION {
   id:"a1",
   ease:"linear",
   keyframes:{
@@ -265,7 +338,7 @@ PUSH ANIMATION {
   }
 }
 //animacion al meter algo al carrito
-PUSH ANIMATION {
+new ANIMATION {
   relatedTo:"carrito",
   id:"meterProducto",
   duration:300,
@@ -276,46 +349,50 @@ PUSH ANIMATION {
     SET ANIMATION meterProducto {done:false,enabled:false}
   }
 }
-//*CHUNKS OF SCRIPT
-//PUSH CODEDROUTINE {
-//  id:"phantasm",
-//  code:(engine)=>{$($peras++)$}
-//}
-
 //*===========================================ESCENA PARA PROBAR LOS TEXTOS=========================================
 SCENE ID oficinaPostal
 
-PUSH TEXTURES {
-  aishaImg:"aishaImg"} 
-PUSH SOUNDS {
-  openning:"openning"
+new TEXTURES [
+  "aishaImg"]
+new SOUNDS [
+  "openning"
+]
+//Nombre de quien está hablando
+new GRAPHOBJECT voiceByName {
+  text:"Gta",
+  fontSize:22,
+  boxColor:"black",
+  scale:.1,
+  color:"white",
+  top:.70,
+  left:.08,
+  heightScale:.7,
+  margin:.1,
+  z:-2
 }
-PUSH GRAPHOBJECT{
-  id:"dialogbox",
+new GRAPHOBJECT dialogbox {
   boxColor:"rgb(20,80,190)",
   color:"white",
   scale:.8,
   heightScale:.25,
   top:.75,
   left:.1,
-  fontSize:30,
+  fontSize:18,
   text:"",
   margin:.05,
   opacity:0
 }
 
-PUSH GRAPHOBJECT{
-  id:"botonAvanzarDialogo",
+new GRAPHOBJECT botonAvanzarDialogo {
   boxColor:"white",
   color:"black",
   scale:.05,
   text:"Next",
-  fontSize:300,
+  fontSize:24,
   left:.85,
   top:.9
 }
-PUSH TRIGGER{
-  id:"avanzarDialogo",
+new TRIGGER avanzarDialogo {
   relatedTo:"botonAvanzarDialogo",
   onRelease:(engine)=>{
     engine.graphArray.get("dialogbox").text = "";
@@ -329,29 +406,26 @@ PUSH TRIGGER{
   }
 }
 
-PUSH GRAPHOBJECT{
-  id:"mainbox",
+new GRAPHOBJECT narrationBox {
   boxColor:"rgb(211,103,5)",
   color:"white",
   scale:.7,
   top:.15,
   left:.15,
-  fontSize:30,
+  fontSize:18,
   text:"",
   margin:.1
 }
-PUSH GRAPHOBJECT{
-  id:"boton",
+new GRAPHOBJECT boton {
   boxColor:"white",
   color:"black",
   scale:.1,
   text:"Next",
-  fontSize:300,
+  fontSize:24,
   left:.8,
   top:.75
 }
-PUSH TRIGGER {
-  id:"avanzarNarracion",
+new TRIGGER avanzarNarracion {
   relatedTo:"boton",
   onRelease:(engine)=>{
     engine.paragraphNumber++;
@@ -359,25 +433,26 @@ PUSH TRIGGER {
     const tb = engine.narration.split('\n');
     if(engine.paragraphNumber<tb.length){
       engine.paragraph += '\n' + tb[engine.paragraphNumber];
-    }else{
-      engine.graphArray.get("mainbox").opacity = 0;
-      engine.continue = true;
-      //*Agregar algo para deshabilitar este trigger
+    }else{      
+      SET TRIGGER avanzarNarracion {enabled:false}
+      SET GRAPHOBJECT narrationBox {opacity:0}
+      CONTINUE
+      engine.paragraph = "";
+      SET GRAPHOBJECT narrationBox {text:""}
+      //engine.graphArray.get("narrationBox").text = "";
     }
   }
 }
-PUSH CODEDROUTINE {
-  id:"phantasm",
+new CODEDROUTINE phantasm {
   code:(engine)=>{
-    let text = engine.graphArray.get("mainbox").text;
-
+    let text = engine.graphArray.get("narrationBox").text;
+    //console.log(engine.paragraph.length);
     if(text.length<engine.paragraph.length){
-      engine.graphArray.get("mainbox").text += engine.paragraph[text.length];
+      engine.graphArray.get("narrationBox").text += engine.paragraph[text.length];
     }
   }
 }
-PUSH CODEDROUTINE{
-  id:"dialog2",
+new CODEDROUTINE dialog2 {
   code:(engine)=>{
     let text = engine.graphArray.get("dialogbox").text;
     
@@ -389,12 +464,11 @@ PUSH CODEDROUTINE{
 }
 //*Significa que a partir de aqui se empieza la ejecucion ciclica
 END DECLARATION
+
 SHOW NARRATION [
   "Hello, Mr.White",
   "Lorem ipsum dolor sit amet consectetur adipisicing elit.",
-  "Iure est placeat aspernatur obcaecati modi enim ex explicabo, impedit recusandae asperiores repellat molestiae?",
-  "Eum, sunt ea dolorum, ducimus explicabo debitis vitae voluptas praesentium harum reiciendis architecto dicta iure laboriosam dolore libero quaerat quibusdam culpa deserunt! ",
-  "Eum delectus nihil nobis adipisci voluptates non vitae natus, voluptatum cupiditate odit!"
+  "Iure est placeat aspernatur obcaecati modi enim ex explicabo, im",
 ]
 //*Cada coma hace las veces de un dialogo siguiente del mismo personaje
 SHOW DIALOG Ernie [
@@ -413,14 +487,14 @@ SHOW DIALOG Ernie [
   "Ya pero",
   "Pero quien ha apagado la luz?"
 ]
-PUSH GRAPHOBJECT {
-  id:"titletest",
+new GRAPHOBJECT titletest{
   scale:1,
   boxColor:"white",
   opacity:0,
-  text:""
+  text:"",
+  z:1
 }
-PUSH ANIMATION {
+new ANIMATION aTitle {
   relatedTo:"titletest",
   enabled:true,
   keyframes:{
@@ -430,11 +504,23 @@ PUSH ANIMATION {
       }
     },4000:{opacity:1,
       onComplete:(engine)=>{
-        PUSH GRAPHOBJECT {id:"title",text:"AAAAAAAA",fontSize:100,color:"white",center:true}
+        new GRAPHOBJECT {id:"title",text:"AAAAAAAA",fontSize:100,color:"white",center:true}
       }
-    },8000:{opacity:0}
+    },8000:{
+      opacity:0,
+      onComplete:(engine)=>{
+        engine.continue = true;
+        engine.graphArray.remove("title");
+        }
+      }
   }
 }
+WAIT
+
+SHOW NARRATION [
+  "Lights out. Silence. Except for the sudden thump coming from the other room.",
+  "BETH and MIKE are in bed, a young couple. Beth sits up, and switches the lamp on. It's a smallish flat, nice, but cheap, nothing too fancy, old-style TV, no computers."
+]
 
 //*Inicia con dolar = operacion que se encapsula en una funcion
 //CONTINUE

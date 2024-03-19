@@ -20,6 +20,7 @@ class RenderEngine extends React.Component{
     this.isMobile = mobileCheck();
     this.mounted = false;
     this.canvasRef = {};
+    this.deltarg = 0;
 
     this.actualSceneId = "";//Guardar esto
     this.masterScript = {};
@@ -42,7 +43,7 @@ class RenderEngine extends React.Component{
     //Dialogs
     this.voiceFrom = "";
     this.paragraphNumber = -1;
-    this.paragraph = "h";
+    this.paragraph = "";
     this.dialogNumber = -1;
     this.dialog = [];
     this.narration = "";
@@ -73,7 +74,9 @@ class RenderEngine extends React.Component{
     this.renderingOrderById = [];
     this.preserveTexturesAspectRatio = this.props.preserveTexturesAspectRatio != undefined ? this.props.preserveTexturesAspectRatio : true;
 
+    //MOUSE
     this.mouseListener = 0;
+    this.mouse = {x:0, y:0};
 
     this.noRenderedItemsCount = 0;
 
@@ -96,8 +99,20 @@ class RenderEngine extends React.Component{
     window.setShowObjectsInfo = (x) => {this.showObjectsInfo = x;}
     window.setShowCanvasGrid = (x) => {this.showCanvasGrid = x;}
     window.renderEngineTerminal = (code) =>{ code(this);}
+  } 
+  componentDidMount(){
+    if (!this.mounted) {
+      this.mounted = true;  
+      const k = new ScriptInterpreter;
+      k.build((masterScript)=>{this.loadGame(masterScript)},(error)=>{this.consol(error)});
+    }
   }
-
+  consol(text,color="white") {
+    window.consol.push({text:text,color:color});
+    this.setState({
+      consol: (window.consol),
+    })
+  }
   componentDidCatch(error,info){
     console.error("RenderEngine several crash!!");
     console.warn(error);
@@ -236,19 +251,7 @@ class RenderEngine extends React.Component{
     });
 
   }
-  componentDidMount(){
-    if (!this.mounted) {
-      this.mounted = true;  
-      const k = new ScriptInterpreter;
-      k.build((masterScript)=>{this.loadGame(masterScript)},(error)=>{this.consol(error)});
-    }
-  }
-  consol(text,color="white") {
-    window.consol.push({text:text,color:color});
-    this.setState({
-      consol: (window.consol),
-    })
-  }
+
   consolClean(){
     window.consol=[];
     this.setState({
@@ -386,6 +389,7 @@ class RenderEngine extends React.Component{
       }
     }
     // Return the line array
+    
     return lineArray;
   }
   generateRenderingOrder(){
@@ -433,16 +437,10 @@ class RenderEngine extends React.Component{
   renderScene(){
     if(this.state.isReady){
       return(
-        <Canvas CELGF={(error)=>this.consol(error)} id={"renderCanvas"} aspectRatio={this.camera.aspectRatio} fps={24} scale={1} showFps={true}
+        <Canvas CELGF={(error)=>this.consol(error)} id={"renderCanvas"} aspectRatio={this.camera.aspectRatio} fps={30} scale={1} showFps={false}
         renderGraphics={(canvas)=>{
-          // console.time("RenderingNow");
           this.canvasRef = canvas;
           canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
-          // console.log(
-          //   canvas.resolutionWidth, 
-          //   canvas.resolutionHeight,
-          //   document.getElementById("display").style.width,
-          //   document.getElementById("display").style.height);
 
           const clientUnitaryHeightPercentageConstant = 100 / canvas.resolutionHeight;
           const tangencialConstant = this.camera.position.angle;//Uses camera angle
@@ -463,11 +461,9 @@ class RenderEngine extends React.Component{
             }
           } 
 
-
           this.generateRenderingOrder();
 
           for (let index = 0; index < this.graphArray.objects.length; index++) {
-            //const gObject = this.graphArray.objects[index];
             const gObject = this.graphArray.get(this.renderingOrderById[index]);
             var objectScale = gObject.scale;
             var objectLeft = this.coordsPack[gObject.id].left;
@@ -523,7 +519,6 @@ class RenderEngine extends React.Component{
 
               //*preparatives for part three: if the image need to be rotated
               //with testD > 0.003 we ensure the very far of|behind the camera elements won't be rendered
-
               if(testD>0.003 && gObject.rotate != 0){
                 canvas.context.save();
                 canvas.context.setTransform(
@@ -548,13 +543,13 @@ class RenderEngine extends React.Component{
                       );
                   }
                   canvas.context.fillStyle = gObject.color;
-                  canvas.context.font = (gObject.fontSize*objectScale*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
+                  canvas.context.font = (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
                   const texts = this.replaceCodedExpresions(gObject.text).split("/n");
                   texts.forEach((text,index) => {
                     canvas.context.fillText(
                       text,
                       -(objectWidth)/2,
-                      -(objectHeight)/2 + (gObject.fontSize*objectScale*canvas.scale*(1+index)*(canvas.resolutionHeight/700))
+                      -(objectHeight)/2 + (gObject.fontSize*canvas.scale*(1+index)*(canvas.resolutionHeight/700))
                     );
                   });
                 }
@@ -581,14 +576,15 @@ class RenderEngine extends React.Component{
                       );
                   }
                   canvas.context.fillStyle = gObject.color;
-                  canvas.context.font = Math.floor(gObject.fontSize*objectScale*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
+                  canvas.context.font = (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
+
                   const texts = this.wrapText(//TODO: Wrap it until all the text get wraped
                     canvas.context,
                     this.replaceCodedExpresions(gObject.text),
                     (gObject.margin*objectWidth) + objectLeft,
-                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSize*objectScale*canvas.scale*(canvas.resolutionHeight/700)),
+                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)),
                     objectWidth - (gObject.margin*objectWidth)*2,
-                    (gObject.fontSize*objectScale*canvas.scale*(canvas.resolutionHeight/700)),
+                    (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)*.6),
                     gObject.center
                   );
                   texts.forEach((text) => {
@@ -740,7 +736,7 @@ class RenderEngine extends React.Component{
           if(this.showCanvasGrid){
             if(this.drawPerspectiveLayersLimits && this.camera.usePerspective){}else{
               canvas.context.beginPath();
-              canvas.context.strokeStyle = "black";
+              canvas.context.strokeStyle = "green";
               //create grid
               for (let line = 0; line < 1; line +=.1) {
                 //vertical
@@ -777,29 +773,31 @@ class RenderEngine extends React.Component{
               }
             }
           }
-          // console.timeEnd("RenderingNow");
         }} 
         onLoad={(canvas)=>{
-          window.deltarg = 0;
           //calc the perspective angle in degress
           this.camera.position.angle = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
           //disable image smoothing
-          canvas.context.imageSmoothingEnabled = false; 
+          //canvas.context.imageSmoothingEnabled = false; 
           canvas.context.imageSmoothingQuality = "low";
           canvas.context.textRendering = "optimizeSpeed"; 
+          window.cameraShader = Shader.create(canvas.context.canvas,"cop",canvas.resolutionWidth,canvas.resolutionHeight);
         }}
         onResize={(canvas)=>{
           //calc the perspective angle
           this.camera.position.angle = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
+          //disable image smoothing
+          // canvas.context.imageSmoothingEnabled = false;
+          canvas.context.imageSmoothingQuality = "low";
+          canvas.context.textRendering = "optimizeSpeed"; 
         }}
         events={(canvas)=>{
-          window.deltarg += canvas.fps.elapsed;
+          this.deltarg += canvas.fps.elapsed;
           for (let index = 0; index < this.anims.objects.length; index++) {
             const anim = this.anims.objects[index];
             if(anim.relatedTo != null){
-              anim.updateState(window.deltarg,(relatedTo)=>{return relatedTo!="engineCamera"?this.graphArray.get(relatedTo):this.camera},this);
+              anim.updateState(this.deltarg,(relatedTo)=>{return relatedTo!="engineCamera"?this.graphArray.get(relatedTo):this.camera},this);
             }
-            //Add here the onComplete functionalities
           }  
         }}
         animateGraphics={(canvas)=>{
@@ -816,15 +814,31 @@ class RenderEngine extends React.Component{
             //* Answer: DEFINITELY YES!!
           });
         }}
+        afterEffects = {(canvas)=>{
+          // let a = new Array(canvas.resolutionWidth)
+          // for (let index = 0; index < a.length; index++) {
+          //   a[index] = Math.random();
+          // }
+          // let b = new Array(canvas.resolutionHeight)
+          // for (let index = 0; index < a.length; index++) {
+          //   b[index] = Math.random();
+          // }
+          // let intensity =  0.01;
+
+          // window.cameraShader._malfunctionShader(a,b,intensity,canvas.context.canvas);
+          
+          // canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
+
+          // canvas.context.drawImage(
+          //   window.cameraShader._malfunctionShader.canvas,
+          //   0,
+          //   0);
+        }}
         />
       );
     }else{
       return;
     }
-  }
-  mouseCameraRotation(mX,mY){
-    this.camera.sphericalRotation.x = (mX-0.5)*Math.PI*-4;
-    this.camera.sphericalRotation.y = (mY-0.5)*Math.PI*4;
   }
   
   checkTriggers(mouse,action){//check using mouse stats
@@ -850,12 +864,14 @@ class RenderEngine extends React.Component{
         mX = clientX/mouse.target.clientWidth;
         mY = (clientY-((window.innerHeight-mouse.target.clientHeight)/2))/mouse.target.clientHeight;
     }
+    this.mouse.x = mX;
+    this.mouse.y = mY;
+    console.log(this.mouse);
     //move mouse "digital coords" with camera origin
-    
     mX += (0.5-this.camera.origin.x);
     mY += (0.5-this.camera.origin.y);
     //rotating view with mouse test
-    this.mouseCameraRotation(mX,mY)
+    //this.mouseCameraRotation(mX,mY)
 
 
     var targetGraphObjectId = "";
@@ -892,7 +908,6 @@ class RenderEngine extends React.Component{
         }
       }
     }
-    //console.log(reversedRenderOrderList, objectsWithTriggersList,targetGraphObjectId);
     if(action == "mouseMove"){
       //onLeave part, activar el onLeave en todos aquellos triggers que no se activaron previamente
       let unexecutedTriggers;
@@ -920,11 +935,12 @@ class RenderEngine extends React.Component{
     }else{
       return (
         <div className="absolute w-full h-full"
+          id="triggersTarget"
           onMouseDown={(e)=>this.checkTriggers(e,"onHold")}
           onMouseUp={(e)=>this.checkTriggers(e,"onRelease")}
           onWheel={(e)=>{this.camera.position.z -=(e.deltaY/1000)}}
           //This may be used only in the dev mode(elements aligment, etc)
-          onMouseMove={(e)=>{if(this.mouseListener+(1000/45) < performance.now()){this.mouseListener = performance.now();this.checkTriggers(e,"mouseMove")}}}
+          onMouseMove={(e)=>{if(this.mouseListener+(1000/40) < performance.now()){this.mouseListener = performance.now();this.checkTriggers(e,"mouseMove")}}}
         />
       );
     }
