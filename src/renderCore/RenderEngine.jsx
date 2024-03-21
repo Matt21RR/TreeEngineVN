@@ -3,11 +3,10 @@ import $ from "jquery";
 import {Howl, Howler} from 'howler';
 
 import { Canvas } from "./Canvas";
-import { GraphObj, ObjectArray, Animation, Trigger } from "./graphObj";
+import { GraphObject, ObjectArray, Animation, Trigger } from "./graphObj";
 import { ScriptInterpreter } from "./ScriptInterpreter";
 import { mobileCheck } from "../logic/Misc";
 import { Shader } from "./Shaders";
-
 
 class RenderEngine extends React.Component{
   constructor(props){
@@ -16,16 +15,16 @@ class RenderEngine extends React.Component{
       isReady:false,
       consol: [],//only used by script interpreter errors
     }
-    window.consol = []
+    this.consolMessagesArray = []
     this.isMobile = mobileCheck();
-    this.mounted = false;
-    this.canvasRef = {};
-    this.deltarg = 0;
+    this.mounted = false; //internal check
+    this.canvasRef = {}; //Reference to the canvas used to render the scene
+    this.engineTime = 0;
 
     this.actualSceneId = "";//Guardar esto
     this.masterScript = {};
 
-    this.graphObj = GraphObj;
+    this.graphObject = GraphObject;
     this.animation = Animation;
 
     this.graphArray = ObjectArray.create();//array de objetos, un objeto para cada imagen en pantalla
@@ -72,7 +71,6 @@ class RenderEngine extends React.Component{
     }
     this.coordsPack = {};
     this.renderingOrderById = [];
-    this.preserveTexturesAspectRatio = this.props.preserveTexturesAspectRatio != undefined ? this.props.preserveTexturesAspectRatio : true;
 
     //MOUSE
     this.mouseListener = 0;
@@ -82,20 +80,16 @@ class RenderEngine extends React.Component{
 
     //Debug values
     this.showListedData = false;
-    this.drawObjectLimits = true;
     this.showObjectsInfo = false;
     this.showCanvasGrid = false;
-    this.drawPerspectiveLayersLimits = false;
 
     this.objectToDebug = null;//id of the object
     window.setUsePerspective = (x) =>{this.camera.usePerspective = x;}
     window.setCameraPerspectiveAngle =  (x) =>{this.camera.position.angle = x;}
     window.setDisplayDigitalRepresentationZ = (x) =>{this.camera.maxZ = x;}
     window.setCameraPerspectiveCoords = (x,y) =>{this.camera.position = {top:y,left:x};}
-    window.setDrawPerspectiveLayersLimits = (x) =>{this.drawPerspectiveLayersLimits = x;}
     window.setForcedAspectRatio = (x) => {this.camera.aspectRatio = x;}
 
-    window.setDrawObjectLimits = (x) => {this.drawObjectLimits = x;}
     window.setShowObjectsInfo = (x) => {this.showObjectsInfo = x;}
     window.setShowCanvasGrid = (x) => {this.showCanvasGrid = x;}
     window.renderEngineTerminal = (code) =>{ code(this);}
@@ -107,10 +101,15 @@ class RenderEngine extends React.Component{
       k.build((masterScript)=>{this.loadGame(masterScript)},(error)=>{this.consol(error)});
     }
   }
+  /**
+   * Used to show info over the render display (canvas)
+   * @param {string} text 
+   * @param {string} color, default white
+   */
   consol(text,color="white") {
-    window.consol.push({text:text,color:color});
+    this.consolMessagesArray.push({text:text,color:color});
     this.setState({
-      consol: (window.consol),
+      consol: (this.consolMessagesArray),
     })
   }
   componentDidCatch(error,info){
@@ -199,7 +198,7 @@ class RenderEngine extends React.Component{
     this.setState({isReady:false},()=>{
       //reset values
       this.graphArray = ObjectArray.create();//array de objetos, un objeto para cada imagen en pantalla
-      this.graphObj = GraphObj;
+      this.graphObject = GraphObject;
       this.animation = Animation;
       this.anims = ObjectArray.create();
       this.triggers = ObjectArray.create();
@@ -238,7 +237,7 @@ class RenderEngine extends React.Component{
   
           scene.graphObjects.map(object =>{object.textureName=object.texture; return object});
   
-          scene.graphObjects.forEach(object => this.graphArray.push(GraphObj.create(object)));
+          scene.graphObjects.forEach(object => this.graphArray.push(GraphObject.create(object)));
           scene.triggers.forEach(trigger => this.triggers.push(Trigger.create(trigger)));
           scene.animations.forEach(animation => this.anims.push(Animation.create(animation)));
           scene.codedRoutines.forEach(codedAnim => this.codedRoutines.push(codedAnim));
@@ -252,12 +251,6 @@ class RenderEngine extends React.Component{
 
   }
 
-  consolClean(){
-    window.consol=[];
-    this.setState({
-      consol: [],
-    })
-  }
   checkObjectBoundaries(oTopLeftCorner,objectRes,canvasRes){
     //check for very big images
     const sDims = {width:objectRes.width/canvasRes.width,height:objectRes.height/canvasRes.height};
@@ -477,8 +470,9 @@ class RenderEngine extends React.Component{
               testD = perspectiveDiff;
               const toAddSize = perspectiveDiff * tangencialConstant*(canvas.resolutionWidth)*this.camera.maxZ;
               const computedPercentageSize = clientUnitaryHeightPercentageConstant * (toAddSize);
-              objectScale *= computedPercentageSize/100;
               const perspectiveScale = computedPercentageSize/100;
+              objectScale *= computedPercentageSize/100;
+
               //*recalculate gobject coords
               var perspectiveLayer = {
                 width:canvas.resolutionWidth*perspectiveScale,
@@ -501,7 +495,7 @@ class RenderEngine extends React.Component{
 
             var objectWidth = canvas.resolutionWidth*objectScale*gObject.widthScale;
             var objectHeight;
-            if(gObject.textureName!=null && this.preserveTexturesAspectRatio){
+            if(gObject.textureName!=null){
               objectHeight = (this.texturesList.get(gObject.textureName).texture.naturalHeight/this.texturesList.get(gObject.textureName).texture.naturalWidth)*canvas.resolutionWidth*objectScale*gObject.heightScale;
             }else{
               objectHeight = canvas.resolutionHeight*objectScale*gObject.heightScale;
@@ -527,7 +521,7 @@ class RenderEngine extends React.Component{
                   0, 
                   1,
                   (objectLeft)+(objectWidth / 2), 
-                    (objectTop)+(objectHeight / 2)); // sets scale and origin
+                  (objectTop)+(objectHeight / 2)); // sets scale and origin
                 canvas.context.rotate(gObject._rotate);
 
 
@@ -610,36 +604,14 @@ class RenderEngine extends React.Component{
               //*part four: anullate globalalpha and filters
               if(filterString != "none")
                 canvas.context.filter = "none";
-              if(canvas.context.globalAlpha != 1)
-                canvas.context.globalAlpha = 1;
+              canvas.context.globalAlpha = 1;
             }else{
               this.noRenderedItemsCount++;
             }
 
             //*DEBUG INFO
             if(this.objectToDebug == gObject.id){
-              //*part five: draw object limits
-
-              if(this.drawObjectLimits){
-                //draw image center
-                canvas.context.strokeStyle = "red";
-                canvas.context.beginPath();
-                canvas.context.arc(
-                  objectLeft + (objectWidth*canvas.scale*0.5) , 
-                  objectTop + (objectHeight*canvas.scale*0.5), 
-                  5, 
-                  0, 
-                  2 * Math.PI);
-                canvas.context.stroke();
-                //image dimensions
-                  canvas.context.strokeStyle = "orange";
-                
-                canvas.context.strokeRect(
-                  objectLeft,
-                  objectTop,
-                  objectWidth*canvas.scale,
-                  objectHeight*canvas.scale);
-              }
+              //*part five: draw object info
               
               if(this.showObjectsInfo){
                 Object.keys(gObject.dump()).filter(e=>{return gObject[e] != 0}).forEach((element,index) => {
@@ -650,84 +622,6 @@ class RenderEngine extends React.Component{
                       (objectTop) +index*15 +15);
                   }
                 });
-              }
-
-              //*part six: draw perspective layers limits
-              if(this.drawPerspectiveLayersLimits && this.camera.usePerspective){//draw objectPerspectiveLimits
-                canvas.context.save();
-                canvas.context.setTransform(
-                  canvas.scale, 
-                  0, 
-                  0, 
-                  canvas.scale,
-                  (canvas.resolutionWidth*this.camera.origin.x), 
-                  (canvas.resolutionHeight*this.camera.origin.y)); // sets scale and origin
-                // throw new Error();
-                canvas.context.fillText(
-                  "Perspective layer of: "+gObject.id,
-                  perspectiveLayer.width/2 -200, 
-                  perspectiveLayer.height/2 -20);
-                canvas.context.beginPath();
-                canvas.context.strokeStyle = "red";
-                canvas.context.rect(
-                  perspectiveLayer.left,
-                  perspectiveLayer.top,
-                  perspectiveLayer.width, 
-                  perspectiveLayer.height);
-                canvas.context.stroke();
-                canvas.context.beginPath();
-                canvas.context.moveTo(
-                  perspectiveLayer.left,
-                  perspectiveLayer.top);
-                canvas.context.lineTo(
-                  perspectiveLayer.left+perspectiveLayer.width,
-                  perspectiveLayer.top+perspectiveLayer.height);
-                canvas.context.lineTo(
-                  perspectiveLayer.left+perspectiveLayer.width,
-                  perspectiveLayer.top);
-                canvas.context.lineTo(
-                  perspectiveLayer.left,
-                  perspectiveLayer.top+perspectiveLayer.height);
-                if(this.showCanvasGrid){
-                  canvas.context.beginPath();
-                  canvas.context.strokeStyle = "green";
-                  //create grid
-                  for (let line = 0; line < 1; line +=.1) {
-                    //vertical
-                    canvas.context.moveTo(
-                      perspectiveLayer.left+perspectiveLayer.width*line,
-                      perspectiveLayer.top+0
-                    );
-                    canvas.context.lineTo(
-                      perspectiveLayer.left+perspectiveLayer.width*line,
-                      perspectiveLayer.top+perspectiveLayer.height
-                    );
-                    //horizontal
-                    canvas.context.moveTo(
-                      perspectiveLayer.left+0,
-                      perspectiveLayer.top+perspectiveLayer.height*line
-                    );
-                    canvas.context.lineTo(
-                      perspectiveLayer.left+perspectiveLayer.width,
-                      perspectiveLayer.top+perspectiveLayer.height*line
-                    );
-                  }
-                  
-                  //show 0<->1 coords
-                  canvas.context.fillStyle = "green";
-                  canvas.context.font = (12*canvas.scale)+"px Harry";
-                  for (let horizontal = 0; horizontal < 1; horizontal+=.1) {
-                    for (let vertical = 0; vertical < 1; vertical+=.1) {
-                      canvas.context.fillText(
-                        Math.round(horizontal*10)/10+", "+Math.round(vertical*10)/10,
-                        perspectiveLayer.left+(perspectiveLayer.width*horizontal)-45,
-                        perspectiveLayer.top+(perspectiveLayer.height*vertical)-8 );
-                    }
-                  }
-                  canvas.context.stroke();
-                }
-                canvas.context.stroke();
-                canvas.context.restore();
               }
             }
           }
@@ -792,11 +686,11 @@ class RenderEngine extends React.Component{
           canvas.context.textRendering = "optimizeSpeed"; 
         }}
         events={(canvas)=>{
-          this.deltarg += canvas.fps.elapsed;
+          this.engineTime += canvas.fps.elapsed;
           for (let index = 0; index < this.anims.objects.length; index++) {
             const anim = this.anims.objects[index];
             if(anim.relatedTo != null){
-              anim.updateState(this.deltarg,(relatedTo)=>{return relatedTo!="engineCamera"?this.graphArray.get(relatedTo):this.camera},this);
+              anim.updateState(this.engineTime,(relatedTo)=>{return relatedTo!="engineCamera"?this.graphArray.get(relatedTo):this.camera},this);
             }
           }  
         }}
@@ -873,7 +767,6 @@ class RenderEngine extends React.Component{
     //rotating view with mouse test
     //this.mouseCameraRotation(mX,mY)
 
-
     var targetGraphObjectId = "";
     const reversedRenderOrderList = [].concat(this.renderingOrderById).reverse();
     const objectsWithTriggersList = this.triggers.relatedToReversedList();
@@ -883,7 +776,7 @@ class RenderEngine extends React.Component{
       const gO = this.graphArray.get(reversedRenderOrderList[index]);
 
       var objectHeight;
-      if(gO.textureName!=null && this.preserveTexturesAspectRatio){
+      if(gO.textureName!=null){
         objectHeight = (this.texturesList.get(gO.textureName).texture.naturalHeight/this.texturesList.get(gO.textureName).texture.naturalWidth)*gO.scale*gO.heightScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
       }else{
         objectHeight = gO.scale*gO.heightScale;

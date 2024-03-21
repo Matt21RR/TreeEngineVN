@@ -19,7 +19,6 @@ class Canvas extends React.Component{
 
     this.resolutionHeight = Math.floor(window.innerHeight * this.scale *window.devicePixelRatio);
     this.resolutionWidth = Math.floor(window.innerWidth * this.scale *window.devicePixelRatio); 
-    // console.log(this.resolutionHeight, this.resolutionWidth);
 
     this.element = React.createRef();
 
@@ -36,7 +35,6 @@ class Canvas extends React.Component{
       canvas.context.beginPath();
       canvas.context.fillStyle = "orange";
       canvas.context.font = (12*this.scale)+"px Verdana";
-      canvas.context.fillText("maxFps: "+fps.averageFps, 5, 15*this.scale);
       canvas.context.fillText("FpsAdjustValue: "+fps.fpsAdjustValue, 5, 30*this.scale);
       canvas.context.fillText("AverageFps(Last 5 seconds): "+fps.promedio, 5, 45*this.scale);
       canvas.context.fillText("Interval: "+fps.elapsed, 5, 60*this.scale);
@@ -53,24 +51,16 @@ class Canvas extends React.Component{
     //*Debug
     this.debug = false;
     this.showFps = this.props.showFps;
-    this.debugSelectorFunc = (e) => { return false };
-    this.debugParameterPrintFunc = (e) => { return 1 };
 
     window.setFps = (x) => { this.fps = x; this.stopEngine = (x == 0) && !this.stopEngine; this.interval = Math.floor(1000 / x); if (!this.stopEngine) this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight}); }
     window.getFps = () => {return this.fps;}
-    window.setScale = (x) => { this.scale = (x>0? (x<2?x:2):0);
+    window.setScale = (x) => { this.scale = x;
       const canvas = this.element.current;
-      this.resolutionWidth = Math.floor(canvas.offsetWidth * this.scale *window.devicePixelRatio);
-      this.resolutionHeight =Math.floor(canvas.offsetHeight * this.scale *window.devicePixelRatio);
-      //set dimensions
-      canvas.width = this.resolutionWidth;
-      canvas.height = this.resolutionHeight; 
-      this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight}); 
+      canvas.getContext("2d").scale(x,x);
+      this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")}); 
     }
     window.setDebug = (x) => { this.debug = x; }
     window.setShowFps = (x) => { this.showFps = x; }
-    window.setDebugSelectorFunc = (x) => { this.debugSelectorFunc = x; }
-    window.setDebugParameterPrintFunc = (x) => { this.debugParameterPrintFunc = x; }
     window.getEngineThreads = ()=>{return this.engineThreads;}
   }
   
@@ -173,7 +163,7 @@ class Canvas extends React.Component{
     var animator = (fps) => {
       //*ANIMATE
       try {
-        this.props.animateGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps.averageFps});
+        this.props.animateGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps.maxFps});
       } catch (error) {//!KILL ENGINE
         context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
         context.filter = 'none';
@@ -216,7 +206,6 @@ class Canvas extends React.Component{
         context.fillText("-function executed when the engine crashed:", 5, 70*this.scale);
         context.fillText("=============================================================================================================================", 5, 85*this.scale);
         const funcCode = error.stack.toString().split("\n");
-        // const funcCode = this.renderGraphics.toString().split("\n");
         funcCode.forEach((codeLine,index) => {
           context.fillText(codeLine, 5, (100*this.scale)+(15*index));
         });
@@ -258,7 +247,7 @@ class Canvas extends React.Component{
     }
     var then = performance.now();
     var fpsArray = [], fpsAdjustValue = 1.01,promedio = this.fps;
-    var drawnFrames = 0, startTimer = 0, now,averageFps = 0;
+    var drawnFrames = 0, startTimer = 0, now,maxFps = 0;
     var draw = (newtime) => {
       if(!canvasInstances.checker(this.props.id,this.id)){
         console.log("killing engine recall")
@@ -272,7 +261,7 @@ class Canvas extends React.Component{
         return;
       if(fpsAdjustValue>2){
         fpsArray = []; fpsAdjustValue = 1;promedio = this.fps;
-        drawnFrames = 0; startTimer = 0; averageFps = 0;
+        drawnFrames = 0; startTimer = 0; maxFps = 0;
       }
       rAF.modelTwo(draw,this.interval);
       
@@ -280,7 +269,7 @@ class Canvas extends React.Component{
 
       const elapsed = newtime - then;
       if(this.fps == 60){
-        animator({averageFps:averageFps,fpsAdjustValue:fpsAdjustValue.toFixed(4),promedio:promedio,elapsed:elapsed});
+        animator({maxFps:maxFps,fpsAdjustValue:fpsAdjustValue.toFixed(4),promedio:promedio,elapsed:elapsed});
         return;
       }
 
@@ -289,10 +278,10 @@ class Canvas extends React.Component{
         then = now - elapsed * (fpsAdjustValue-1.0001568);
         startTimer += elapsed;
         if(startTimer >1000){
-          averageFps=drawnFrames-1;
+          maxFps=drawnFrames-1;
           startTimer=0;
           drawnFrames=1;
-          fpsArray.push(averageFps);
+          fpsArray.push(maxFps);
           if(fpsArray.length>5){
             fpsArray.shift();
             promedio = 0;
@@ -302,7 +291,7 @@ class Canvas extends React.Component{
             promedio/=5;
           }
         }
-        checkEvents({averageFps:averageFps,fpsAdjustValue:fpsAdjustValue.toFixed(4),promedio:promedio,elapsed:elapsed});
+        checkEvents({maxFps:maxFps,fpsAdjustValue:fpsAdjustValue.toFixed(4),promedio:promedio,elapsed:elapsed});
       }
     }
     setTimeout(

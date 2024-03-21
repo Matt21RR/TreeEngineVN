@@ -1,4 +1,3 @@
-import { GPU } from "gpu.js"; //for create shaders spicific for each graphObject with texture
 import { ExtendedObjects } from "../logic/ExtendedObjects";
 
 var ease = require("ease-component"); 
@@ -24,8 +23,8 @@ class graphArr{
     });
     return graphArray;
   }
-  static push(graphArray = new Array(),GraphObj = new Object()){
-    graphArray._objects.push(GraphObj);
+  static push(graphArray = new Array(),GraphObject = new Object()){
+    graphArray._objects.push(GraphObject);
   }
   static remove(graphArray = new Array(), objectId = new String()){
     const graphIds = graphArray._objects.map(e=>e.id);
@@ -78,7 +77,7 @@ class graphArr{
   }
 }
 class Trigger{
-  static create(tInfo = new Object(),graphObject = GraphObj){
+  static create(tInfo = new Object(),graphObject = GraphObject){
     if(!("id" in tInfo))
       throw new Error("Trying to create a Trigger without id");
     var trigger = new Object({
@@ -112,7 +111,7 @@ class Trigger{
   }
 }
 class Animation{
-  static create(aInfo = new Object(),graphObject = GraphObj){
+  static create(aInfo = new Object(),graphObject = GraphObject){
     var animation = new Object({
       _id:aInfo.id?aInfo.id:"undefined",
       _relatedTo:aInfo.relatedTo?aInfo.relatedTo:null, //the gO related to the animation
@@ -415,7 +414,7 @@ class Animation{
     return animation;
   }
 }
-class GraphObj{
+class GraphObject{
   static create(graphInfo = new Object()){
     console.log(graphInfo)
     var graphObject = new Object({
@@ -470,13 +469,13 @@ class GraphObj{
       _heightScale: graphInfo.heightScale != undefined ? graphInfo.heightScale: 1,
 
       //*Object methods
-      dump : function() {return GraphObj.dump(this);},
+      dump : function() {return GraphObject.dump(this);},
       clone: function(cloneId = null) {
         if(cloneId == null)
         throw new Error("the id for the clonning operation that uses the object with id '"+this._id+"' is not defined");
-        return GraphObj.clone(this,cloneId);
+        return GraphObject.clone(this,cloneId);
       },
-      get : function() {return GraphObj.get(this);}
+      get : function() {return GraphObject.get(this);}
     });
     //Todo: add a throw error to ensure every graphObject created have it's own id
     // if(graphObject._widthScale != 1 || graphObject._heightScale != 1){//reset the scale value and alert of the scale re-instantiation
@@ -821,4 +820,4 @@ class GraphObj{
     return d
   }
 }
-export {GraphObj,graphArr as ObjectArray,Animation,Trigger}
+export {GraphObject,graphArr as ObjectArray,Animation,Trigger}

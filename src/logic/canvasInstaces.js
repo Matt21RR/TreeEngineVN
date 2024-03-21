@@ -12,7 +12,7 @@ class canvasInstances {
     window.canvasInstances[hardcodedId] = dynamicId;
 
     window.finalWarn = 0;
-    console.log(window.canvasInstances);
+    // console.log(window.canvasInstances);
   }
   static checker(hardcodedId, dynamicId){ 
     const tPrev = window.scafford;
@@ -20,7 +20,6 @@ class canvasInstances {
 
     var res = window.canvasInstances[hardcodedId] == undefined? false : window.canvasInstances[hardcodedId] == dynamicId;
     if(tPrev != undefined){
-       //console.log(window.canvasInstances[hardcodedId],window.scafford-tPrev);
       if(window.scafford-tPrev<6)
         if(window.finalWarn>3){
           res = false;
@@ -28,10 +27,7 @@ class canvasInstances {
         }else{
           window.finalWarn++;
         }
-        
     }
-    // console.log(res) 
-    if(!res)console.warn("refusing engine start from prebult canvas")
     return res;
   }    
 }

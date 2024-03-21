@@ -7,30 +7,52 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 function ap(texture,anisotropicFilter=4,antialias=false){
   const scene = new THREE.Scene(); // Creando el objeto escena, donde se añadirán los demás.
   scene.background = new THREE.Color("black");
-  const camera = new THREE.PerspectiveCamera( 
-    75, // Ángulo de "grabación" de abajo hacia arriba en grados.
-    window.innerWidth / window.innerHeight, // Relación de aspecto de la ventana de la cámara(Ejemplo: 16:9).
-    0.1, // Plano de recorte cercano (más cerca no se renderiza).
-    1000 // Plano de recorte lejano  (más lejos no se renderiza).
-  );
+  // const camera = new THREE.PerspectiveCamera( 
+  //   75, // Ángulo de "grabación" de abajo hacia arriba en grados.
+  //   window.innerWidth / window.innerHeight, // Relación de aspecto de la ventana de la cámara(Ejemplo: 16:9).
+  //   0.1, // Plano de recorte cercano (más cerca no se renderiza).
+  //   1000 // Plano de recorte lejano  (más lejos no se renderiza).
+  // );
+  const zoomConst = 1.1;
+  var cameraMultiplier = 2000;
+  let orthographicMode = false;
+  const camera = new THREE.OrthographicCamera( window.innerWidth  / - cameraMultiplier, window.innerWidth  / cameraMultiplier, window.innerHeight / cameraMultiplier, window.innerHeight / - cameraMultiplier, 0, 500 );
+  // scene.add( camera );
   var keyboardOptions = {
     KeyO:()=>{ //"orthographic" camera
           if(!orthographicMode){
             orthographicMode = true;
-            scene.children.forEach((mesh)=>{mesh.position.z/=10000});
           }
         },
     KeyP:()=>{ //perspective camera
           if(orthographicMode){
             orthographicMode = false;
-            scene.children.forEach((mesh)=>{mesh.position.z*=10000});
           }
         },
     KeyW:()=>{
-      controls.moveForward(.1);
+      if(orthographicMode){
+        cameraMultiplier /= zoomConst;
+        camera.left /= zoomConst;
+        camera.right /= zoomConst;
+        camera.top /= zoomConst;
+        camera.bottom /= zoomConst;
+        // camera.zoom += .2;
+        camera.updateProjectionMatrix();
+      }else{
+        controls.moveForward(.1);
+      }
     },  
     KeyS:()=>{
-      controls.moveForward(-.1);
+      if(orthographicMode){
+        cameraMultiplier *= zoomConst;
+        camera.left *= zoomConst;
+        camera.right *= zoomConst;
+        camera.top *= zoomConst;
+        camera.bottom *= zoomConst;
+        camera.updateProjectionMatrix();
+      }else{
+        controls.moveForward(-.1);
+      }
     },  
     KeyD:()=>{
       controls.moveRight(.1);
@@ -39,14 +61,13 @@ function ap(texture,anisotropicFilter=4,antialias=false){
       controls.moveRight(-.1);
     },  
     Space:()=>{
-      camera.position.y += 0.1;
+        camera.position.y += 0.1;
     },  
     ShiftLeft:()=>{
-      camera.position.y -= 0.1;
+        camera.position.y -= 0.1;
     }  
           
   }
-  let orthographicMode = false;
   
   //*EJES
   const geometry1 = new THREE.PlaneGeometry( 100, 100 );
@@ -132,7 +153,15 @@ function ap(texture,anisotropicFilter=4,antialias=false){
   //*REESCALADO DE VENTANA
   window.addEventListener("resize",()=>{
     renderer.setSize( window.innerWidth, window.innerHeight );
-    camera.aspect = window.innerWidth / window.innerHeight;
+    if(!orthographicMode){
+      camera.aspect = window.innerWidth / window.innerHeight;
+    }else{
+      camera.left = window.innerWidth  / - cameraMultiplier;
+      camera.right = window.innerWidth  / cameraMultiplier;
+      camera.top = window.innerHeight / cameraMultiplier;
+      camera.bottom = window.innerHeight / - cameraMultiplier;
+    }
+
     camera.updateProjectionMatrix();
   })
 
