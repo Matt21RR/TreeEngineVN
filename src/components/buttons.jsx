@@ -13,7 +13,11 @@ const icons ={
 class Button1 extends React.Component{
   render(){
     return(
-      <div className={" cursor-pointer m-1 p-1 rounded-md bg-teal-500 text-white w-fit h-fit text-[12px]" + ((this.props.hide) ? " hidden":"")} onClick={()=>{this.props.action()}}>
+      <div 
+        className={" cursor-pointer m-1 p-1 rounded-md bg-teal-500 text-white w-fit h-fit text-[12px]" + ((this.props.hide) ? " hidden":"")} 
+        onClick={()=>{this.props.action()}}
+        onMouseEnter={()=>{if("enter" in this.props){this.props.enter();}}}
+        onMouseLeave={()=>{if("leave" in this.props){this.props.leave();}}}>
         {this.props.text}
       </div>
     );

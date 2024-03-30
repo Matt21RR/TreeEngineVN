@@ -1,56 +1,47 @@
 import { ExtendedObjects } from "../logic/ExtendedObjects";
 
 var ease = require("ease-component"); 
-//console.log("Easing options: ",Object.keys(ease));
-class graphArr{
-  static create(){
-    var graphArray = new Object({
-      _objects : new Array(),
-      _enabled : new Object(),
-      push: function(newGraphObj) {graphArr.push(this,newGraphObj)},
-      remove: function(objectId) {graphArr.remove(this,objectId)},
-      get: function(objectId) {return graphArr.get(this,objectId)},
-      ids: function() {return graphArr.ids(this)},
-      relatedToList: function() {return graphArr.relatedToList(this)},
-      relatedToReversedList: function() {return graphArr.relatedToReversedList(this)},
-      enable: function(objectId,bool) {return graphArr.enable(this,objectId,bool)},
-      enabledList: function() {return graphArr.enabledList(this)}
-    });
-    Object.defineProperties(graphArray,{
-      objects:{
-        get: function () {return this._objects;}
-      }
-    });
-    return graphArray;
+class RenList{
+  constructor(){
+    this.objects = new Array();
+    this.enabled = new Object();
   }
-  static push(graphArray = new Array(),GraphObject = new Object()){
-    graphArray._objects.push(GraphObject);
+  push(GraphObject = new Object()){
+    this.objects.push(GraphObject);
   }
-  static remove(graphArray = new Array(), objectId = new String()){
-    const graphIds = graphArray._objects.map(e=>e.id);
+  remove( objectId = new String()){
+    const graphIds = this.objects.map(e=>e.id);
 
     if(graphIds.indexOf(objectId) != -1)
-    graphArray._objects.splice(graphIds.indexOf(objectId),1);
+    this.objects.splice(graphIds.indexOf(objectId),1);
   }
-  static get(graphArray = new Array(), objectId = new String()){
-    const graphIds = graphArray._objects.map(e=>e.id);
+  get(objectId = new String()){
+    const graphIds = this.objects.map(e=>e.id);
     if(graphIds.indexOf(objectId) != -1)
-    if(Object.keys(graphArray._objects[graphIds.indexOf(objectId)]).indexOf("get") != -1){
-      return graphArray._objects[graphIds.indexOf(objectId)].get();
-    }else{
-      return graphArray._objects[graphIds.indexOf(objectId)];
-    }
-    
+      if(Object.keys(this.objects[graphIds.indexOf(objectId)]).indexOf("get") != -1){
+        return this.objects[graphIds.indexOf(objectId)].get();
+      }else{
+        return this.objects[graphIds.indexOf(objectId)];
+      }
   }
-  static ids(graphArray = new Array()){
-    return graphArray._objects.map(e => {return e.id;});
+  /**
+   * Verify if exists a object with the provided id
+   * @param {*} objectId 
+   * @returns 
+   */
+  exist(objectId =  new String()){
+    const graphIds = this.objects.map(e=>e.id);
+    return graphIds.indexOf(objectId) != -1;
   }
-  static relatedToList(graphArray = new Array()){
-    return graphArray._objects.map(e => {return {[e.id]:e.relatedTo};});
+  ids(){
+    return this.objects.map(e => {return e.id;});
   }
-  static relatedToReversedList(graphArray = new Array()){
+  relatedToList(){
+    return this.objects.map(e => {return {[e.id]:e.relatedTo};});
+  }
+  relatedToReversedList(){
     var list = {};
-    graphArray._objects.forEach(element => {
+    this.objects.forEach(element => {
       if(element.relatedTo in list){
         list[element.relatedTo].push(element.id);
       }else{
@@ -59,16 +50,16 @@ class graphArr{
     });
     return list;
   }
-  static enable(graphArray = new Object(), objectId = new String(),bool = new Boolean()){
-    if(objectId in graphArray._enabled){
-      graphArray._enabled[objectId] = bool;
+  enable(objectId = new String(),bool = new Boolean()){
+    if(objectId in this.enabled){
+      this.enabled[objectId] = bool;
     }else{
-      Object.assign(graphArray._enabled,{[objectId]:bool});
+      Object.assign(this.enabled,{[objectId]:bool});
     }
   }
-  static enabledList(graphArray = new Object()){
-    var res = Object.assign({},graphArray._enabled);
-    this.ids(graphArray).forEach(id => {
+  enabledList(){
+    var res = Object.assign({},this.enabled);
+    this.ids().forEach(id => {
       if(!(id in res)){
         Object.assign(res,{[id]:false})
       }
@@ -82,23 +73,26 @@ class Trigger{
       throw new Error("Trying to create a Trigger without id");
     var trigger = new Object({
       id: tInfo.id,
-      relatedTo: tInfo.relatedTo, 
+      relatedTo: tInfo.relatedTo != undefined ? tInfo.relatedTo : "Keyboard", 
       enabled: tInfo.enabled != undefined ? tInfo.enabled : true,
       //if superposition is true the engine will ignore the graphObjects that are over the graphobject related to the trigger
       //superposition: tInfo.superposition != undefined ? tInfo.superposition : false,
+      onPress: tInfo.onPress != undefined ? tInfo.onPress : null,//Special for keyboard
       onHold: tInfo.onHold != undefined ? tInfo.onHold : null,
       onRelease: tInfo.onRelease != undefined ? tInfo.onRelease : null,
       onEnter: tInfo.onEnter != undefined ? tInfo.onEnter : null,
       onLeave: tInfo.onLeave != undefined ? tInfo.onLeave : null,
       mouseAreInside: false,//Value to check the execution of onEnter/onLeave
-      check: function(engineRef,graphObjectRef,action){//Si no existe en el trigger tal accion retorna falso, si no verdadero
+      check: function(engineRef,action,graphObjectRef = null){//Si no existe en el trigger tal accion retorna falso, si no verdadero
         if(action == "mouseMove")//check onEnter
           action = "onEnter";
         if(this[action] == null || !this.enabled)
           return;
         
         const numberOfArguments = this[action].length;
-        if(numberOfArguments == 1){
+        if(numberOfArguments == 0){
+          this[action]();
+        }else if(numberOfArguments == 1){
           this[action](engineRef);
         }else if (numberOfArguments == 2){
           this[action](engineRef,graphObjectRef);
@@ -237,7 +231,7 @@ class Animation{
               if(gObject.id == "engineCamera"){
                 ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
               }else{
-                gObject["_"+toKey] = newValue;
+                gObject[toKey] = newValue;
               }
             }
           });
@@ -273,7 +267,7 @@ class Animation{
               if(gObject.id == "engineCamera"){
                 ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
               }else{
-                gObject["_"+toKey] = newValue;
+                gObject[toKey] = newValue;
               }
             }
           
@@ -286,7 +280,7 @@ class Animation{
                 if(gObject.id == "engineCamera"){
                   ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
                 }else{
-                  gObject["_"+toKey] = newValue;
+                  gObject[toKey] = newValue;
                 }
               }
             });
@@ -299,7 +293,7 @@ class Animation{
                 setKeyFrame(this._keyFrameNumber+1);
 
               }else{
-                console.warn("restarting");
+                //console.warn("restarting");
                 setKeyFrame(0);
                 this._looped++;
                 if(this._loopback)//Loopback wasn't tested with loopback
@@ -317,7 +311,7 @@ class Animation{
                 this._startedAt = engineTime;
                 this._elapsed = 0;
                 //?onComplete
-                console.warn("here");
+                //console.warn("here");
                 executeOnCompleteKeyframe();
                 setKeyFrame(this._keyFrameNumber+1);
                 setAnimationVars(true);
@@ -415,409 +409,364 @@ class Animation{
   }
 }
 class GraphObject{
-  static create(graphInfo = new Object()){
-    console.log(graphInfo)
-    var graphObject = new Object({
-      //is text
-      _enabled:graphInfo.enabled != undefined ? graphInfo.enabled : true,//exclude from calculation and rendering
-      _text:graphInfo.text != undefined ? graphInfo.text:null,
-      _center:graphInfo.center != undefined ? graphInfo.center : false,
-      _color:graphInfo.color != undefined ? graphInfo.color:"gray",
-      _font:graphInfo.font != undefined ? graphInfo.font:"Arial",
-      _fontSize:graphInfo.fontSize != undefined ? parseFloat(graphInfo.fontSize):18,
-      _boxColor:graphInfo.boxColor != undefined ? graphInfo.boxColor : "transparent",
-      _margin:graphInfo.margin != undefined ? graphInfo.margin : 0,
+  #enabled
+  #text
+  #center
+  #color
+  #font
+  #fontSize
+  #boxColor
+  #margin
 
-      _texture:graphInfo.textureFile != undefined ? graphInfo.textureFile:null,
-      _textureName:graphInfo.textureName != undefined ? graphInfo.textureName:null,
-      //Properties of the graph
-      _id:graphInfo.id != undefined ? graphInfo.id: "error",
-      _brightness: graphInfo.brightness != undefined ? graphInfo.brightness: 1,
-      _contrast: graphInfo.contrast != undefined ? graphInfo.contrast: 1,
-      _grayscale: graphInfo.grayscale != undefined ? graphInfo.grayscale: 0,
-      _hueRotate: graphInfo.hueRotate != undefined ? parseFloat(graphInfo.hueRotate): 0,//deg
-      //***SHADERS
-      _blur: graphInfo.blur != undefined ? parseFloat(graphInfo.blur): 0,//px
-      _aberration: graphInfo.aberration != undefined ? parseFloat(graphInfo.aberration): 0,
-      _aberrationType: graphInfo.aberrationType != undefined ? graphInfo.aberrationType: "static",
-      //static or shaky
-      // _dither:graphInfo.dither != undefined ? graphInfo.dither : 1,
-      //***END SHADERS
-      _dropShadow : graphInfo.dropShadow != undefined ? {offsetX:parseFloat(graphInfo.dropShadow.offsetX), offsetY:parseFloat(graphInfo.dropShadow.offsetY), blurRadius:parseFloat(graphInfo.dropShadow.blurRadius), color:graphInfo.dropShadow.color} : {offsetX: 0, offsetY:0,blurRadius:0,color:"transparent"},
-      _invert : graphInfo.invert != undefined ? graphInfo.invert : 0,
-      _saturate : graphInfo.saturate != undefined ? graphInfo.saturate : 1,
-      _sepia : graphInfo.sepia != undefined ? graphInfo.sepia : 0,
-      _filterString:"",
+  #texture
+  #textureName
 
-      _opacity: graphInfo.opacity != undefined ? graphInfo.opacity: 1,
+  #id
+  #brightness
+  #contrast
+  #grayscale
+  #hueRotate
 
-      _top : graphInfo.top != undefined ? graphInfo.top: 0,
-      _left : graphInfo.left != undefined ? graphInfo.left: 0,
-      //multipliers of canvasResolution
-      //Resets the width and height scales
-      _scale : graphInfo.scale != undefined ? graphInfo.scale: 1,
-      //imageRotation
-      _rotate : graphInfo.rotate != undefined ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0,
-      //z
-      _z : graphInfo.z != undefined ? parseFloat(graphInfo.z) : 0,
-      _renderZ:0,
-      //ignoreParallax forces the object to ignore the camera parallax movement
-      _ignoreParallax : graphInfo.z != undefined ? (graphInfo.ignoreParallax!=undefined?graphInfo.ignoreParallax:false) : true,
-      //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
-      //Todo: force the engine to use this when it's a text object.
-      _widthScale: graphInfo.widthScale != undefined ? graphInfo.widthScale: 1,
-      _heightScale: graphInfo.heightScale != undefined ? graphInfo.heightScale: 1,
+  #blur
+  #aberration
+  #aberrationType
 
-      //*Object methods
-      dump : function() {return GraphObject.dump(this);},
-      clone: function(cloneId = null) {
-        if(cloneId == null)
-        throw new Error("the id for the clonning operation that uses the object with id '"+this._id+"' is not defined");
-        return GraphObject.clone(this,cloneId);
-      },
-      get : function() {return GraphObject.get(this);}
-    });
-    //Todo: add a throw error to ensure every graphObject created have it's own id
-    // if(graphObject._widthScale != 1 || graphObject._heightScale != 1){//reset the scale value and alert of the scale re-instantiation
-    //   console.warn("Object scale reinstantiation /n","scale, widthScale and height values are being defined at same time");
-    // }
-    Object.defineProperties(graphObject,{
-      enabled:{
-        get: function() {return this._enabled},
-        set: function(x) {this._enabled = typeof x == "boolean"? x : false}
-      },
-      text:{
-        get: function() {return this._text;},
-        set: function(x) {this._text = typeof x == "string"? x : null}
-      },
-      center:{
-        get: function() {return this._center},
-        set: function(x) {this._center = typeof x == "boolean"? x : false}
-      },
-      color:{
-        get: function() {return this._color},
-        set: function(x) {this._color = typeof x == "string"? x : "gray"}
-      },
-      font:{
-        get: function() {return this._font},
-        set: function(x) {this._font = typeof x == "string" ? x: "Arial"}
-      },
-      fontSize:{
-        get: function() {return this._fontSize;},
-        set: function(x) {
-          if(typeof x == "string"){
-            if(x.indexOf("px") != -1){
-              x = parseFloat(x);
-            }
-          }
-          if(!isNaN(x)){
-            if(x<0){
-              this._fontSize = 0;
-            }else{
-              this._fontSize = x;
-            }
-          }
-        }
-      },
-      fontSizeNumeric:{
-        get: function() {return this._fontSize;},
-        set: function(x) {this._fontSize = parseFloat(x);}
-      },
-      boxColor:{
-        get: function() {return this._boxColor},
-        set: function(x) {this._boxColor = typeof x == "string"? x : "black"}
-      },
-      margin:{
-        get: function() {return this._margin;},
-        set: function(x) {this._margin = parseFloat(x);}
-      },
-      texture: {
-        get: function() { return this._texture; },
-        set: function(x) { 
-          this._texture = x != undefined ? x : null;
-        }
-      },
-      textureName: {
-        get: function() {return this._textureName;},
-        set: function(x) {this._textureName = x;}
-      },
-      id:{
-        get: function() {return this._id;},
-        set: function(x) {this._id = x;}
-      },
-      brightness:{
-        get: function() {return this._brightness;},
-        set: function(x) {
-          if(!isNaN(x)){
-            if(x < 0){
-              this._brightness = 0;
-            }else{
-              this._brightness = x;
-            }
-          }
-        }
-      },
-      contrast:{
-        get: function() {return this._contrast;},
-        set: function(x) {
-          if(!isNaN(x)){
-            if(x < 0){
-              this._contrast = 0;
-            }else{
-              this._contrast = x;
-            }
-          }
-        }
-      },
-      grayscale:{
-        get: function() {return this._grayscale;},
-        set: function(x) {
-          if(!isNaN(x)){
-            if(x<0){
-              this._grayscale = 0;
-            }else if(x>1){
-              this._grayscale = 1;
-            }else{
-              this._grayscale = x;
-            }  
-          }
-        }
-      },
-      hueRotate:{
-        get: function() {return this._hueRotate+"deg";},
-        set: function(x) {
-          if(typeof x == "string"){
-            this._hueRotate = parseFloat(x);
-          }else if(!isNaN(x)){
-            this._hueRotate = x;
-          }
-        }
-      },
-      hueRotateNumeric:{
-        get: function() {return this._hueRotate;}
-      },
-      blur:{
-        get: function() {return this._blur+"px"},//1/4 blur
-        set: function(x) {
-          if(typeof x == "string"){
-            if(x.indexOf("px") != -1){
-              x = parseFloat(x);
-            }
-          }
-          if(!isNaN(x)){
-            if(x<0){
-              this._blur = 0;
-            }else{
-              this._blur = x;
-            }
-          }
-        }
-      },
-      blurNumeric:{
-        get: function() {return this._blur;},
-        set: function(x) {this._blur = parseFloat(x);}
-      },
-      aberration:{
-        get: function() {return this._aberration},//1/4 blur
-        set: function(x) {
-          if(!isNaN(x)){
-            if(x<0){
-              this._aberration = 0;
-            }else{
-              this._aberration = x;
-            }
-          }
-        }
-      },
-      aberrationType:{
-        get: function() {return this._aberrationType;},
-        set: function(x) {this._aberrationType = x;}
-      },
-      dropShadow:{
-        get: function() {const s = this._dropShadow; return s.offsetX+"px "+s.offsetY+"px "+s.blurRadius+"px "+s.color;},
-        set: function(x) {
-          if(typeof x == "object"){
-            this._dropShadow = x;
-          }else if(typeof x == "string"){
-            const vars = x.split(" ");
-            if((vars.length -1) == 3){
-              this._dropShadow = {offsetX: parseFloat(vars[0]), 
-                                  offsetY: parseFloat(vars[1]),
-                                  blurRadius: parseFloat(vars[2]),
-                                  color: vars[3]}
-            }
-          }
-        }
-      },
-      dropSahdowObject:{
-        get: function() {return this._dropShadow;}
-      },
-      invert:{
-        get: function() {return this._invert;},
-        set: function(x) {
-          if(!isNaN(x)){
-            if(x<0){
-              this._invert = 0;
-            }else if(x>1){
-              this._invert = 1;
-            }else{
-              this._invert = x;
-            }  
-          }
-        }
-      },
-      saturate:{
-        get: function() {return this._saturate;},
-        set: function(x) {
-          if(!isNaN(x)){
-            if(x<0){
-              this._saturate = 0;
-            }else{
-              this._saturate = x;
-            }  
-          }
-        }
-      },
-      sepia:{
-        get: function() {return this._sepia;},
-        set: function(x) {
-          if(!isNaN(x)){
-            if(x<0){
-              this._sepia = 0;
-            }else if(x>1){
-              this._sepia = 1;
-            }else{
-              this._sepia = x;
-            }  
-          }
-        }
-      },
-      filterString:{
-        get: function(x) {
-          const filtersName = {
-            brightness:"brightness",
-            contrast:"contrast",
-            grayscale:"grayscale",
-            hueRotate:"hue-rotate",
-            dropShadow:"dropShadow",
-            invert:"invert",
-            //blur:"blur",
-            saturate:"saturate",
-            sepia:"sepia",
-          }
-          var filters = [];
-          var filterstr = "";
-          
-          if(this._brightness != 1){filters.push("brightness");}
-          if(this._contrast != 1){filters.push("contrast");}
-          if((this._grayscale % 360) != 0){filters.push("grayscale");}
-          if(this._invert != 0){filters.push("invert");}
-          //if(this._blur != 0){filters.push("blur")}
-          if(this._saturate != 1){filters.push("saturate");}
-          if(this._sepia != 0){filters.push("sepia");}
+  #invert
+  #saturate
+  #sepia
+  #filterString
 
-          if(this._hueRotate != 0){filters.push("hueRotate");}
-          if(!(this._dropShadow.offsetX == 0 && this._dropShadow.offsetY == 0 && this._dropShadow.blurRadius == 0)){
-            if(this._dropShadow.color != "transparent"){//if isnt transparent check in rgba code
-              if(this._dropShadow.color.split(",")[3] != "0)"){//if the alpha channel isn't trasparent
-                filters.push("dropShadow");
-              }
-            }
-          }
+  #opacity
 
+  #top
+  #left
 
-          filters.forEach(element => {
-            filterstr += " "+filtersName[element]+"("+this[element]+")";
-          });
-          
-          if(filterstr == ""){
-            filterstr = "none";
-          }
-          this._filterString = filterstr.replace(' ','');
-          return this._filterString;
-        }
-      },
-      opacity:{
-        get: function() {return this._opacity;},
-        set: function(x) {
-          if(!isNaN(x)){
-            if(x<0){
-              this._opacity = 0;
-            }else if(x>1){
-              this._opacity = 1;
-            }else{
-              this._opacity = x;
-            }  
-          }
-        }
-      },
-      top:{
-        get: function() {return this._top;},
-        set: function(x) {this._top = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);}
-      },
-      left:{
-        get: function() {return this._left;},
-        set: function(x) {this._left = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);}
-      },
-      scale:{
-        get: function () {return this._scale;},
-        set: function(x) {this._scale = !isNaN(x)? (x >= 0 ? x : 1 ) : 1}
-      },
-      rotate:{
-        get: function () {return (this._rotate*180)/Math.PI;},
-        set: function(x) {this._rotate = parseFloat(x)*Math.PI/180;}
-      },
-      z:{
-        get: function () {return this._z;},
-        set: function(x) {this._z = parseFloat(x);}
-      },
-      ignoreParallax:{
-        get: function() {return this._ignoreParallax;},
-        set: function(x) {this._ignoreParallax = x;}
-      },
-      widthScale:{
-        get: function () {return this._widthScale;},
-        set: function(x) {this._widthScale = parseFloat(x);}
-      },
-      heightScale:{
-        get: function () {return this._heightScale;},
-        set: function(x) {this._heightScale = parseFloat(x);}
-      }
+  #scale
 
-    });
-    return graphObject;
+  #rotate
+
+  #z
+
+  #ignoreParallax
+
+  #widthScale
+  #heightScale
+  
+  #getAtribs(){// ? Could be a global function ?
+    const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
+    const propertyNames = Object.keys(propertyDescriptors);
+    const atributesNames = propertyNames.filter(key =>{return "get" in propertyDescriptors[key]});
+    return atributesNames;
   }
-  static get(graphObject = new Object()){
-    return graphObject;
+
+  constructor(graphInfo = new Object()){
+    this.#enabled = graphInfo.enabled != undefined ? graphInfo.enabled : true;//exclude from calculation and renderin
+    this.#text = graphInfo.text != undefined ? graphInfo.text:null;
+    this.#center = graphInfo.center != undefined ? graphInfo.center : false;
+    this.#color = graphInfo.color != undefined ? graphInfo.color:"gray";
+    this.#font = graphInfo.font != undefined ? graphInfo.font:"Arial";
+    this.#fontSize = graphInfo.fontSize != undefined ? parseFloat(graphInfo.fontSize):18;
+    this.#boxColor = graphInfo.boxColor != undefined ? graphInfo.boxColor : "transparent";
+    this.#margin = graphInfo.margin != undefined ? graphInfo.margin : 0;
+
+    this.#texture = graphInfo.textureFile != undefined ? graphInfo.textureFile:null;
+    this.#textureName = graphInfo.textureName != undefined ? graphInfo.textureName:null;
+    //Properties of the graph
+    this.#id = graphInfo.id != undefined ? graphInfo.id: "error";
+    this.#brightness = graphInfo.brightness != undefined ? graphInfo.brightness: 1;
+    this.#contrast = graphInfo.contrast != undefined ? graphInfo.contrast: 1;
+    this.#grayscale = graphInfo.grayscale != undefined ? graphInfo.grayscale: 0;
+    this.#hueRotate = graphInfo.hueRotate != undefined ? parseFloat(graphInfo.hueRotate): 0;//deg
+    //***SHADERS
+    this.#blur =  graphInfo.blur != undefined ? parseFloat(graphInfo.blur): 0;//px
+    this.#aberration =  graphInfo.aberration != undefined ? parseFloat(graphInfo.aberration): 0;
+    this.#aberrationType =  graphInfo.aberrationType != undefined ? graphInfo.aberrationType: "static";
+    //static or shaky
+    // _dither:graphInfo.dither != undefined ? graphInfo.dither : 1,
+    //***END SHADERS
+    this.#invert = graphInfo.invert != undefined ? graphInfo.invert : 0;
+    this.#saturate = graphInfo.saturate != undefined ? graphInfo.saturate : 1;
+    this.#sepia = graphInfo.sepia != undefined ? graphInfo.sepia : 0;
+    this.#filterString = "";
+
+    this.#opacity = graphInfo.opacity != undefined ? graphInfo.opacity: 1;
+
+    this.#top = graphInfo.top != undefined ? graphInfo.top: 0;
+    this.#left = graphInfo.left != undefined ? graphInfo.left: 0;
+    //multipliers of canvasResolution
+    //Resets the width and height scales
+    this.#scale = graphInfo.scale != undefined ? graphInfo.scale: 1;
+    //imageRotation
+    this.#rotate = graphInfo.rotate != undefined ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0;
+    //z
+    this.#z = graphInfo.z != undefined ? parseFloat(graphInfo.z) : 0;
+    //ignoreParallax forces the object to ignore the camera parallax movement
+    this.#ignoreParallax = graphInfo.z != undefined ? (graphInfo.ignoreParallax!=undefined?graphInfo.ignoreParallax:false) : true;
+    //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
+    //Todo: force the engine to use this when it's a text object.
+    this.#widthScale = graphInfo.widthScale != undefined ? graphInfo.widthScale: 1;
+    this.#heightScale = graphInfo.heightScale != undefined ? graphInfo.heightScale: 1;
+  }
+  get enabled() {return this.#enabled}
+  set enabled(x) {this.#enabled = typeof x == "boolean"? x : false}
+
+  get text() {return this.#text;}
+  set text(x) {this.#text = typeof x == "string"? x : null}
+
+  get center() {return this.#center}
+  set center(x) {this.#center = typeof x == "boolean"? x : false}
+
+  get color() {return this.#color}
+  set color(x) {this.#color = typeof x == "string"? x : "gray"}
+
+  get font() {return this.#font}
+  set font(x) {this.#font = typeof x == "string" ? x: "Arial"}
+
+
+  get fontSize() {return this.#fontSize;}
+  set fontSize(x) {
+    if(typeof x == "string"){
+      if(x.indexOf("px") != -1){
+        x = parseFloat(x);
+      }
+    }
+    if(!isNaN(x)){
+      if(x<0){
+        this.#fontSize = 0;
+      }else{
+        this.#fontSize = x;
+      }
+    }
+  }
+
+  get fontSizeNumeric() {return this.#fontSize;}
+  set fontSizeNumeric(x) {this.#fontSize = parseFloat(x);}
+
+  get boxColor() {return this.#boxColor}
+  set boxColor(x) {this.#boxColor = typeof x == "string"? x : "black"}
+    
+    
+  get margin() {return this.#margin;}
+  set margin(x) {this.#margin = parseFloat(x);}
+    
+    
+  get texture() { return this.#texture; }
+  set texture(x) { 
+    this.#texture = x != undefined ? x : null;
+  }
+    
+  get textureName() {return this.#textureName;}
+  set textureName(x) {this.#textureName = x;}
+    
+    
+  get id() {return this.#id;}
+  set id(x) {this.#id = x;}
+    
+  get brightness() {return this.#brightness;}
+  set brightness(x) {
+    if(!isNaN(x)){
+      if(x < 0){
+        this.#brightness = 0;
+      }else{
+        this.#brightness = x;
+      }
+    }
+  }
+  
+  get contrast() {return this.#contrast;}
+  set contrast(x) {
+    if(!isNaN(x)){
+      if(x < 0){
+        this.#contrast = 0;
+      }else{
+        this.#contrast = x;
+      }
+    }
+  }
+
+  get grayscale() {return this.#grayscale;}
+  set grayscale(x) {
+    if(!isNaN(x)){
+      if(x<0){
+        this.#grayscale = 0;
+      }else if(x>1){
+        this.#grayscale = 1;
+      }else{
+        this.#grayscale = x;
+      }  
+    }
+  }
+
+  get hueRotate() {return this.#hueRotate+"deg";}
+  set hueRotate(x) {
+    if(typeof x == "string"){
+      this.#hueRotate = parseFloat(x);
+    }else if(!isNaN(x)){
+      this.#hueRotate = x;
+    }
+  }
+
+  get hueRotateNumeric() {return this.#hueRotate;}
+
+  get blur() {return this.#blur;}
+  set blur(x) {this.#blur = parseFloat(x);}
+
+  get aberration() {return this.#aberration}
+  set aberration(x) {
+    if(!isNaN(x)){
+      if(x<0){
+        this.#aberration = 0;
+      }else{
+        this.#aberration = x;
+      }
+    }
+  }
+
+  get aberrationType() {return this.#aberrationType;}
+  set aberrationType(x) {this.#aberrationType = x;}
+
+  get invert() {return this.#invert;}
+  set invert(x) {
+    if(!isNaN(x)){
+      if(x<0){
+        this.#invert = 0;
+      }else if(x>1){
+        this.#invert = 1;
+      }else{
+        this.#invert = x;
+      }  
+    }
+  }
+
+  get saturate() {return this.#saturate;}
+  set saturate(x) {
+    if(!isNaN(x)){
+      if(x<0){
+        this.#saturate = 0;
+      }else{
+        this.#saturate = x;
+      }  
+    }
+  }
+
+  get sepia() {return this.#sepia;}
+  set sepia(x) {
+    if(!isNaN(x)){
+      if(x<0){
+        this.#sepia = 0;
+      }else if(x>1){
+        this.#sepia = 1;
+      }else{
+        this.#sepia = x;
+      }  
+    }
+  }
+    
+  get filterString() {
+    const filtersName = {
+      brightness:"brightness",
+      contrast:"contrast",
+      grayscale:"grayscale",
+      hueRotate:"hue-rotate",
+      dropShadow:"dropShadow",
+      invert:"invert",
+      //blur:"blur",
+      saturate:"saturate",
+      sepia:"sepia",
+    }
+    var filters = [];
+    var filterstr = "";
+    
+    if(this.#brightness != 1){filters.push("brightness");}
+    if(this.#contrast != 1){filters.push("contrast");}
+    if((this.#grayscale % 360) != 0){filters.push("grayscale");}
+    if(this.#invert != 0){filters.push("invert");}
+    //if(this.#blur != 0){filters.push("blur")}
+    if(this.#saturate != 1){filters.push("saturate");}
+    if(this.#sepia != 0){filters.push("sepia");}
+
+    if(this.#hueRotate != 0){filters.push("hueRotate");}
+
+    filters.forEach(element => {
+      filterstr += " "+filtersName[element]+"("+this[element]+")";
+    });
+    
+    if(filterstr == ""){
+      filterstr = "none";
+    }
+    this.#filterString = filterstr.replace(' ','');
+    return this.#filterString;
+  }
+
+  get opacity() {return this.#opacity;}
+  set opacity(x) {
+    if(!isNaN(x)){
+      if(x<0){
+        this.#opacity = 0;
+      }else if(x>1){
+        this.#opacity = 1;
+      }else{
+        this.#opacity = x;
+      }  
+    }
+  }
+
+  get top() {return this.#top;}
+  set top(x) {this.#top = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);}
+
+  get left() {return this.#left;}
+  set left(x) {this.#left = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);}
+
+  get scale() {return this.#scale;}
+  set scale(x) {this.#scale = !isNaN(x)? (x >= 0 ? x : 1 ) : 1}
+
+  get rotate() {return (this.#rotate*180)/Math.PI;}
+  set rotate(x) {this.#rotate = parseFloat(x)*Math.PI/180;}
+
+  get z() {return this.#z;}
+  set z(x) {this.#z = parseFloat(x);}
+
+  get ignoreParallax() {return this.#ignoreParallax;}
+  set ignoreParallax(x) {this.#ignoreParallax = x;}
+
+  get widthScale() {return this.#widthScale;}
+  set widthScale(x) {this.#widthScale = parseFloat(x);}
+
+  get heightScale() {return this.#heightScale;}
+  set heightScale(x) {this.#heightScale = parseFloat(x);}
+
+  get(){// TF THIS ARE bEING USED?
+    return this;
   }
   /**
    * Create a deepclone of a graphObject
    * @param {object} graphObject The graphObject that you want to be cloned
    * @param {string} cloneId The id for the clone of the original object
    */
-  static clone(graphObject = new Object(), cloneId){
+  clone(cloneId){
+    if(cloneId == null)
+      throw new Error("the id for the clonning operation that uses the object with id '"+this.#id+"' is not defined");
+
+    const atributesNames = this.#getAtribs();
+
     var graphData = new Object();
-    Object.keys(graphObject).forEach(element => {
-      if(element.indexOf("_") != -1 && (element != "_id")){
-        Object.assign(graphData,{[element.replace("_","")] : graphObject[element]});
-      }else if(element == "_id"){
-        Object.assign(graphData,{"id":cloneId});
-      }
+    atributesNames.forEach(element => {
+        Object.assign(graphData,{[element] : this[element]});
     });
-    return this.create(graphData);
+    Object.assign(graphData,{"id":cloneId});
+    return new GraphObject(graphData);
   }
   /**
    * Show in console the graphObject params
    * @param {*} graphObject 
    */
-  static dump(graphObject = new Object()){
-    const k = Object.keys(graphObject).filter((e)=>e.indexOf("_")!=-1)
+  dump(){
     var d = new Object();
-    k.forEach(key => {
+    this.#getAtribs().forEach(key => {
 
-      d[key.replace("_","")] = graphObject[key];
+      d[key] = this[key];
     });
     return d
   }
 }
-export {GraphObject,graphArr as ObjectArray,Animation,Trigger}
+export {GraphObject,RenList,Animation,Trigger}

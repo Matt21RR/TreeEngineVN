@@ -2,6 +2,7 @@ import { GPU } from "gpu.js";
 
 class Shader {
   static create(texture,id,widthArg = null, heightArg = null){
+    //console.warn(texture);
     var s = new Object({
       texture: texture,
       id:id
@@ -235,19 +236,19 @@ class Shader {
     s._blurAplied = 0;
     s._aberrationAplied = 0;
     s.getTexture = (graphObject)=>{
-      if(graphObject._aberration != 0){
-          const intensity = graphObject._aberration;
-          if(graphObject._aberrationType == "static" && s._aberrationAplied != intensity){
+      if(graphObject.aberration != 0){
+          const intensity = graphObject.aberration;
+          if(graphObject.aberrationType == "static" && s._aberrationAplied != intensity){
             s._aberrationAplied = intensity;
             s._chromaticShader(intensity,intensity,intensity);
-          }else if(graphObject._aberrationType != "static"){
+          }else if(graphObject.aberrationType != "static"){
             const goofier = ()=>(Math.floor(Math.random()*intensity)-Math.round(intensity/2))
             s._chromaticShader(goofier(),goofier(),goofier());
           }
           return s._chromaticShader.canvas;
-      }else if (Math.round(graphObject._blur)!=0){
-        if(s._blurAplied != Math.round(graphObject._blur)){
-          s._blurAplied = Math.round(graphObject._blur);
+      }else if (Math.round(graphObject.blur)!=0){
+        if(s._blurAplied != Math.round(graphObject.blur)){
+          s._blurAplied = Math.round(graphObject.blur);
           const radius = s._blurAplied;
           //console.log(radius);
           const area = (2 * radius +1) * (2 * radius +1);

@@ -2,6 +2,55 @@ import React from "react";
 import $ from "jquery";
 import { rAF } from "../logic/rAF";
 import { canvasInstances } from "../logic/canvasInstaces";
+import { GraphObject } from "./graphObj";
+
+import * as THREE from 'three';
+import mapa from "../res/gameRes/parsel1.png";
+import { degToRad } from 'three/src/math/MathUtils';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+// class ThreeCanvas extends React.Component{
+//   constructor(props){
+//     super(props);
+//     this.mounted = false;
+//   }
+//   componentDidMount(){
+//     if(!this.mounted){
+//       this.mounted = true;
+//       this.base();
+//     }
+//   }
+//   base(){
+//     const scene = new THREE.Scene(); // Creando el objeto escena, donde se añadirán los demás.
+//     scene.background = new THREE.Color("black");
+//     const camera = new THREE.PerspectiveCamera( 
+//       75, // Ángulo de "grabación" de abajo hacia arriba en grados.
+//       window.innerWidth / window.innerHeight, // Relación de aspecto de la ventana de la cámara(Ejemplo: 16:9).
+//       0.1, // Plano de recorte cercano (más cerca no se renderiza).
+//       1000 // Plano de recorte lejano  (más lejos no se renderiza).
+//     );
+//     const renderer = new THREE.WebGLRenderer({antialias:antialias,alpha:true}); // Utilizar el renderizador WebGL.
+//     renderer.outputColorSpace = THREE.SRGBColorSpace;
+//     renderer.setSize( window.innerWidth, window.innerHeight ); // Renderizador del tamaño de la ventana.
+//     document.getElementById("THREECanvasTarget").appendChild( renderer.domElement ); // Añadir el renderizador al elemento DOM body.
+    
+//     texture.colorSpace = THREE.SRGBColorSpace;
+//     texture.anisotropy = anisotropicFilter;
+//   }
+//   addTexture(){
+
+//   }
+//   addObject(graphObject = new GraphObject()){
+//     const objectScale = 3;
+//     const objectHeightScale = texture.source.data.naturalHeight*objectScale/texture.source.data.naturalWidth;
+//     const geometry = new THREE.BoxGeometry( objectScale, objectHeightScale, 0 ); // Crear geometría cúbica con dimensiones(x, y, z).
+//     const cube = new THREE.Mesh( geometry, material ); // Crear una malla que agrupará la geometría
+//   }
+//   render(){
+//     return(
+//       <div id="THREECanvasTarget"></div>
+//     );
+//   }
+// }
 class Canvas extends React.Component{
   constructor(props){
     super(props);
@@ -14,8 +63,6 @@ class Canvas extends React.Component{
     this.scale = this.props.scale ? this.props.scale : 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
 
     this.interval = Math.round(1000 / this.fps);
-
-    this.aspectRatio = this.props.aspectRatio ? this.props.aspectRatio : "";
 
     this.resolutionHeight = Math.floor(window.innerHeight * this.scale *window.devicePixelRatio);
     this.resolutionWidth = Math.floor(window.innerWidth * this.scale *window.devicePixelRatio); 

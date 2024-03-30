@@ -197,7 +197,7 @@ class ScriptInterpreter {
         case "GRAPHOBJECT":
           res = "var "+dynaVar+"= engine.graphArray.get("+id+");"
           Object.keys(parsedParams).forEach(key => {
-            res += dynaVar+"._"+key+" = "+ value(parsedParams[key]) +";"; 
+            res += dynaVar+"."+key+" = "+ value(parsedParams[key]) +";"; 
           });
           
           break;
@@ -279,6 +279,7 @@ class ScriptInterpreter {
         sounds:null,
         graphObjects:[],
         triggers:[],
+        keyboardTriggers:[],
         animations:[],
         codedRoutines:[],
         routines:[],
@@ -332,6 +333,7 @@ class ScriptInterpreter {
                 engine.voiceFrom = commandType[2];
                 engine.dialog = value;
 
+                engine.graphArray.get("dialogbox").text = "";
                 engine.graphArray.get("dialogbox").opacity = 1;
 
                 engine.continue = false;
@@ -344,6 +346,7 @@ class ScriptInterpreter {
                   engine.narration = value.join("\n");
 
                   engine.paragraph += '\n' + engine.narration.split('\n')[0];
+                  engine.graphArray.get("narrationBox").text = "";
                   engine.graphArray.get("narrationBox").opacity = 1;
 
                   engine.continue = false;
@@ -394,10 +397,10 @@ class ScriptInterpreter {
             console.log("g",value);
             switch (commandType[1]) {
               case "GRAPHOBJECT":
-                //scene.graphObjects.push(value);
-                // scene.routines.push((engine)=>{
+                scene.graphObjects.push(value);
+                scene.routines.push((engine)=>{
 
-                // });
+                });
                 break;
               case "TRIGGER":
                 scene.triggers.push(value);
@@ -432,8 +435,12 @@ class ScriptInterpreter {
               scene.graphObjects.push(value[0]);
               break;
             case "Trigger":
-              Object.assign(value[0],{id:commandType[0]})
-              scene.triggers.push(value[0]);
+              Object.assign(value[0],{id:commandType[0]});
+              if(value[0].relatedTo == "Keyboard"){
+                scene.keyboardTriggers.push(value[0]);
+              }else{
+                scene.triggers.push(value[0]);
+              }
               break;
             case "Animation":
               let res = {keyframes:value[1]}
@@ -472,7 +479,7 @@ class ScriptInterpreter {
               break;
           }
         }else if(commandType[0] == "END"){
-          if(command.END == "DECLARATION"){
+          if(command.END == "DEFINITION"){
             if(!passFlag)passFlag=true;
           }
         }

@@ -131,8 +131,8 @@ class Template extends React.Component {
   }
   render() {
     return (
-      <div className=" bg-black absolute w-full h-full flex">
-        <div className=" bg-black relative w-full h-full mx-auto my-auto" id='display'>
+      <div className="bg-black absolute w-full h-full flex">
+        <div className="relative w-full h-full mx-auto my-auto" id='display'>
           {this.renderSection()}
         </div>
       </div>

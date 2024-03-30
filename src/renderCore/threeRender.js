@@ -7,52 +7,19 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 function ap(texture,anisotropicFilter=4,antialias=false){
   const scene = new THREE.Scene(); // Creando el objeto escena, donde se añadirán los demás.
   scene.background = new THREE.Color("black");
-  // const camera = new THREE.PerspectiveCamera( 
-  //   75, // Ángulo de "grabación" de abajo hacia arriba en grados.
-  //   window.innerWidth / window.innerHeight, // Relación de aspecto de la ventana de la cámara(Ejemplo: 16:9).
-  //   0.1, // Plano de recorte cercano (más cerca no se renderiza).
-  //   1000 // Plano de recorte lejano  (más lejos no se renderiza).
-  // );
-  const zoomConst = 1.1;
-  var cameraMultiplier = 2000;
-  let orthographicMode = false;
-  const camera = new THREE.OrthographicCamera( window.innerWidth  / - cameraMultiplier, window.innerWidth  / cameraMultiplier, window.innerHeight / cameraMultiplier, window.innerHeight / - cameraMultiplier, 0, 500 );
-  // scene.add( camera );
+  const camera = new THREE.PerspectiveCamera( 
+    75, // Ángulo de "grabación" de abajo hacia arriba en grados.
+    window.innerWidth / window.innerHeight, // Relación de aspecto de la ventana de la cámara(Ejemplo: 16:9).
+    0.1, // Plano de recorte cercano (más cerca no se renderiza).
+    1000 // Plano de recorte lejano  (más lejos no se renderiza).
+  );
+
   var keyboardOptions = {
-    KeyO:()=>{ //"orthographic" camera
-          if(!orthographicMode){
-            orthographicMode = true;
-          }
-        },
-    KeyP:()=>{ //perspective camera
-          if(orthographicMode){
-            orthographicMode = false;
-          }
-        },
     KeyW:()=>{
-      if(orthographicMode){
-        cameraMultiplier /= zoomConst;
-        camera.left /= zoomConst;
-        camera.right /= zoomConst;
-        camera.top /= zoomConst;
-        camera.bottom /= zoomConst;
-        // camera.zoom += .2;
-        camera.updateProjectionMatrix();
-      }else{
-        controls.moveForward(.1);
-      }
+      controls.moveForward(.1);
     },  
     KeyS:()=>{
-      if(orthographicMode){
-        cameraMultiplier *= zoomConst;
-        camera.left *= zoomConst;
-        camera.right *= zoomConst;
-        camera.top *= zoomConst;
-        camera.bottom *= zoomConst;
-        camera.updateProjectionMatrix();
-      }else{
-        controls.moveForward(-.1);
-      }
+      controls.moveForward(-.1);
     },  
     KeyD:()=>{
       controls.moveRight(.1);
@@ -61,10 +28,10 @@ function ap(texture,anisotropicFilter=4,antialias=false){
       controls.moveRight(-.1);
     },  
     Space:()=>{
-        camera.position.y += 0.1;
+      camera.position.y += 0.1;
     },  
     ShiftLeft:()=>{
-        camera.position.y -= 0.1;
+      camera.position.y -= 0.1;
     }  
           
   }
@@ -89,16 +56,16 @@ function ap(texture,anisotropicFilter=4,antialias=false){
   
   const renderer = new THREE.WebGLRenderer({antialias:antialias,alpha:true}); // Utilizar el renderizador WebGL.
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  console.log(renderer.capabilities.getMaxAnisotropy());
   renderer.setSize( window.innerWidth, window.innerHeight ); // Renderizador del tamaño de la ventana.
   document.getElementById("display").appendChild( renderer.domElement ); // Añadir el renderizador al elemento DOM body.
   
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = anisotropicFilter;
 
+  const material = new THREE.MeshBasicMaterial( { map: texture } ); // Crear el material para la
+
   const objectScale = 3;
   const objectHeightScale = texture.source.data.naturalHeight*objectScale/texture.source.data.naturalWidth;
-  const material = new THREE.MeshBasicMaterial( { map: texture } ); // Crear el material para la
 
   const geometry = new THREE.BoxGeometry( objectScale, objectHeightScale, 0 ); // Crear geometría cúbica con dimensiones(x, y, z).
   const cube = new THREE.Mesh( geometry, material ); // Crear una malla que agrupará la geometría
@@ -150,18 +117,11 @@ function ap(texture,anisotropicFilter=4,antialias=false){
     });
     renderer.render( scene, camera );
   },33.333333);
+  
   //*REESCALADO DE VENTANA
   window.addEventListener("resize",()=>{
     renderer.setSize( window.innerWidth, window.innerHeight );
-    if(!orthographicMode){
-      camera.aspect = window.innerWidth / window.innerHeight;
-    }else{
-      camera.left = window.innerWidth  / - cameraMultiplier;
-      camera.right = window.innerWidth  / cameraMultiplier;
-      camera.top = window.innerHeight / cameraMultiplier;
-      camera.bottom = window.innerHeight / - cameraMultiplier;
-    }
-
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
   })
 

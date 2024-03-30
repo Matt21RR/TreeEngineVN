@@ -6,8 +6,7 @@ import {RenderEngine} from "../renderCore/RenderEngine";
 class MainMenu extends React.Component{
   render(){
     return(
-      <div className="flex-row absolute w-full h-full "
-        >
+      <div className="flex-row absolute w-full h-full ">
           {/* <div
           className="absolute h-full w-full"
           style={{ 
@@ -18,11 +17,9 @@ class MainMenu extends React.Component{
           }}>
 
           </div> */}
-        <div className="absolute w-full h-full">
-          <RenderEngine />
-        </div>
+        {/* <RenderEngine /> */}
           
-        <div className="absolute ml-16 h-auto bottom-[4%] hidden">
+        <div className="absolute ml-16 h-auto bottom-[4%]">
           <MenuButton text="Continuar" hide={GameSaveLogic.getSavedGames().length  == 0} action={()=>{
             var lastSavedGame = GameSaveLogic.getSavedGames().at(-1);
             this.props.loadSavedGame(lastSavedGame.node,lastSavedGame.storyVars,()=>{this.props.changeSection(2);});

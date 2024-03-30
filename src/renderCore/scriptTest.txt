@@ -133,11 +133,11 @@ new TRIGGER tDebug {
     engine.consol("TEXTURES","green");
     engine.texturesList.ids().forEach((e)=>{engine.consol("->"+e)});
     engine.consol("GRAPHOBJECTS","green");
-    engine.graphArray._objects.forEach((e)=>{engine.consol("->"+e.id+"("+e.left+","+e.top+")")});
+    engine.graphArray.objects.forEach((e)=>{engine.consol("->"+e.id+"("+e.left+","+e.top+")")});
     engine.consol("TRIGGERS","green");
-    engine.triggers._objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
+    engine.triggers.objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
     engine.consol("ANIMATIONS","green");
-    engine.anims._objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
+    engine.anims.objects.forEach((e)=>{engine.consol("->"+e.id+"(relatedTo: "+e.relatedTo+")")});
   }
 }
 
