@@ -1,12 +1,7 @@
 import gsap from 'gsap';
 import React from 'react';
-import { Config } from './sections/Config';
-import { GameEnvironment } from './sections/GameEnvironment';
-import { MainMenu } from "./sections/MainMenu";
-import { SavedGamesScreen } from "./sections/SavedGamesScreen";
-
-import $ from "jquery";
-
+import { Config } from './engine/sections/Config';
+import { MainMenu } from "./engine/sections/MainMenu";
 
 class Template extends React.Component {
   constructor(props) {
@@ -94,28 +89,6 @@ class Template extends React.Component {
             />
           );
           break;
-        case 1://SavedGamesScreeen
-          return (
-            <SavedGamesScreen
-              loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
-              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-            />
-          );
-          break;
-        case 2://GameEnvironment
-          return (
-            <GameEnvironment
-              storyVars={this.state.storyVars}
-              actualNode={this.state.actualNode}
-              gameScript={this.gameScript}
-              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-  
-              loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
-              aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
-            />
-          );
-          break;
-  
         case 3:
           return (
             <Config
@@ -123,8 +96,8 @@ class Template extends React.Component {
               aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
             />
           );
-  
-        break;
+          break;  
+
       }
     }
     

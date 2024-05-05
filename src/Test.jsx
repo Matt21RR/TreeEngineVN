@@ -1,6 +1,6 @@
 import React from 'react';
-import {qb} from "./renderCore/threeRender"
-import { Tools } from './renderCore/Tools';
+import {qb} from "./engine/renderCore/threeRender"
+import { Tools } from './engine/renderCore/Tools';
 
 class Test extends React.Component {
   constructor(props){
