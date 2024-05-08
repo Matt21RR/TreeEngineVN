@@ -92,7 +92,6 @@ class EditTools extends React.Component {
     a.splice(a.indexOf(windowId),1);
     a.push(windowId);
     this.renderingOrder = a;
-    console.log(a);
     this.forceUpdate();
   }
   showSubTool(){
@@ -162,12 +161,9 @@ class EditTools extends React.Component {
   showSubToolsFather(){
     if(this.engine != null && !this.hide){
       return(
-        <>
-        
         <div className="absolute pointer-events-none top-0 left-0 w-full h-full overflow-hidden">
           {this.showSubTool()}
         </div>
-        </>
       );
     }
   }
@@ -207,7 +203,9 @@ class EditTools extends React.Component {
   render(){
     return(
       <>
-        <RenderEngine setEngine={(engine)=>{this.engine=engine; console.log(this.engine); this.editionKeys(); this.forceUpdate();}}/>
+        <div className="absolute w-full h-full">
+          <RenderEngine setEngine={(engine)=>{this.engine=engine; console.log(this.engine); this.editionKeys(); this.forceUpdate();}}/>
+        </div>
         <div className={"w-full max-h-[200px] absolute bottom-0"+(this.hide?"hidden":"")} id="GUI">
           {this.showMainTools()}
         </div>

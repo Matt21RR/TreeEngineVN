@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<svg
+   fill="#000000"
+   height="800px"
+   width="800px"
+   viewBox="0 0 26.90 26.90"
+   stroke="#000000"
+   stroke-width="0.00026901"
+   transform="rotate(270) scale(-1,)"
+   shape-rendering="crispEdges"
+   xmlns="http://www.w3.org/2000/svg">
+   <rect
+      style="fill:none;stroke:#ffffff;stroke-width:1.85316;stroke-linejoin:miter;"
+      id="rect1955"
+      width="17.316736"
+      height="17.316736"
+      x="-24.647326"
+      y="2.3459716"
+      transform="rotate(-90) scale(1.06)" />
+   <g transform="matrix(0,-1.1701639,1.1701639,0,-2.8548104,-2.2384722)">
+      <path
+      style="color:#000000;fill:none;stroke-width:1.58368;stroke:#ffffff;"
+      d="m -5.9559982,8.9209414 h 4.0129976 V 23.930548 H -18.152606 v -4.317609"/>
+   </g>
+</svg>

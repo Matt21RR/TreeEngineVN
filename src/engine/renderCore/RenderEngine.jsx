@@ -1,4 +1,5 @@
 import React from "react";
+import $ from "jquery";
 import {Howl} from 'howler';
 
 import { Canvas } from "./Canvas";
@@ -16,6 +17,7 @@ import gsap from "gsap";
 class RenderEngine extends React.Component{
   constructor(props){
     super(props);
+    this.id = "rengine" + String(window.performance.now()).replaceAll(".","");
     this.isReady = false;
     this.state = {
       consol: [],//only used by script interpreter errors
@@ -114,15 +116,15 @@ class RenderEngine extends React.Component{
         this.aspectRatioCalc();
       }, 200);
 
-      window.addEventListener('resize', () => {
-        gsap.to(document.getElementById("engineDisplay"), 0, { opacity: 0 });
+      new ResizeObserver(() => {
+        gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 0 });
         clearTimeout(this.resizeTimeout);
         this.resizeTimeout = setTimeout(
           () => {
             this.aspectRatioCalc();
-            gsap.to(document.getElementById("engineDisplay"), 0, { opacity: 1 });
+            gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 1 });
           }, 800);
-      });
+      }).observe(document.getElementById("display"+this.id))
        
       //*LOAD GAME
       const k = new ScriptInterpreter;
@@ -148,28 +150,28 @@ class RenderEngine extends React.Component{
   }
 
   aspectRatioCalc(op = this.aspectRatio) {
-    console.log(document.getElementById("engineDisplay"))
+    const w = document.getElementById("display"+this.id);
+
     if (op != "unset") {
-      let newWidth = Math.floor((window.innerHeight / (op.split(":")[1] * 1)) * (op.split(":")[0] * 1));
-      let newHeight = Math.floor((window.innerWidth / (op.split(":")[0] * 1)) * (op.split(":")[1] * 1));
-      if (newWidth <= window.innerWidth) {
-        newHeight = window.innerHeight;
+      let newWidth = Math.floor((w.offsetHeight / (op.split(":")[1] * 1)) * (op.split(":")[0] * 1));
+      let newHeight = Math.floor((w.offsetWidth / (op.split(":")[0] * 1)) * (op.split(":")[1] * 1));
+      if (newWidth <= w.offsetWidth) {
+        newHeight = w.offsetHeight;
       } else {
-        newWidth = window.innerWidth;
+        newWidth = w.offsetWidth;
       }
       console.log(newWidth,newHeight);
-      gsap.to(document.getElementById("engineDisplay"), 0, 
+      gsap.to(document.getElementById("engineDisplay"+this.id), 0, 
         { 
           width : newWidth + "px", 
           height : newHeight + "px"
         } 
       );
       this.engineDisplayRes = {width:newWidth,height:newHeight};
-      console.log(this.engineDisplayRes);
       this.forceUpdate();  
     } else {
-      document.getElementById("engineDisplay").style.width = "";
-      document.getElementById("engineDisplay").style.height = "";
+      document.getElementById("engineDisplay"+this.id).style.width = "";
+      document.getElementById("engineDisplay"+this.is).style.height = "";
     }
   }
   /**
@@ -768,7 +770,7 @@ class RenderEngine extends React.Component{
           //calc the perspective angle in degress
           this.camera.position.angle = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
           //disable image smoothing
-          //canvas.context.imageSmoothingEnabled = false; 
+          canvas.context.imageSmoothingEnabled = false; 
           canvas.context.imageSmoothingQuality = "low";
           canvas.context.textRendering = "optimizeSpeed"; 
         }}
@@ -776,7 +778,7 @@ class RenderEngine extends React.Component{
           //calc the perspective angle
           this.camera.position.angle = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
           //disable image smoothing
-          // canvas.context.imageSmoothingEnabled = false;
+          canvas.context.imageSmoothingEnabled = false;
           canvas.context.imageSmoothingQuality = "low";
           canvas.context.textRendering = "optimizeSpeed"; 
         }}
@@ -805,8 +807,15 @@ class RenderEngine extends React.Component{
           }
 
           this.codedRoutines.objects.forEach(element => {
-            element.code(this);//I really dunno if someone will need the canvas data
-            //* Answer: DEFINITELY YES!!
+            const numberOfArguments = element.code.length;
+            
+            if(numberOfArguments == 0){
+              element.code();
+            }else if(numberOfArguments == 1){
+              element.code(this);
+            }else if (numberOfArguments == 2){
+              element.code(this,this.engineTime);
+            }
           });
         }}
         afterEffects = {(canvas)=>{
@@ -819,6 +828,9 @@ class RenderEngine extends React.Component{
     }
   }
   checkTriggers(mouse,action){//check using mouse stats
+    const w = document.getElementById("triggersTarget"+this.id);
+    var offset = $("#"+"triggersTarget"+this.id).offset();
+    // console.log(offset.top,offset.left);
     let mX,mY;
     var clientX;
     var clientY;
@@ -834,15 +846,11 @@ class RenderEngine extends React.Component{
       clientX = mouse.clientX;
       clientY = mouse.clientY;
     }
-    if(window.innerWidth > mouse.target.clientWidth){
-        mX = (clientX-((window.innerWidth-mouse.target.clientWidth)/2))/mouse.target.clientWidth;
-        mY = clientY/mouse.target.clientHeight;
-    }else if(window.innerHeight > mouse.target.clientHeight){
-        mX = clientX/mouse.target.clientWidth;
-        mY = (clientY-((window.innerHeight-mouse.target.clientHeight)/2))/mouse.target.clientHeight;
-    }
-    this.mouse.x = mX;
-    this.mouse.y = mY;
+    clientX-=offset.left;
+    clientY-=offset.top;
+
+    mX = clientX/mouse.target.clientWidth;
+    mY = clientY/mouse.target.clientHeight;
     //move mouse "digital coords" with camera origin
     mX += (0.5-this.camera.origin.x);
     mY += (0.5-this.camera.origin.y);
@@ -908,7 +916,7 @@ class RenderEngine extends React.Component{
     }else{
       return (
         <div className="absolute w-full h-full"
-          id="triggersTarget"
+          id={"triggersTarget"+this.id}
           onMouseDown={(e)=>this.checkTriggers(e,"onHold")}
           onMouseUp={(e)=>this.checkTriggers(e,"onRelease")}
           onWheel={(e)=>{this.camera.position.z -=(e.deltaY/1000)}}
@@ -951,12 +959,14 @@ class RenderEngine extends React.Component{
   }
   render(){
     return(
-      <div className="bg-black absolute w-full h-full flex">
-        <div className="relative w-full h-full mx-auto my-auto" id='engineDisplay'>
-          <div className="absolute w-full h-full">
-            {this.engineDisplay()}
-            {this.consolRend()}
-            {this.triggersTarget()}
+      <div className="relative w-full h-full mx-auto my-auto" id={'display'+this.id}>
+        <div className="bg-black absolute w-full h-full flex">
+          <div className="relative w-full h-full mx-auto my-auto" id={'engineDisplay'+this.id}>
+            <div className="absolute w-full h-full">
+              {this.engineDisplay()}
+              {this.consolRend()}
+              {this.triggersTarget()}
+            </div>
           </div>
         </div>
       </div>

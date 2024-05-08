@@ -5,6 +5,9 @@ import show from "../res/engineRes/eye.svg";
 import hide from "../res/engineRes/eye-closed.svg";
 import cross from "../res/engineRes/cross.svg";
 import save from "../res/engineRes/save.svg";
+import squares from "../res/engineRes/squares.svg";
+import square from "../res/engineRes/square.svg";
+import minus from "../res/engineRes/minus.svg";
 
 import gsap from "gsap";
 import $ from "jquery";
@@ -16,7 +19,10 @@ const icons ={
   show:show,
   hide:hide,
   cross:cross,
-  save:save
+  save:save,
+  squares:squares,
+  square:square,
+  minus:minus
 }
 
 class ListCheckedBox extends React.Component{
@@ -69,8 +75,8 @@ class IconButton extends React.Component{
   }
   render(){
     return(
-      <div className={"cursor-pointer max-w-10 max-h-10 "+ ("style" in this.props ? this.props.style : "")} onClick={()=>{this.props.action()}}>
-        <div className="w-full h-full bg-cover bg-no-repeat"
+      <div className={"cursor-pointer flex "+ ("style" in this.props ? this.props.style : "")} onClick={()=>{this.props.action()}}>
+        <div className={"bg-cover bg-no-repeat " + ("iconStyle" in this.props ? this.props.iconStyle : "w-full h-full")}
              style={{backgroundImage:"url('"+icons[this.props.icon]+"')"}} />
       </div>
     );
@@ -215,7 +221,6 @@ class InputTextArea extends React.Component {
   }
 
   render() {
-    console.log(this.props.value);
     let height = typeof this.props.height == 'string' ? ' ' + this.props.height + ' ' : ' h-36 ';
 
     let fatherStyle = typeof this.props.fatherStyle == 'string' ? ' ' + this.props.fatherStyle + ' ' : '';
