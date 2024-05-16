@@ -20,6 +20,7 @@ class WindowsEnvironment extends React.Component{
             ()=>windowsContent[contentId].content
           } 
           title={windowsContent[contentId].title} 
+          onResize={"onResize" in windowsContent[contentId] ? windowsContent[contentId].onResize : ()=>{console.log("nada en Windows")}}
           clicked={()=>this.clickWindow(contentId)}
           // exit={()=>this.props.exit()}
         />;
@@ -66,7 +67,7 @@ class WindowsEnvironment extends React.Component{
   }
   render(){
     return(
-      <div className="absolute pointer-events-none top-0 left-0 w-full h-full overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden bg-black">
         {this.renderWindows()}
         {this.renderTaskBar()}
       </div>

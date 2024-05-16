@@ -24,13 +24,35 @@ class ScriptE extends React.Component {
     Object.assign(saves,{[name] : script});
     localStorage.setItem("saves",JSON.stringify(saves));
   }
+  removeScript(name){
+    var saves = this.getSaves();
+    delete saves[name];
+    localStorage.setItem("saves",JSON.stringify(saves));
+  }
   save(id,script){
     return(
       <div className='p-2 w-full h-14'>
-        <div className='rounded-xl bg-sky-600 bg-opacity-60 flex'>
+        <div className='relative rounded-xl bg-sky-600 bg-opacity-60 flex'>
           <span className='my-auto'>{id}</span>
-          <Button1 style="my-auto" text="Load" action={()=>{this.script = script; console.log(script); this.forceUpdate();}}/>
-          DeleteIcon
+          <Button1 style="my-auto" text="Load" action={()=>{this.script = script; this.forceUpdate();}}/>
+          <IconButton icon="trash" style="h-6 w-6 m-1 absolute top-0 right-0"
+            action={()=>{
+              Swal.fire({
+                text: "Está seguro de que desea borrar el script: "+id,
+                icon: "question",
+                showDenyButton: true,
+                showConfirmButton: false,
+                showCancelButton: true,
+                denyButtonText: "Borrar",
+                cancelButtonText: "Cancelar"
+              }).then((result) => {
+                if (result.isDenied) {
+                  this.removeScript(id);
+                  this.forceUpdate();
+                  Swal.fire("Script borrado", "", "success");
+                }
+              });
+            }}/>
         </div>
       </div>
 
@@ -67,7 +89,7 @@ class ScriptE extends React.Component {
           <div className='relative h-full w-full text-white font-[Consolas] code'>
             <InputTextArea 
               height={"h-full"} 
-              value={this.script}
+              defaultValue={this.script}
               changeValue={(value)=>{this.script = value;}} />
           </div>
         </div>
@@ -103,7 +125,9 @@ class ScriptE extends React.Component {
                 this.saveScript(saveName.value,this.script);
               });
             }}/>
-            <Button1 text="Load" action={()=>{this.showSaves = true; this.forceUpdate();}}/>
+            <Button1 text="Load" action={()=>{
+              this.showSaves = true; 
+              this.forceUpdate();}}/>
           </div>
         </div>
       </>

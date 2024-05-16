@@ -9,6 +9,7 @@ import jQuery from 'jquery'
 	let ID = 'hwt';
 
 	let HighlightWithinTextarea = function($el, config) {
+		console.error($el)
 		this.init($el, config);
 	};
 
@@ -57,6 +58,7 @@ import jQuery from 'jquery'
 			this.$el
 				.addClass(ID + '-input ' + ID + '-content')
 				.on('input.' + ID, this.handleInput.bind(this))
+				.on('load', this.handleInput.bind(this))
 				.on('scroll.' + ID, this.handleScroll.bind(this));
 
 			this.$highlights = $('<div>', { class: ID + '-highlights ' + ID + '-content' });

@@ -12,8 +12,8 @@ class ScriptInterpreter {
         console.log(res);
         func(res);
       } catch (error) {
-        errorConsol("Error! error de lectura del script")
-        errorConsol(error.message)
+        errorConsol("Error! error de lectura del script");
+        errorConsol(error.message);
         console.log(error);
       }
 
@@ -435,6 +435,8 @@ class ScriptInterpreter {
           }else{
             Object.assign(scene.idDirectory,{[commandType[0]]:commandType[3]})//{id:type}
           }
+
+          let res;
           switch (commandType[3]) {
             case "GameVars":
               //Here you will need to add the id to the "value" object
@@ -446,15 +448,15 @@ class ScriptInterpreter {
               scene.graphObjects.push(value[0]);
               break;
             case "Trigger":
-              Object.assign(value[0],{id:commandType[0]});
-              if(value[0].relatedTo == "Keyboard"){
-                scene.keyboardTriggers.push(value[0]);
+              Object.assign(res,{id:commandType[0]});
+              Object.assign(res,{relatedTo:value[0]})
+              if(res.relatedTo == "Keyboard"){
+                scene.keyboardTriggers.push(res);
               }else{
-                scene.triggers.push(value[0]);
+                scene.triggers.push(res);
               }
               break;
             case "Animation":
-              let res;
               if( isNumeric(Object.keys(value[1])[0])){ //using keyframes
                 res = {keyframes:value[1]}
               }else{//using to

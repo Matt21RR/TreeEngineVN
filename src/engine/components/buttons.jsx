@@ -75,7 +75,7 @@ class IconButton extends React.Component{
   }
   render(){
     return(
-      <div className={"cursor-pointer flex "+ ("style" in this.props ? this.props.style : "")} onClick={()=>{this.props.action()}}>
+      <div className={"cursor-pointer flex "+ ("style" in this.props ? this.props.style : "h-6 w-6 m-1")} onClick={()=>{this.props.action()}}>
         <div className={"bg-cover bg-no-repeat " + ("iconStyle" in this.props ? this.props.iconStyle : "w-full h-full")}
              style={{backgroundImage:"url('"+icons[this.props.icon]+"')"}} />
       </div>
@@ -135,17 +135,22 @@ class InputTextArea extends React.Component {
                 highlight: 'new',
                 className: 'text-red-700'
             },
+            {//comentario
+              highlight: /\/\/[^\*]\s*.*/g,
+              className: 'text-[#6272A4]'
+              
+            },
+            {//*comentario
+              highlight: /\/\/\*\s*.*/g,
+              className: 'text-[#98C379]'
+            },
             {
               highlight: ['GraphObject','Trigger','Animation','CodedRoutine','(',')','{','}'],
               className: 'text-[#357FBF]'
             },
             {
-              highlight: /if( {0,})\(/g,
+              highlight: [/if( {0,})\(/g,/([^A-Za-z\d\w]{0,1})let( {1,})/g,/([^A-Za-z\d\w]{0,1})const( {1,})/g],
               className: 'text-[#DB974D]'
-            },
-            {
-                highlight:[ / {1}={1} {1}/g , / {1}\+{1} {1}/g , / {1}\<{1} {1}/g , / {1}\>{1} {1}/g , / {1}\+={1} {1}/g , / {1}=={1} {1}/g],
-                className: 'text-[#E53935]'
             },
             {
                 highlight: '=>',
@@ -156,29 +161,29 @@ class InputTextArea extends React.Component {
               className: 'text-[#86DBFD]'
             },
             {
-              highlight: /"(.*?)"/g,
+              highlight:[ /={1}/g , /\+{1}/g , /-{1}/g , /\*{1}/g , /\/{1}/g , /\<{1}/g , /\>{1}/g , /\+={1}/g , /=={1}/g],
+              className: 'text-[#E53935]'
+            },
+            {
+              highlight: [/"(.*?)"/g],
               className: 'text-[#A18649]'
             },
             {
               highlight: ['SET','WAIT','SHOW'],
               className: 'text-green-600'
-            },
-            {//comentario
-              highlight: /\/\/[^\*]\s*.*/g,
-              className: 'text-[#6272A4]'
-              
-            },
-            {//*comentario
-              highlight: /\/\/\*\s*.*/g,
-              className: 'text-[#98C379]'
-              
             }
         ]
       });
+      this.inputRef.current.value = "defaultValue" in this.props ? this.props.defaultValue : "";
+      $('#'+this.id).trigger("load");
       this.setState({
         inputMinHeight: this.inputBoxRef.current.offsetHeight,
       });
     }
+  }
+  componentDidUpdate(){
+    this.inputRef.current.value = "defaultValue" in this.props ? this.props.defaultValue : "";
+    $('#'+this.id).trigger("load");
   }
   
   componentWillUnmount() {
@@ -239,8 +244,25 @@ class InputTextArea extends React.Component {
               name={this.id}
               id={this.id}
               onChange={()=>this.changeValue()}
-              onKeyUp={e => (e.key == "Tab" ? this.hover() : null)}
-              onKeyDown={e => (e.key == "Tab" ? this.unhover(e) : null)} />
+              onKeyUp={e => (e.key == "Tab" ? e.preventDefault() : null)}
+              onKeyDown={e => {
+                if (e.key == 'Tab') {
+                  e.preventDefault();
+                  const element = $("#"+this.id).get(0);
+                  var start = element.selectionStart;
+                  var end = element.selectionEnd;
+              
+                  // set textarea value to: text before caret + tab + text after caret
+                  element.value = element.value.substring(0, start) +
+                    "  " + element.value.substring(end);
+              
+                  // put caret at right position again
+                  element.selectionStart =
+                    element.selectionEnd = start + 2;
+
+                  this.changeValue();
+                }
+              }} />
           </div>
         </label>
       </>

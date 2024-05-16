@@ -21,6 +21,8 @@ const requiredTextures = {
   restaurante:require("./gameRes/restaurante.png"),
   correo:require("./gameRes/correo.png"),
   parsel1:require("./gameRes/parsel1.png"),
+
+  spring:require("./gameRes/spring.jpg"),
 }
 const requiredSounds = {
   cierrePuerta: require('./gameRes/snd/doorClose.wav'),

@@ -1,7 +1,7 @@
 import gsap from 'gsap';
 import React from 'react';
-import { Config } from './engine/sections/Config';
-import { MainMenu } from "./engine/sections/MainMenu";
+// import { Config } from './engine/sections/Config';
+// import { MainMenu } from "./engine/sections/MainMenu";
 
 class Template extends React.Component {
   constructor(props) {
@@ -79,23 +79,23 @@ class Template extends React.Component {
     if(this.state.componentMounted){
       switch (this.state.section) {
         case 0://MainMenu
-          return (
-            <MainMenu
-              loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
-              loadNewGame={(onComplete) => { this.setState({ actualNode: null, storyVars: new Object() }, () => { onComplete(); }) }}
-              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
+          // return (
+          //   // <MainMenu
+          //   //   loadSavedGame={(actualNode, storyVars, onComplete) => { this.setState({ actualNode: actualNode, storyVars: storyVars }, () => { onComplete(); }) }}
+          //   //   loadNewGame={(onComplete) => { this.setState({ actualNode: null, storyVars: new Object() }, () => { onComplete(); }) }}
+          //   //   changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
   
-              aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
-            />
-          );
+          //   //   aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
+          //   // />
+          // );
           break;
         case 3:
-          return (
-            <Config
-              changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-              aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
-            />
-          );
+          // return (
+          //   // <Config
+          //   //   changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
+          //   //   aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
+          //   // />
+          // );
           break;  
 
       }

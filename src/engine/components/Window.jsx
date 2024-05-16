@@ -8,14 +8,15 @@ class Window extends React.Component {
   constructor(props){
     super(props);
     this.id = "window" + String(window.performance.now()).replaceAll(".","");
+    this.onResize = "onResize" in this.props ? this.props.onResize : ()=>{console.log("Nada en window")};
     this.fullSized = false;
     this.unfullSizedData = {
       top:"",
       left:"",
       width:"",
       height:""
-    }
-    this.a = (border,e)=>{this.resize(border,e);}
+    };
+    this.resizingFrom = "";
   }
   renderWindowTop(){
     return(
@@ -67,6 +68,8 @@ class Window extends React.Component {
     w.style.height = window.innerHeight+"px";
     w.style.left = (coords[0]*-1)+"px";
     w.style.top = (coords[1].replace(" ","")*-1)+"px";
+    
+    this.onResize();
   }
   reduceSize(){
     this.fullSized = false;
@@ -77,8 +80,12 @@ class Window extends React.Component {
     w.style.height = this.unfullSizedData.height;
     w.style.left = this.unfullSizedData.left;
     w.style.top = this.unfullSizedData.top;
+
+    this.onResize();
   }
   resize(border,ev){
+
+
     const e = ev.originalEvent;
     var mov = {x:e.movementX, y:e.movementY}
 
@@ -126,6 +133,7 @@ class Window extends React.Component {
         window.style.width = (width+mov.x)+"px";
         break;
     }
+    this.onResize();
   }
   renderResizeBorders(){
     if(!this.fullSized){
@@ -135,7 +143,7 @@ class Window extends React.Component {
           id={"top"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.a("top",e);e.preventDefault();});
+            $("body").on("mousemove",(e)=>{this.resize("top",e);e.preventDefault();});
             $("body").on("mouseup",()=>{$("body").off("mousemove");});
           }}
           />
@@ -144,7 +152,7 @@ class Window extends React.Component {
           id={"bottom"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.a("bottom",e);e.preventDefault();});
+            $("body").on("mousemove",(e)=>{this.resize("bottom",e);e.preventDefault();});
             $("body").on("mouseup",()=>{$("body").off("mousemove");});
           }}
           />
@@ -153,7 +161,7 @@ class Window extends React.Component {
           id={"left"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.a("left",e);e.preventDefault();});
+            $("body").on("mousemove",(e)=>{this.resize("left",e);e.preventDefault();});
             $("body").on("mouseup",()=>{$("body").off("mousemove");});
           }}
           />
@@ -162,7 +170,7 @@ class Window extends React.Component {
           id={"right"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.a("right",e);e.preventDefault();});
+            $("body").on("mousemove",(e)=>{this.resize("right",e);e.preventDefault();});
             $("body").on("mouseup",()=>{$("body").off("mousemove");});
           }}
           />
@@ -173,7 +181,7 @@ class Window extends React.Component {
           id={"topLeft"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.a("topLeft",e);e.preventDefault();});
+            $("body").on("mousemove",(e)=>{this.resize("topLeft",e);e.preventDefault();});
             $("body").on("mouseup",()=>{$("body").off("mousemove");});
           }}
           />
@@ -182,7 +190,7 @@ class Window extends React.Component {
           id={"topRight"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.a("topRight",e);e.preventDefault();});
+            $("body").on("mousemove",(e)=>{this.resize("topRight",e);e.preventDefault();});
             $("body").on("mouseup",()=>{$("body").off("mousemove");});
           }}
           />
@@ -191,7 +199,7 @@ class Window extends React.Component {
           id={"bottomRight"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.a("bottomRight",e);e.preventDefault();});
+            $("body").on("mousemove",(e)=>{this.resize("bottomRight",e);e.preventDefault();});
             $("body").on("mouseup",()=>{$("body").off("mousemove");});
           }}
           />
@@ -200,7 +208,7 @@ class Window extends React.Component {
           id={"bottomLeft"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.a("bottomLeft",e);e.preventDefault();});
+            $("body").on("mousemove",(e)=>{this.resize("bottomLeft",e);e.preventDefault();});
             $("body").on("mouseup",()=>{$("body").off("mousemove");});
           }}
           />

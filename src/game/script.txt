@@ -37,20 +37,20 @@ testState = new Animation("mapa",
 tienda = new GraphObject ({
   texture:"tienda",
   scale:0.1,
-  left:.45,
-  top:.18
+  x:.45,
+  y:.18
 })
 restaurante = new GraphObject  ({
   texture:"restaurante",
   scale:0.1,
-  left:.56,
-  top:.75
+  x:.56,
+  y:.75
 })
 correo = new GraphObject ({
   texture:"correo",
   scale:0.1,
-  left:.08,
-  top:.27
+  x:.08,
+  y:.27
 })
 entrarCorreo = new Trigger ({ 
   relatedTo:"correo",
@@ -73,11 +73,11 @@ test = new Animation ("mapa",{
 },{enabled:true,infinite:true})
 
 test1 = new Animation ("mapa",{
-    0:{left:-.002,top:.002,scale:1},
-    500:{left:.002,top:-.001,scale:1.0025},
-    1000:{left:.001,top:-.002,scale:1.005},
-    1500:{left:-.001,top:.001,scale:1.0025},
-    2000:{left:-.002,top:.002,scale:1}
+    0:{x:-.002,y:.002,scale:1},
+    500:{x:.002,y:-.001,scale:1.0025},
+    1000:{x:.001,y:-.002,scale:1.005},
+    1500:{x:-.001,y:.001,scale:1.0025},
+    2000:{x:-.002,y:.002,scale:1}
 },{enabled:true,infinite:true})
 
 //**DIALOG MISC????????=============================================
@@ -87,8 +87,8 @@ voiceByName = new GraphObject({
   boxColor:"black",
   scale:.1,
   color:"white",
-  top:.70,
-  left:.08,
+  y:.70,
+  x:.08,
   heightScale:.7,
   margin:.1,
   z:-2
@@ -98,8 +98,8 @@ dialogbox = new GraphObject({
   color:"white",
   scale:.8,
   heightScale:.25,
-  top:.75,
-  left:.1,
+  y:.75,
+  x:.1,
   fontSize:18,
   text:"",
   margin:.05,
@@ -112,8 +112,8 @@ botonAvanzarDialogo = new GraphObject({
   scale:.05,
   text:"Next",
   fontSize:24,
-  left:.85,
-  top:.9
+  x:.85,
+  y:.9
 })
 avanzarDialogo = new Trigger({
   relatedTo:"botonAvanzarDialogo",
@@ -133,8 +133,8 @@ narrationBox = new GraphObject({
   boxColor:"rgb(211,103,5)",
   color:"white",
   scale:.7,
-  top:.15,
-  left:.15,
+  y:.15,
+  x:.15,
   fontSize:18,
   text:"",
   margin:.1,
@@ -147,8 +147,8 @@ botonNarracion = new GraphObject({
   scale:.1,
   text:"Next",
   fontSize:24,
-  left:.8,
-  top:.75
+  x:.8,
+  y:.75
 })
 avanzarNarracion = new Trigger({
   relatedTo:"botonNarracion",

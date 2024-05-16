@@ -11,6 +11,8 @@ class GraphObject{
   #texture
   #textureName
 
+  #canvasFunction
+
   #id
   #brightness
   #contrast
@@ -28,8 +30,8 @@ class GraphObject{
 
   #opacity
 
-  #top
-  #left
+  #y
+  #x
 
   #scale
 
@@ -43,6 +45,8 @@ class GraphObject{
   #heightScale
 
   #states = new States(this);
+
+  #useEngineUnits
   
   #getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
@@ -83,8 +87,8 @@ class GraphObject{
 
     this.#opacity = graphInfo.opacity != undefined ? graphInfo.opacity: 1;
 
-    this.#top = graphInfo.top != undefined ? graphInfo.top: 0;
-    this.#left = graphInfo.left != undefined ? graphInfo.left: 0;
+    this.#y = graphInfo.y != undefined ? graphInfo.y: 0;
+    this.#x = graphInfo.x != undefined ? graphInfo.x: 0;
     //multipliers of canvasResolution
     //Resets the width and height scales
     this.#scale = graphInfo.scale != undefined ? graphInfo.scale: 1;
@@ -100,6 +104,8 @@ class GraphObject{
     this.#heightScale = graphInfo.heightScale != undefined ? graphInfo.heightScale: 1;
 
     this.#states = graphInfo.states != undefined ? new States(this,graphInfo.states) : {};
+
+    this.#useEngineUnits = graphInfo.useEngineUnits != undefined ? graphInfo.useEngineUnits: false;
   }
   get enabled() {return this.#enabled}
   set enabled(x) {this.#enabled = typeof x == "boolean"? x : false}
@@ -305,16 +311,17 @@ class GraphObject{
     }
   }
 
-  get top() {return this.#top;}
-  set top(x) {this.#top = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);}
+  get y() {return this.#y;}
+  set y(x) {this.#y = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);}
 
-  get left() {return this.#left;}
-  set left(x) {this.#left = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);}
+  get x() {return this.#x;}
+  set x(x) {this.#x = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);}
 
   get scale() {return this.#scale;}
   set scale(x) {this.#scale = !isNaN(x)? (x >= 0 ? x : 1 ) : 1}
 
   get rotate() {return (this.#rotate*180)/Math.PI;}
+  get rotateRad() {return this.#rotate;}
   set rotate(x) {this.#rotate = parseFloat(x)*Math.PI/180;}
 
   get z() {return this.#z;}
@@ -333,6 +340,9 @@ class GraphObject{
 
   get is() {return this.#states.state}
   set is(x) {this.#states.state = x;}
+
+  get useEngineUnits() {return this.#useEngineUnits}
+  set useEngineUnits(x) {this.#useEngineUnits = x}
 
   get(){// TF THIS ARE bEING USED?
     return this;
