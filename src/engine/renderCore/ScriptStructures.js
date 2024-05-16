@@ -16,7 +16,7 @@ const scripttructures = {
         { type: "object", keysType: "number", concatUnder:"keyframes"},
         { type: "object", keysType: "notNumber", concatUnder:"to" }
       ],
-      { type:"object" } //config
+      { type:"object" } //configfgfgfgfgfgfgfgfg
     ]
   },
   Trigger: {
