@@ -60,7 +60,7 @@ class Button1 extends React.Component{
   render(){
     return(
       <div 
-        className={" cursor-pointer m-1 p-1 rounded-md bg-teal-500 text-white w-fit h-fit text-[12px]" + ((this.props.hide) ? " hidden":"")} 
+        className={" cursor-pointer p-1 rounded-md bg-teal-500 text-white w-fit h-fit text-[12px] " + ("style" in this.props ? this.props.style : "m-1") + ((this.props.hide) ? " hidden":"")} 
         onClick={()=>{this.props.action()}}
         onMouseEnter={()=>{if("enter" in this.props){this.props.enter();}}}
         onMouseLeave={()=>{if("leave" in this.props){this.props.leave();}}}>
@@ -102,9 +102,8 @@ class MenuButton extends React.Component{
   }
   render(){
     this.textSize = (this.props.textSize != undefined ? this.props.textSize : 18)+"px";
-    // console.log(this.props.hide);
     return(
-      <div className={" cursor-pointer m-1 text-white w-fit h-fit hover:text-slate-400" + ((this.props.hide==true) ? " hidden":"")} onClick={this.props.action != undefined ? ()=>{this.props.action()} : ()=>{throw new Error("Accion para el botón con texto '"+this.props.text+"' no definida")}} style={{fontSize:this.textSize, fontFamily:"Harry Thin", letterSpacing:"0.15em", transform:"scaleY(0.9)",  filter: "invert(0%)"}}>
+      <div className={" cursor-pointer m-1 text-white w-fit h-fit hover:text-slate-400 "  + ("style" in this.props ? this.props.style : "") + (this.props.hide ? " hidden":"")} onClick={this.props.action != undefined ? ()=>{this.props.action()} : ()=>{throw new Error("Accion para el botón con texto '"+this.props.text+"' no definida")}} style={{fontSize:this.textSize, fontFamily:"Harry Thin", letterSpacing:"0.15em", transform:"scaleY(0.9)",  filter: "invert(0%)"}}>
         {this.props.text}
       </div>
     );
@@ -274,6 +273,7 @@ class InputText extends React.Component{
     return(
       <input 
         className={" bg-black my-0.5 px-1 rounded-md text-white text-[12px] " + ("style" in this.props ? this.props.style : "") + ((this.props.hide) ? " hidden":"")} 
+        defaultValue={"value" in this.props ? this.props.value : ""}
         onClick={()=>{if("action" in this.props){this.props.action()}}}
         onChange={(e)=>{if("change" in this.props){this.props.change(e.target.value)}}}
         onMouseEnter={()=>{if("enter" in this.props){this.props.enter();}}}

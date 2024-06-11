@@ -436,7 +436,7 @@ class ScriptInterpreter {
             Object.assign(scene.idDirectory,{[commandType[0]]:commandType[3]})//{id:type}
           }
 
-          let res;
+          var res = {};
           switch (commandType[3]) {
             case "GameVars":
               //Here you will need to add the id to the "value" object
@@ -449,7 +449,8 @@ class ScriptInterpreter {
               break;
             case "Trigger":
               Object.assign(res,{id:commandType[0]});
-              Object.assign(res,{relatedTo:value[0]})
+              Object.assign(res,{relatedTo:value[0]});
+              Object.assign(res,value[1])
               if(res.relatedTo == "Keyboard"){
                 scene.keyboardTriggers.push(res);
               }else{

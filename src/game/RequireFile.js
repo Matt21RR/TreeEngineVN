@@ -22,7 +22,9 @@ const requiredTextures = {
   correo:require("./gameRes/correo.png"),
   parsel1:require("./gameRes/parsel1.png"),
 
-  spring:require("./gameRes/spring.jpg"),
+  spring:require("./gameRes/spring.png"),
+  wall:require("./gameRes/wall.jpg"),
+  wood:require("./gameRes/wood.jpg"),
 }
 const requiredSounds = {
   cierrePuerta: require('./gameRes/snd/doorClose.wav'),

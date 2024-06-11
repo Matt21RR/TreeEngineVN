@@ -10,7 +10,7 @@ class ScriptE extends React.Component {
   constructor(props) {
     super(props);
     this.history = [];
-    this.script = "";
+    this.script = "scriptNotepad" in localStorage ? localStorage.getItem("scriptNotepad") : "";
     this.sceneIdWhereRun = "";
     this.showSaves = false;
   }
@@ -83,14 +83,14 @@ class ScriptE extends React.Component {
   }
   content(){
     return(
-      <>
+      <div className='relative h-full w-full flex flex-col'>
         <div className='relative h-full w-full text-white overflow-auto'>
             
           <div className='relative h-full w-full text-white font-[Consolas] code'>
             <InputTextArea 
               height={"h-full"} 
               defaultValue={this.script}
-              changeValue={(value)=>{this.script = value;}} />
+              changeValue={(value)=>{this.script = value;localStorage.setItem("scriptNotepad",value)}} />
           </div>
         </div>
         <div className='bottom-0 h-8 w-full bg-gray-700 flex flex-row-reverse relative'>
@@ -130,7 +130,7 @@ class ScriptE extends React.Component {
               this.forceUpdate();}}/>
           </div>
         </div>
-      </>
+      </div>
     );
   }
   render() {

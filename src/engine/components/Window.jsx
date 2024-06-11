@@ -8,6 +8,7 @@ class Window extends React.Component {
   constructor(props){
     super(props);
     this.id = "window" + String(window.performance.now()).replaceAll(".","");
+    this.resizeBlocked = "resizeBlocked" in this.props ? this.props.resizeBlocked : false;
     this.onResize = "onResize" in this.props ? this.props.onResize : ()=>{console.log("Nada en window")};
     this.fullSized = false;
     this.unfullSizedData = {
@@ -84,7 +85,7 @@ class Window extends React.Component {
     this.onResize();
   }
   resize(border,ev){
-
+    if(this.resizeBlocked){return;}
 
     const e = ev.originalEvent;
     var mov = {x:e.movementX, y:e.movementY}
@@ -242,11 +243,13 @@ class Window extends React.Component {
         }}
         handle={"#"+this.id}
       >
-        <div className='absolute w-[400px] h-[300px] top-0 left-0 flex flex-col pointer-events-auto' id={"body"+this.id}>
+        <div className={'absolute top-0 left-0 flex flex-col pointer-events-auto '}  style={("minRes" in this.props ? {width:this.props.minRes.width+"px", height:this.props.minRes.height+"px"} : {width:"400px", height:"300px"})} id={"body"+this.id}>
           <div className='flex flex-row w-full h-full'>
-            <div className='relative w-full h-full border-[1px] border-gray-700 bg-[rgba(0,0,0,0.90)] flex flex-col'>
+            <div className='relative w-full h-full min-w-full max-h-full border-[1px] border-gray-700 flex flex-col'>
               {this.renderWindowTop()}
-              {"content" in  this.props ? this.props.content() : <div className='text-white'>Content</div>}
+              <div className='relative w-full h-full bg-[rgba(0,0,0,0.90)] flex flex-col overflow-y-auto'>
+                {"content" in  this.props ? this.props.content() : <div className='text-white'>Content</div>}
+              </div>
             </div>
 
           </div>

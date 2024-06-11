@@ -150,7 +150,7 @@ class EditTools extends React.Component {
           className="relative" 
           style={{
             zIndex:this.renderingOrder.indexOf(windowId)+1, 
-            filter:"opacity("+(this.renderingOrder.indexOf(windowId)+1 == this.renderingOrder.length ? 1 : .5)+") "+(this.renderingOrder.indexOf(windowId)+1 != this.renderingOrder.length ? "grayscale(.8)" : "")}}
+            filter:"opacity("+(this.renderingOrder.indexOf(windowId)+1 == this.renderingOrder.length ? 1 : .9)+") "+(this.renderingOrder.indexOf(windowId)+1 != this.renderingOrder.length ? "grayscale(.3)" : "")}}
         >
           {windows[windowId]}
         </div>
@@ -180,18 +180,22 @@ class EditTools extends React.Component {
             }}/>
             <Button1 text="Script" action={()=>{
               this.renderingSubTools.scriptEditor = true;
+              this.clickWindow("scriptWindow");
               this.forceUpdate();
             }}/>
             <Button1 text="Textures" action={()=>{
               this.renderingSubTools.textures = true;
+              this.clickWindow("texturesWindow");
               this.forceUpdate();
             }}/>
             <Button1 text="Sounds" action={()=>{
               this.renderingSubTools.sounds = true;
+              this.clickWindow("soundsWindow");
               this.forceUpdate();
             }}/>
             <Button1 text="Triggers" action={()=>{
               this.renderingSubTools.triggers = true;
+              this.clickWindow("triggersWindow");
               this.forceUpdate();
             }}/>
           </div>
@@ -204,7 +208,7 @@ class EditTools extends React.Component {
     return(
       <>
         <div className="absolute w-full h-full">
-          <RenderEngine setEngine={(engine)=>{this.engine=engine; console.log(this.engine); this.editionKeys(); this.forceUpdate();}}/>
+          <RenderEngine setEngine={(engine)=>{this.engine=engine; this.editionKeys(); this.forceUpdate();}}/>
         </div>
         <div className={"w-full max-h-[200px] absolute bottom-0"+(this.hide?"hidden":"")} id="GUI">
           {this.showMainTools()}

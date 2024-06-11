@@ -21,6 +21,8 @@ class WindowsEnvironment extends React.Component{
           } 
           title={windowsContent[contentId].title} 
           onResize={"onResize" in windowsContent[contentId] ? windowsContent[contentId].onResize : ()=>{console.log("nada en Windows")}}
+          minRes={"minRes" in windowsContent[contentId] ? windowsContent[contentId].minRes : {width:400,height:300} }
+          resizeBlocked={"resizeBlocked" in windowsContent[contentId] ? windowsContent[contentId].resizeBlocked : false }
           clicked={()=>this.clickWindow(contentId)}
           // exit={()=>this.props.exit()}
         />;
@@ -49,7 +51,7 @@ class WindowsEnvironment extends React.Component{
           className="relative" 
           style={{
             zIndex:this.renderingOrder.indexOf(windowId)+1, 
-            filter:"opacity("+(this.renderingOrder.indexOf(windowId)+1 == this.renderingOrder.length ? 1 : .5)+") "+(this.renderingOrder.indexOf(windowId)+1 != this.renderingOrder.length ? "grayscale(.8)" : "")}}
+            filter:"opacity("+(this.renderingOrder.indexOf(windowId)+1 == this.renderingOrder.length ? 1 : .9)+") "+(this.renderingOrder.indexOf(windowId)+1 != this.renderingOrder.length ? "grayscale(.3)" : "")}}
         >
           {windows[windowId]}
         </div>

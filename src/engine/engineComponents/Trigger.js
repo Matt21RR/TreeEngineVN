@@ -53,9 +53,12 @@ class Trigger{
   check(engineRef = new RenderEngine(),action = new String()){
     if(action == "mouseMove")//check onEnter
       action = "onEnter";
-    if(this[action] == null || !this.enabled)
+    if(this[action] == null || !this.enabled){
+      // console.error("no se encontro ninguna accion con ese nombre");
+      // console.log(this,action);
       return;
-    
+    }
+    // console.log(action);
     const numberOfArguments = this[action].length;
     if(numberOfArguments == 0){
       this[action]();

@@ -15,6 +15,8 @@ mapa = new GraphObject ({
   texture:"mapa",
   brightness:1,
   scale:1,
+  x:.5,
+  y:.5,
   z:0,  
   states:{
     burning:{
@@ -52,35 +54,35 @@ correo = new GraphObject ({
   x:.08,
   y:.27
 })
-entrarCorreo = new Trigger ({ 
-  relatedTo:"correo",
+entrarCorreo = new Trigger ("correo",{
   enabled:true,
   onRelease:(engine)=>{
     engine.loadScene("oficinaPostal");
   }
 })
-entrarTienda = new Trigger ({
-  relatedTo:"tienda",
+entrarTienda = new Trigger ("tienda",{
   onRelease:(engine)=>{
     engine.loadScene("testScene");
   }
 })
 
 test = new Animation ("mapa",{
-    0:{blur:0,brightness:0},
-    4000:{blur:7,brightness:4},
-    6000:{blur:0,brightness:0}
+    0:{blur:0,brightness:1},
+    2000:{blur:5,brightness:1},
+    4000:{blur:0,brightness:1}
 },{enabled:true,infinite:true})
 
 test1 = new Animation ("mapa",{
-    0:{x:-.002,y:.002,scale:1},
-    500:{x:.002,y:-.001,scale:1.0025},
-    1000:{x:.001,y:-.002,scale:1.005},
-    1500:{x:-.001,y:.001,scale:1.0025},
-    2000:{x:-.002,y:.002,scale:1}
-},{enabled:true,infinite:true})
+    0:{x:.498,y:.501,scale:1},
+    500:{x:.502,y:.499,scale:1.0025},
+    1000:{x:.501,y:.498,scale:1.005},
+    1500:{x:.499,y:.501,scale:1.0025},
+    2000:{x:.498,y:.502,scale:1}
+},{enabled:false,infinite:true})
 
 //**DIALOG MISC????????=============================================
+SCENE ID testScene
+
 voiceByName = new GraphObject({
   text:"Gta",
   fontSize:22,
@@ -115,8 +117,7 @@ botonAvanzarDialogo = new GraphObject({
   x:.85,
   y:.9
 })
-avanzarDialogo = new Trigger({
-  relatedTo:"botonAvanzarDialogo",
+avanzarDialogo = new Trigger("botonAvanzarDialogo",{
   onRelease:(engine)=>{
     engine.graphArray.get("dialogbox").text = "";
     if(engine.dialogNumber+1<engine.dialog.length){
@@ -150,8 +151,7 @@ botonNarracion = new GraphObject({
   x:.8,
   y:.75
 })
-avanzarNarracion = new Trigger({
-  relatedTo:"botonNarracion",
+avanzarNarracion = new Trigger("botonNarracion",{
   onRelease:(engine)=>{
     engine.paragraphNumber++;
     

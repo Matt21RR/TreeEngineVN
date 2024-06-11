@@ -23,6 +23,7 @@
     "plotly.js": "^2.32.0",
     "plotly.js-dist": "^2.32.0",
     "plotly.js-dist-min": "^2.32.0",
+    "random-normal": "^1.0.0",
     "react": "^18.2.0",
     "react-app-polyfill": "^3.0.0",
     "react-dom": "^18.2.0",

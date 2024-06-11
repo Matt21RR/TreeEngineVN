@@ -112,6 +112,7 @@ class RenderEngine extends React.Component{
   componentDidMount(){
     if (!this.mounted) {
       this.mounted = true;
+      console.clear();
       //* ASPECT RATIO
       window.setTimeout(() => {
         this.aspectRatioCalc();
@@ -129,7 +130,7 @@ class RenderEngine extends React.Component{
        
       //*LOAD GAME
       const k = new ScriptInterpreter;
-      k.build((masterScript)=>{this.loadGame(masterScript); this.props.setEngine(this);},(error)=>{this.consol(error)});
+      k.build((masterScript)=>{this.loadGame(masterScript); if("setEngine" in  this.props ){this.props.setEngine(this);}},(error)=>{this.consol(error)});
       
       //*TECLADO
       const self = this;
@@ -277,6 +278,7 @@ class RenderEngine extends React.Component{
     this.isReady = false;
     this.forceUpdate();
     //reset values
+    this.engineTime = 0;
     this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
     this.graphObject = GraphObject;
     this.animation = Animation;
@@ -480,7 +482,13 @@ class RenderEngine extends React.Component{
   renderScene(){
     if(this.isReady){
       return(
-        <Canvas CELGF={(error)=>this.consol(error)} displayResolution={this.engineDisplayRes} id={"renderCanvas"} fps={24} scale={1} showFps={true}
+        <Canvas 
+        CELGF={(error)=>this.consol(error)} 
+        displayResolution={this.engineDisplayRes} 
+        id={"renderCanvas"} 
+        fps={24} 
+        scale={1} 
+        showFps={"showFps" in this.props ? this.props.showFps : true}
         renderGraphics={(canvas)=>{
           this.canvasRef = canvas;
           canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
@@ -709,29 +717,64 @@ class RenderEngine extends React.Component{
           //*part seven: draw canvas grid
           if(this.showCanvasGrid){
             if(this.drawPerspectiveLayersLimits && this.camera.usePerspective){}else{
+              const rM = this.camera.rotationMatrix;
+              const base = {
+                x: -this.camera.position.x+.5,
+                y: -this.camera.position.y,
+                z: -this.camera.position.z+0.65
+              }
+              const grid = {
+                x: rM.Axx*(base.x) + rM.Axy*(base.y) + rM.Axz*(base.z),
+                y: rM.Ayx*(base.x) + rM.Ayy*(base.y) + rM.Ayz*(base.z),
+                z: rM.Azx*((base.x)) + rM.Azy*((base.y)) + rM.Azz*(base.z)
+              }
+
+              const perspectiveDiff = 1-((1/(grid.z-(this.camera.position.z)))-(1))/((1/this.camera.maxZ)-(1));
+              testD = perspectiveDiff;
+              const toAddSize = perspectiveDiff * tangencialConstant*(canvas.resolutionHeight)*this.camera.maxZ;
+              const computedPercentageSize = clientUnitaryHeightPercentageConstant * (toAddSize);
+              const perspectiveScale = computedPercentageSize/100;
+
+              //*recalculate gobject coords
+              var perspectiveLayer = {
+                width:canvas.resolutionHeight*perspectiveScale,
+                height:canvas.resolutionHeight*perspectiveScale
+              }
+                //it will calc were the image must to be, inside the perspectiveLayer
+              grid.x *= perspectiveLayer.width;
+              grid.y *= perspectiveLayer.height;
+              //now add the origin of the perspectiveLayer
+              grid.x += -(perspectiveLayer.width-canvas.resolutionHeight)*this.camera.origin.x;
+              grid.y += -(perspectiveLayer.height-canvas.resolutionHeight)*this.camera.origin.y;
+
+              grid.x = Math.round(grid.x);
+              grid.y = Math.round(grid.y);
+
+              const height = canvas.resolutionHeight * perspectiveScale;
+
               canvas.context.beginPath();
               canvas.context.lineWidth = 1;
               canvas.context.strokeStyle = "green";
               //create grid
-              const length = 1.7
-              for (let line = 0; line < length; line +=.1) {
+              const length = 2
+              for (let line = -1; line < length; line +=.1) {
                 //vertical
                 canvas.context.moveTo(
-                  canvas.resolutionHeight*line,
-                  0
+                  (height*line) + grid.x,
+                  0 + grid.y
                 );
                 canvas.context.lineTo(
-                  canvas.resolutionHeight*line,
-                  canvas.resolutionHeight*length
+                  (height*line) + grid.x,
+                  (height*length) + grid.y
                 );
                 //horizontal
                 canvas.context.moveTo(
-                  0,
-                  canvas.resolutionHeight*line
+                  0 + grid.x,
+                  (height*line) + grid.y
                 );
                 canvas.context.lineTo(
-                  canvas.resolutionHeight*length,
-                  canvas.resolutionHeight*line
+                  (height*length) + grid.x,
+                  (height*line) + grid.y
                 );
               }
               canvas.context.closePath();
@@ -743,8 +786,8 @@ class RenderEngine extends React.Component{
                 for (let vertical = 0; vertical < length; vertical+=.1) {
                   canvas.context.fillText(
                     Math.round(horizontal*10)/10+", "+Math.round(vertical*10)/10,
-                    (canvas.resolutionHeight*horizontal)-38,
-                    (canvas.resolutionHeight*vertical)-4 );
+                    (height*horizontal)-38 + (grid.x),
+                    (height*vertical)-4 + (grid.y));
                 }
               }
             }
@@ -840,7 +883,7 @@ class RenderEngine extends React.Component{
     mY += (0.5-this.camera.origin.y);
 
     var targetGraphObjectId = "";
-    const reversedRenderOrderList = [].concat(this.renderingOrderById).reverse();
+    var reversedRenderOrderList = [].concat(this.renderingOrderById).reverse();
     const objectsWithTriggersList = this.triggers.relatedToReversedList();
     const triggersIdList = this.triggers.ids();
 
@@ -853,10 +896,11 @@ class RenderEngine extends React.Component{
         objectHeight = (this.texturesList.get(gO.textureName).texture.naturalHeight/this.texturesList.get(gO.textureName).texture.naturalWidth)*gO.scale*gO.heightScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
       }else{
         objectHeight = gO.scale*gO.heightScale;
+        objectWidth = gO.scale*gO.widthScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
       }
-      const gOy = gO.y - (objectHeight/2);
-      const gOx = gO.x - (objectWidth/2);
-      if(mY>=gOy){
+      const gOy = gO.textureName==null ? gO.y : gO.y - (objectHeight/2);
+      const gOx = gO.textureName==null ? gO.x : gO.x - (objectWidth/2);
+      if(mY>=gOy && gO.id != "spring"){
         if(mX>=gOx){
           if(mY<=(gOy+(objectHeight))){
             if(mX<=(gOx+(objectWidth))){
@@ -876,6 +920,7 @@ class RenderEngine extends React.Component{
         }
       }
     }
+    console.log("?")
     if(action == "mouseMove"){
       //onLeave part, activar el onLeave en todos aquellos triggers que no se activaron previamente
       let unexecutedTriggers;

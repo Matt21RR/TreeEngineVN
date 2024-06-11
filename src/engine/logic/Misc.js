@@ -95,4 +95,15 @@ function halfRounder(numb){
 function isNumeric(data){
   return (!isNaN(parseFloat(data)));
 }
-export {generateRndRGBColor, random, removeCharAt, objectSetValue,objectAddElement,objectChangeKeyName,mobileCheck,halfRounder,isNumeric}
+/**
+ * Closest number in an array of numbers
+ * @param {*} ar 
+ * @param {*} search 
+ */
+function closest(ar,search){ 
+  //console.log(ar,search);
+  return ar.reduce((a, b) => {
+    return Math.abs(b - search) < Math.abs(a - search) ? b : a;
+  });
+}
+export {generateRndRGBColor, random, removeCharAt, objectSetValue,objectAddElement,objectChangeKeyName,mobileCheck,halfRounder,isNumeric,closest}

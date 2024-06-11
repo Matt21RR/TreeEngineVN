@@ -90,12 +90,6 @@ class Template extends React.Component {
           // );
           break;
         case 3:
-          // return (
-          //   // <Config
-          //   //   changeSection={(sectionToLoad) => { this.changeSection(sectionToLoad) }}
-          //   //   aspectRatioCalc={(op) => { this.aspectRatioCalc(op) }}
-          //   // />
-          // );
           break;  
 
       }

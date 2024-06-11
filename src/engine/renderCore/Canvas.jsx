@@ -29,20 +29,7 @@ class Canvas extends React.Component{
     this.onLoad = this.props.onLoad ? this.props.onLoad : (canvas)=>{}//Do something after the canvas params have been set
     this.onResize = this.props.onResize ? this.props.onResize : (canvas)=>{}//Do something after the canvas have been resized
     this.animateGraphics = this.props.animateGraphics ? this.props.animateGraphics : (canvas)=>{}
-    this.renderGraphics = this.props.renderGraphics ? this.props.renderGraphics : (canvas,fps)=>{
-      canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
-      canvas.context.beginPath();
-      canvas.context.fillStyle = "orange";
-      canvas.context.font = (12*this.scale)+"px Verdana";
-      canvas.context.fillText("FpsAdjustValue: "+fps.fpsAdjustValue, 5, 30*this.scale);
-      canvas.context.fillText("AverageFps(Last 5 seconds): "+fps.promedio, 5, 45*this.scale);
-      canvas.context.fillText("Interval: "+fps.elapsed, 5, 60*this.scale);
-      canvas.context.fillText("Threads: "+this.engineThreads, 5, 75*this.scale);
-      canvas.context.fillText("Resolution: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 90*this.scale);
-      canvas.context.fillText("scale: "+this.scale, 5, 105*this.scale);
-      canvas.context.closePath();
-      canvas.context.fill();
-    }
+    this.renderGraphics = this.props.renderGraphics ;
 
     this.afterEffects = this.props.afterEffects ? this.props.afterEffects : (canvas)=>{}
     
@@ -73,7 +60,7 @@ class Canvas extends React.Component{
     const resW = Math.floor(this.props.displayResolution.width * this.scale * window.devicePixelRatio);
     
     if(resH != this.resolutionHeight || resW != this.resolutionWidth){
-      window.finalWarn = 0;
+      //window.finalWarn = 0;
       if(!this.engineKilled && canvasInstances.checker(this.props.id,this.id)){
         const canvas = this.element.current;
         this.resolutionHeight = resH;
@@ -118,13 +105,13 @@ class Canvas extends React.Component{
       $(window).on("focus", function (e) {
         if(!self.engineKilled && canvasInstances.checker(self.props.id,self.id)){
           self.stopEngine = true;
-          window.finalWarn = 0;
+          //window.finalWarn = 0;
           setTimeout(() => {
               self.stopEngine = false;
               if(self.engineThreads != 0)
                 self.engineThreads = 0;
               self.engine();
-          }, 200);
+          }, 600);
         }
       });
       //set the every graphic object data

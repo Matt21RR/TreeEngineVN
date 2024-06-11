@@ -274,7 +274,7 @@ class Animation{
               setAnimationVars(true);
 
             }else{
-              console.warn("restarting");
+              // console.warn("restarting");
               if(Object.keys(this.#keyframes).length > 0){
                 setKeyFrame(0);
                 setAnimationVars(true);

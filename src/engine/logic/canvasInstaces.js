@@ -12,22 +12,22 @@ class canvasInstances {
     window.canvasInstances[hardcodedId] = dynamicId;
 
     window.finalWarn = 0;
-    // console.log(window.canvasInstances);
+    console.log(window.canvasInstances);
   }
-  static checker(hardcodedId, dynamicId){ 
-    const tPrev = window.scafford;
-    window.scafford = window.performance.now();
-
+  static checker(hardcodedId, dynamicId){ //REMOVED THE RECALLING TO DRAW CHECKING
     var res = window.canvasInstances[hardcodedId] == undefined? false : window.canvasInstances[hardcodedId] == dynamicId;
-    if(tPrev != undefined){
-      if(window.scafford-tPrev<6)
-        if(window.finalWarn>3){
-          res = false;
-          window.finalWarn = 0;
-        }else{
-          window.finalWarn++;
-        }
+    if("registrant" in window){
+      if(window.registrant.reduce((partialSum, a) => partialSum + a, 0) >= 1000){
+        // console.log("ticks per second: ", window.registrant.length);
+        window.registrant = [];
+      }
+    }else{window.registrant = [];}
+    if("delting" in window){
+      const delta = performance.now() - window.delting;
+      // console.log(dynamicId,res,delta);
+      window.registrant.push(delta);
     }
+    window.delting = performance.now();
     return res;
   }    
 }
