@@ -1,3 +1,43 @@
+SCENE ID a
+
+SET TEXTURES [
+  "engineLogo",
+  "next1",
+  "next2",
+  "next3",
+  "next4",
+  "next5",
+  "next6",
+  "next7",
+  "next8",
+  "next9",
+  "next10",
+  "next11",
+  "next12",
+  "next13",
+  "next14",
+  "next15",
+]
+
+dialogButton = new TextureAnim([
+
+],{duration:4000})
+
+engineLogo = new GraphObject ({
+  texture:"engineLogo",
+  scale:1,
+  blur:22,
+  x:.85,
+  y:.5
+})
+
+engLogoAnim = new Animation ("engineLogo",{
+  0:{blur:22},
+  3000:{blur:18,scale:.95},
+  3500:{blur:0,scale:.9},
+  4000:{blur:0,scale:.85} 
+},{enabled:true})
+
 SCENE ID mapa
 
 SET TEXTURES [
@@ -68,7 +108,7 @@ entrarTienda = new Trigger ("tienda",{
 
 test = new Animation ("mapa",{
     0:{blur:0,brightness:1},
-    2000:{blur:5,brightness:1},
+    2000:{blur:22,brightness:1},
     4000:{blur:0,brightness:1}
 },{enabled:true,infinite:true})
 

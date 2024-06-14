@@ -287,6 +287,7 @@ class ScriptInterpreter {
       let scene = {
         gameVars:{},
         textures:null,
+        textureAnims:[],
         sounds:null,
         graphObjects:[],
         triggers:[],
@@ -443,6 +444,11 @@ class ScriptInterpreter {
               Object.assign(value[0],{id:commandType[0]})
               scene.gameVars = value[0];
               break;
+            case "TextureAnim":
+              res = {list:value[0]};
+              Object.assign(res,{id:commandType[0]});
+              Object.assign(res,value[1])
+              scene.textureAnims.push(res);
             case "GraphObject":
               Object.assign(value[0],{id:commandType[0]})
               scene.graphObjects.push(value[0]);

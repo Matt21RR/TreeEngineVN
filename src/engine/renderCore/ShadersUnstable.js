@@ -1,6 +1,6 @@
-import { GPU, input } from "gpu.js";
-import { closest } from "../logic/Misc";
+import { GPU } from "gpu.js";
 
+import * as StackBlur from "stackblur-canvas";
 class Shader {
   #id
   #texture
@@ -11,11 +11,11 @@ class Shader {
 
   #reducedTexture
 
+  #textureData
+
   #radialBlurTest
-  #toGraphicConverter
   #blurShader
-  #blurShaderIncrease
-  #blurShaderReduce
+  #blurCanvas
   #chromaticShader
 
   #blurAplied
@@ -23,15 +23,25 @@ class Shader {
 
   #renderedTree
 
-  #decomp
-
+  setTextureData(){
+    const canvas = this.#blurCanvas;
+    this.#textureData = canvas.getContext('2d').getImageData(0,0,this.#resolution.width, this.#resolution.height);
+  }
   
   // copyCanvas returns a canvas containing the same image as the given canvas.
-  copyCanvas(original) {
+  /**
+   * 
+   * @param {*} original 
+   * @param {*} createMode 
+   * @returns HTMLCanvasElement
+   */
+  copyCanvas(original,createMode = false) {
     var copy = document.createElement('canvas');
     copy.width = original.width;
     copy.height = original.height;
-    copy.getContext('2d').drawImage(original, 0, 0);  // Copy the image.
+    if(!createMode){
+      copy.getContext('2d').drawImage(original, 0, 0);  // Copy the image.
+    }
     return copy;
   }
 
@@ -89,6 +99,10 @@ class Shader {
       this.#resolution.height = Math.floor(this.#resolution.height / reduceFactor);
     }
 
+    this.#blurCanvas = this.copyCanvas(this.#reducedTexture);
+    this.setTextureData();
+
+
     //*********************************Radial blur*************************************
     this.#radialBlurTest = this.#gpu.createKernel(function (areas, rArray, rBase) {
       let sum0 = 0;
@@ -142,20 +156,15 @@ class Shader {
     .setDynamicOutput(true)
     .setConstants({image:this.#reducedTexture,width:this.#resolution.width,height:this.#resolution.height});
 
-
-
-
-     // //**bLUR shader
-     this.#blurShader = this.#gpu.createKernel(function (image,radius, area) {
-      var sum0 = 0;
-      var sum1 = 0;
-      var sum2 = 0;
-      var sum3 = 0;
-
+    // //**bLUR shader
+    this.#blurShader = this.#gpu.createKernel(`function (radius, area) {
+      let sum0 = 0;
+      let sum1 = 0;
+      let sum2 = 0;
+      let sum3 = 0;
       for (let i = -radius; i <= radius; i++) {
         for (let j = -radius; j <= radius; j++) {
           const pixel = this.constants.image[(this.thread.y + j) * this.constants.width + (this.thread.x + i)];
-          // const pixel = image[this.thread.y * this.constants.width + this.thread.x];
           if(pixel[3] != 0){
             sum0 += pixel[0];
             sum1 += pixel[1];
@@ -169,119 +178,16 @@ class Shader {
       sum2 /= area;
       sum3 /= area;
       if(sum3 != 0){
-        return [sum0,sum1,sum2,sum3];
+        this.color(sum0,sum1,sum2,sum3);
       }else{
-        return [0,0,0,0];
+        this.color(0,0,0,0);
       }
-    })
-      .setOutput([this.#resolution.width, this.#resolution.height])
-      .setConstants({image:this.#reducedTexture,width:this.#resolution.width,height:this.#resolution.height});
-
-    this.#decomp = this.#gpu.createKernel(function (image) {
-      const pixel = image[this.thread.y * this.constants.width + this.thread.x];
-      return [pixel[0],pixel[1],pixel[2],pixel[3]];
-    })
-      .setOutput([this.#resolution.width, this.#resolution.height])
-      .setConstants({width:this.#resolution.width,height:this.#resolution.height});
-
-     // //**bLUR shader
-     this.#blurShaderIncrease = this.#gpu.createKernel(function (radius, area, baseImage, baseRadius, baseArea) {
-      const pixelBase = baseImage[(this.thread.y) * this.constants.width + (this.thread.x)];
-      let sum0Base = pixelBase[0] * baseArea;
-      let sum1Base = pixelBase[1] * baseArea;
-      let sum2Base = pixelBase[2] * baseArea;
-      let sum3Base = pixelBase[3] * baseArea;
-      let sum0 = 0;
-      let sum1 = 0;
-      let sum2 = 0;
-      let sum3 = 0;
-      for (let i = -radius; i <= radius; i++) {
-        if(Math.abs(i)>baseRadius){
-          for (let j = -radius; j <= radius; j++) {
-            if(Math.abs(j)>baseRadius){
-              const pixel = this.constants.image[(this.thread.y + j) * this.constants.width + (this.thread.x + i)];
-              if(pixel[3] != 0){
-                sum0 += pixel[0];
-                sum1 += pixel[1];
-                sum2 += pixel[2];
-                sum3 += pixel[3];
-              }
-            }
-          }
-        }
-      }
-      sum0 = (sum0 + sum0Base) / area;
-      sum1 = (sum1 + sum1Base) / area;
-      sum2 = (sum2 + sum2Base) / area;
-      sum3 = (sum3 + sum3Base) / area;
-      if(sum3 != 0){
-        return [sum0,sum1,sum2,sum3];
-      }else{
-        return [0,0,0,0];
-      }
-    })
-      .setOutput([this.#resolution.width,this.#resolution.height])
-      .setConstants({image:this.#reducedTexture,width:this.#resolution.width,height:this.#resolution.height});
-
-
-     // //**bLUR shader
-     this.#blurShaderReduce = this.#gpu.createKernel(function (radius, area, baseImage, baseRadius, baseArea) {
-      const pixelBase = baseImage[(this.thread.y) * this.constants.width + (this.thread.x)];
-      let sum0Base = pixelBase[0] * baseArea;
-      let sum1Base = pixelBase[1] * baseArea;
-      let sum2Base = pixelBase[2] * baseArea;
-      let sum3Base = pixelBase[3] * baseArea;
-      let sum0 = 0;
-      let sum1 = 0;
-      let sum2 = 0;
-      let sum3 = 0;
-      for (let i = -radius; i <= radius; i++) {
-        if(Math.abs(i)>baseRadius){
-          for (let j = -radius; j <= radius; j++) {
-            const pixel = this.constants.image[(this.thread.y + j) * this.constants.width + (this.thread.x + i)];
-            if(pixel[3] != 0){
-              sum0 += pixel[0];
-              sum1 += pixel[1];
-              sum2 += pixel[2];
-              sum3 += pixel[3];
-            }
-          }
-        }
-      }
-      sum0 = (sum0Base - sum0) / area;
-      sum1 = (sum1Base - sum1) / area;
-      sum2 = (sum2Base - sum2) / area;
-      sum3 = (sum3Base - sum3) / area;
-      if(sum3 != 0){
-        return [sum0,sum1,sum2,sum3];
-      }else{
-        return [0,0,0,0];
-      }
-    })
-      .setOutput([this.#resolution.width,this.#resolution.height])
-      .setConstants({image:this.#reducedTexture,width:this.#resolution.width,height:this.#resolution.height});
-
-
-      const ngpu = new GPU({
-        canvas,
-        context: gl,
-        // mode:"cpu"
-      });
-    this.#toGraphicConverter = this.#gpu.createKernel(function (imageData){
-      this.color(
-      // // return [
-        imageData[this.thread.y][this.thread.x][0],
-        imageData[this.thread.y][this.thread.x][1],
-        imageData[this.thread.y][this.thread.x][2],
-        imageData[this.thread.y][this.thread.x][3]
-      // // ];
-      );
-    })
-      .setOutput([this.#resolution.width,this.#resolution.height])
-      .setGraphical(true)
-      .setConstants({width:this.#resolution.width,height:this.#resolution.height});
-
-
+    }`)
+    .setOutput([this.#resolution.width,this.#resolution.height])
+    .setGraphical(true)
+    .setTactic("speed")
+    .setConstants({image:this.#reducedTexture,width:this.#resolution.width,height:this.#resolution.height});
+    
 
     //*CHROMATIC ABERRATION
     this.#chromaticShader = this.#gpu.createKernel(`function (redShift, greenShift, blueShift) {
@@ -320,7 +226,6 @@ class Shader {
   }
   get id(){return this.#id;}
   get texture(){return this.#texture;}
-  //set texture(x){}
   // //**bLUR shader
   rArrayCalc(blur){
     var rArray = [];
@@ -351,61 +256,25 @@ class Shader {
       if(this.#blurAplied != Math.round(graphObject.blur) && !(Math.round(graphObject.blur) in this.#renderedTree.blur)){
         this.#blurAplied = Math.round(graphObject.blur);
         const radius = this.#blurAplied;
-        console.log(radius);
         const area = (2 * radius +1) * (2 * radius +1);
+        // this.#radialBlurTest(this.areasCalc(radius),this.rArrayCalc(radius), radius);
 
-        var classicBlur = true;
-        let canvas;
-        let blurData;
-        if(Object.keys(this.#renderedTree.blur).length != 0 && 1==2){
-          classicBlur = false;
-          const nearest = closest(Object.keys(this.#renderedTree.blur).map(e=>{return e*1}),radius);
-          const baseRadius = nearest;
-          const baseArea = (2 * baseRadius +1) * (2 * baseRadius +1);
-          console.log(nearest,radius);
-          if(nearest<radius){//increase
-            console.log("increase");
-            this.#blurShaderIncrease(radius,area,this.#renderedTree.blur[nearest],baseRadius,baseArea);
-            canvas = this.#blurShaderIncrease.canvas;
-          }else if((baseArea-area) < area){//reduce
-            console.log("reduce");
-            this.#blurShaderReduce(radius,area,this.#renderedTree.blur[nearest],baseRadius,baseArea);
-            canvas = this.#blurShaderReduce.canvas;
-          }else{
-            console.log("generate");
-            classicBlur = true;
-          }
-        }
-        if(classicBlur){
-          try {
-            blurData = this.#blurShader(this.copyCanvas(this.#reducedTexture),radius,area);  
-          } catch (error) {
-            console.log(error);
-            throw new Error("blurring error");
-          }
-          
-        //   // this.#radialBlurTest(this.areasCalc(radius),this.rArrayCalc(radius), radius);
-        }
-        // try {
-        // blurData = this.#decomp(this.#reducedTexture);
-        console.log(blurData);
-        // debugger;
-        // blurData = ([].concat(...blurData.map(row => Array.from(row))));
-        // console.log(blurData);
-        // debugger;
-        this.#toGraphicConverter(blurData);
-        // } catch (error) {
-          
-          // throw new Error ("rebuild image error");
-        // }
-        
-        canvas = this.#toGraphicConverter.canvas;
-        this.#renderedTree.blur[this.#blurAplied] = {canvas:this.copyCanvas(canvas),data:blurData};
+        // const targetCanvas = this.copyCanvas(this.#reducedTexture);
+        // StackBlur.canvasRGBA(targetCanvas,0,0,this.#resolution.width,this.#resolution.height,radius);
+        // this.#renderedTree.blur[this.#blurAplied] = targetCanvas;
+
+        const blurredData = StackBlur.imageDataRGBA(structuredClone(this.#textureData),0,0,this.#resolution.width,this.#resolution.height,radius);
+        this.#blurCanvas.getContext('2d').putImageData(blurredData, 0, 0);
+        this.#renderedTree.blur[this.#blurAplied] = this.#blurCanvas;
+
+        // this.#blurShader(radius,area);
+        // this.#renderedTree.blur[this.#blurAplied] = this.copyCanvas(this.#blurShader.canvas);
+
       }else if(this.#blurAplied != Math.round(graphObject.blur)){
         this.#blurAplied = Math.round(graphObject.blur);
       }
-      return this.#renderedTree.blur[this.#blurAplied].canvas;
-      // return this.#texture;
+      //console.log(Math.round(graphObject.blur));
+      return this.#renderedTree.blur[this.#blurAplied];
     }else{
       return this.#texture;
     }

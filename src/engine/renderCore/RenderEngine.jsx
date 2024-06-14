@@ -11,8 +11,9 @@ import { Trigger } from "../engineComponents/Trigger";
 
 import { ScriptInterpreter } from "./ScriptInterpreter";
 import { mobileCheck } from "../logic/Misc";
-import { Shader } from "./Shaders";
+import { Shader } from "./ShadersUnstable";
 import gsap from "gsap";
+import { TextureAnim } from "../engineComponents/TextureAnim";
 
 class RenderEngine extends React.Component{
   constructor(props){
@@ -43,6 +44,7 @@ class RenderEngine extends React.Component{
     this.triggers = new RenList();
     this.gameVars = {};//Y guardar esto tambien
     this.texturesList = new RenList();
+    this.textureAnims = new RenList();//gifs-like
     this.soundsList = new RenList();
 
     this.keyboardTriggers = new RenList();
@@ -129,7 +131,7 @@ class RenderEngine extends React.Component{
       }).observe(document.getElementById("display"+this.id))
        
       //*LOAD GAME
-      const k = new ScriptInterpreter;
+      const k = new ScriptInterpreter();
       k.build((masterScript)=>{this.loadGame(masterScript); if("setEngine" in  this.props ){this.props.setEngine(this);}},(error)=>{this.consol(error)});
       
       //*TECLADO
@@ -149,6 +151,23 @@ class RenderEngine extends React.Component{
         }
       });
     }
+  }
+
+  getTexture(gObject){
+    var id = gObject.textureName;
+    console.log(id);
+    if(this.textureAnims.exist(id)){
+      id = this.textureAnims.get(id).getTexture(this.engineTime);
+    }
+    console.log(id);
+    //.getTexture(gObject)
+    const res = this.texturesList.get(id);
+    if(res == undefined){
+      console.log(this.textureAnims);
+      debugger;
+    }
+
+    return res;
   }
 
   aspectRatioCalc(op = this.aspectRatio) {
@@ -285,6 +304,7 @@ class RenderEngine extends React.Component{
     this.anims = new RenList();
     this.triggers = new RenList();
     this.keyboardTriggers = new RenList();
+    this.textureAnims = new RenList();
     this.codedRoutines = new RenList();
     this.routines = new Array();
     this.flags = new Object();
@@ -318,6 +338,7 @@ class RenderEngine extends React.Component{
         scene.graphObjects.forEach(object => this.graphArray.push(new GraphObject(object)));
         scene.triggers.forEach(trigger => this.triggers.push(new Trigger(trigger)));
         scene.keyboardTriggers.forEach(trigger => this.keyboardTriggers.push(new Trigger(trigger)));
+        scene.textureAnims.forEach(textureAnim => this.textureAnims.push(new TextureAnim(textureAnim)));
         scene.animations.forEach(animation => this.anims.push(new Animation(animation)));
         scene.codedRoutines.forEach(codedAnim => this.codedRoutines.push(codedAnim));
         this.routines = scene.routines;
@@ -536,7 +557,7 @@ class RenderEngine extends React.Component{
                 objectWidth = canvas.resolutionHeight*objectScale*gObject.widthScale;
                 objectHeight = canvas.resolutionHeight*objectScale*gObject.heightScale;
               }else{
-                objectHeight = (this.texturesList.get(gObject.textureName).texture.naturalHeight/this.texturesList.get(gObject.textureName).texture.naturalWidth)*canvas.resolutionWidth*objectScale*gObject.heightScale;
+                objectHeight = (this.getTexture(gObject).texture.naturalHeight/this.getTexture(gObject).texture.naturalWidth)*canvas.resolutionWidth*objectScale*gObject.heightScale;
               }
             }else{
               objectHeight = canvas.resolutionHeight*objectScale*gObject.heightScale;
@@ -589,7 +610,7 @@ class RenderEngine extends React.Component{
                 }
                 if(gObject.textureName!=null){
                   canvas.context.drawImage(
-                    this.texturesList.get(gObject.textureName).getTexture(gObject),
+                    this.getTexture(gObject).getTexture(gObject),
                     -(objectWidth)/2,
                     -(objectHeight)/2,
                     objectWidth,
@@ -605,10 +626,10 @@ class RenderEngine extends React.Component{
                   if(gObject.boxColor != "transparent"){
                     canvas.context.fillStyle = gObject.boxColor;
                     canvas.context.fillRect(
-                      Math.floor(objectLeft),
-                      Math.floor(objectTop),
-                      Math.floor(objectWidth),
-                      Math.floor(objectHeight)
+                      objectLeft,
+                      objectTop,
+                      objectWidth,
+                      objectHeight
                       );
                   }
                   canvas.context.fillStyle = gObject.color;
@@ -626,19 +647,18 @@ class RenderEngine extends React.Component{
                   texts.forEach((text) => {
                     canvas.context.fillText(
                       text[0],
-                      Math.floor(text[1]),
-                      Math.floor(text[2])
+                      text[1],
+                      text[2]
                     );
                   });
                 }
                 if(gObject.textureName!=null){
-                  //console.log(this.texturesList.get(gObject.textureName).getTexture(gObject));
                   canvas.context.drawImage(
-                    this.texturesList.get(gObject.textureName).getTexture(gObject),
-                    Math.floor(objectLeft)-Math.floor(objectWidth/2),
-                    Math.floor(objectTop)-Math.floor(objectHeight/2),
-                    Math.floor(objectWidth),
-                    Math.floor(objectHeight));
+                    this.getTexture(gObject).getTexture(gObject),
+                    objectLeft-(objectWidth/2),
+                    objectTop-(objectHeight/2),
+                    objectWidth,
+                    objectHeight);
                 }
               }else{
                 this.noRenderedItemsCount++;
@@ -675,10 +695,10 @@ class RenderEngine extends React.Component{
                 canvas.context.strokeStyle = "orange";
                 
                 canvas.context.strokeRect(
-                  Math.floor(objectLeft)-Math.floor(objectWidth/2),
-                  Math.floor(objectTop)-Math.floor(objectHeight/2),
-                  Math.floor(objectWidth),
-                  Math.floor(objectHeight));
+                  objectLeft-(objectWidth/2),
+                  objectTop-(objectHeight/2),
+                  objectWidth,
+                  objectHeight);
               }
               if(this.showObjectsInfo){
                 Object.keys(gObject.dump()).forEach((element,index) => {
@@ -747,8 +767,8 @@ class RenderEngine extends React.Component{
               grid.x += -(perspectiveLayer.width-canvas.resolutionHeight)*this.camera.origin.x;
               grid.y += -(perspectiveLayer.height-canvas.resolutionHeight)*this.camera.origin.y;
 
-              grid.x = Math.round(grid.x);
-              grid.y = Math.round(grid.y);
+              grid.x = grid.x;
+              grid.y = grid.y;
 
               const height = canvas.resolutionHeight * perspectiveScale;
 
@@ -797,9 +817,9 @@ class RenderEngine extends React.Component{
           //calc the perspective angle in degress
           this.camera.position.angle = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
           //disable image smoothing
-          canvas.context.imageSmoothingEnabled = false; 
+          canvas.context.imageSmoothingEnabled = false;
           canvas.context.imageSmoothingQuality = "low";
-          canvas.context.textRendering = "optimizeSpeed"; 
+          canvas.context.textRendering = "optimizeSpeed";
         }}
         onResize={(canvas)=>{
           //calc the perspective angle
@@ -893,7 +913,7 @@ class RenderEngine extends React.Component{
       var objectWidth = gO.scale*gO.widthScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
       var objectHeight;
       if(gO.textureName!=null){
-        objectHeight = (this.texturesList.get(gO.textureName).texture.naturalHeight/this.texturesList.get(gO.textureName).texture.naturalWidth)*gO.scale*gO.heightScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
+        objectHeight = (this.getTexture(gO).texture.naturalHeight/this.getTexture(gO).texture.naturalWidth)*gO.scale*gO.heightScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
       }else{
         objectHeight = gO.scale*gO.heightScale;
         objectWidth = gO.scale*gO.widthScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);

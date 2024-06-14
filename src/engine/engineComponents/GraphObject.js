@@ -105,7 +105,7 @@ class GraphObject{
 
     this.#states = graphInfo.states != undefined ? new States(this,graphInfo.states) : {};
 
-    this.#useEngineUnits = graphInfo.useEngineUnits != undefined ? graphInfo.useEngineUnits: false;
+    this.#useEngineUnits = graphInfo.useEngineUnits != undefined ? graphInfo.useEngineUnits: true; //for scale
   }
   get enabled() {return this.#enabled}
   set enabled(x) {this.#enabled = typeof x == "boolean"? x : false}
