@@ -16,15 +16,15 @@ class Trigger{
       throw new Error("Trying to create a Trigger without id");
 
     this.#id = tInfo.id;
-    this.#relatedTo = tInfo.relatedTo != undefined ? tInfo.relatedTo : "Keyboard";
-    this.#enabled = tInfo.enabled != undefined ? tInfo.enabled : true;
+    this.#relatedTo = "relatedTo" in tInfo ? tInfo.relatedTo : "Keyboard";
+    this.#enabled = "enabled" in tInfo ? tInfo.enabled : true;
     //if superposition is true the engine will ignore the graphObjects that are over the graphobject related to the trigger
     //superposition: tInfo.superposition != undefined ? tInfo.superposition : false,
-    this.#onPress = tInfo.onPress != undefined ? tInfo.onPress : null;//Special for keyboard
-    this.#onHold = tInfo.onHold != undefined ? tInfo.onHold : null;
-    this.#onRelease = tInfo.onRelease != undefined ? tInfo.onRelease : null;
-    this.#onEnter = tInfo.onEnter != undefined ? tInfo.onEnter : null;
-    this.#onLeave = tInfo.onLeave != undefined ? tInfo.onLeave : null;
+    this.#onPress = "onPress" in tInfo ? tInfo.onPress : null;//Special for keyboard
+    this.#onHold = "onHold" in tInfo ? tInfo.onHold : null;
+    this.#onRelease = "onRelease" in tInfo ? tInfo.onRelease : null;
+    this.#onEnter = "onEnter" in tInfo ? tInfo.onEnter : null;
+    this.#onLeave = "onLeave" in tInfo ? tInfo.onLeave : null;
   }
 
   get id(){return this.#id}
@@ -54,11 +54,8 @@ class Trigger{
     if(action == "mouseMove")//check onEnter
       action = "onEnter";
     if(this[action] == null || !this.enabled){
-      // console.error("no se encontro ninguna accion con ese nombre");
-      // console.log(this,action);
       return;
     }
-    // console.log(action);
     const numberOfArguments = this[action].length;
     if(numberOfArguments == 0){
       this[action]();
@@ -68,7 +65,7 @@ class Trigger{
       const graphObjectRef = engineRef.graphArray.get(this.relatedTo);
       this[action](engineRef,graphObjectRef);
     }else{
-      throw new Error("Too much arguments (",numberOfArguments,") for the funtion defined to the action ",action,", for the trigger",this.id)
+      throw new Error("Too much arguments (",numberOfArguments,") for the function defined to the action ",action,", for the trigger",this.id)
     }
   }
 }

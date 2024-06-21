@@ -20,23 +20,47 @@ SET TEXTURES [
 ]
 
 dialogButton = new TextureAnim([
-
-],{duration:4000})
+  "next1",
+  "next2",
+  "next3",
+  "next4",
+  "next5",
+  "next6",
+  "next7",
+  "next8",
+  "next9",
+  "next10",
+  "next11",
+  "next12",
+  "next13",
+  "next14",
+  "next15",
+],{duration:500})
 
 engineLogo = new GraphObject ({
   texture:"engineLogo",
-  scale:1,
-  blur:22,
+  //scale:2,
+  //blur:22,
   x:.85,
-  y:.5
+  y:.5,
+  z:2
+})
+
+nextDialog = new GraphObject ({
+  texture:"dialogButton",
+  scale:.5,
+  y:.3,
+  x:.3
 })
 
 engLogoAnim = new Animation ("engineLogo",{
-  0:{blur:22},
-  3000:{blur:18,scale:.95},
-  3500:{blur:0,scale:.9},
-  4000:{blur:0,scale:.85} 
-},{enabled:true})
+  0:{blur:24,opacity:0},
+  3500:{blur:18,scale:.75, opacity:.3, brightness:4},
+  4000:{blur:0,scale:.45, opacity:1, brightness:3},
+  6500:{scale:.25, opacity:0, brightness:1} 
+},{enabled:false,onComplete:(engine)=>{engine.cleanConsol();}})
+
+END FILE
 
 SCENE ID mapa
 

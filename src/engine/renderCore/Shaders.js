@@ -2,7 +2,7 @@ import { GPU } from "gpu.js";
 
 class Shader {
   #id
-  #texture
+  #texture = new HTMLImageElement();
 
   #gpu
 
@@ -20,14 +20,14 @@ class Shader {
   #renderedTree
 
   
-// copyCanvas returns a canvas containing the same image as the given canvas.
-copyCanvas(original) {
-  var copy = document.createElement('canvas');
-  copy.width = original.width;
-  copy.height = original.height;
-  copy.getContext('2d').drawImage(original, 0, 0);  // Copy the image.
-  return copy;
-}
+  // copyCanvas returns a canvas containing the same image as the given canvas.
+  copyCanvas(original) {
+    var copy = document.createElement('canvas');
+    copy.width = original.width;
+    copy.height = original.height;
+    copy.getContext('2d').drawImage(original, 0, 0);  // Copy the image.
+    return copy;
+  }
 
   constructor(texture,id,widthArg = null, heightArg = null){
     this.#texture = texture;
@@ -204,6 +204,7 @@ copyCanvas(original) {
     this.#aberrationAplied = 0;
   }
   get id(){return this.#id;}
+
   get texture(){return this.#texture;}
   //set texture(x){}
   // //**bLUR shader

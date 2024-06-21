@@ -84,6 +84,7 @@ class RenderEngine extends React.Component{
     }
     this.useUniformUnits = false;
     this.coordsPack = {};
+    this.dimentionsPack = {};
     this.renderingOrderById = [];
 
     //MOUSE
@@ -152,21 +153,31 @@ class RenderEngine extends React.Component{
       });
     }
   }
-
+  /**
+   * 
+   * @param {String} id 
+   * @returns {GraphObject}
+   */
+  getObject(id){
+    var graphObject = new GraphObject();
+    graphObject = this.graphArray.get(id);
+    return graphObject;
+  }
+  /**
+   * 
+   * @param {*} gObject 
+   * @returns {Shader}
+   */
   getTexture(gObject){
     var id = gObject.textureName;
-    console.log(id);
     if(this.textureAnims.exist(id)){
       id = this.textureAnims.get(id).getTexture(this.engineTime);
     }
-    console.log(id);
-    //.getTexture(gObject)
     const res = this.texturesList.get(id);
     if(res == undefined){
       console.log(this.textureAnims);
       debugger;
     }
-
     return res;
   }
 
@@ -328,6 +339,8 @@ class RenderEngine extends React.Component{
       usePerspective:false, //or use3D
       useTHREE3d:false
     }
+    this.coordsPack = {};
+    this.dimentionsPack = {};
     this.loadSounds(scene.sounds,()=>{
       this.loadTextures(scene.textures,()=>{
         //change texture reference with the actual file
@@ -468,7 +481,7 @@ class RenderEngine extends React.Component{
     
     this.graphArray.ids().forEach(id=>{
 
-      const gObject = this.graphArray.get(id);
+      const gObject = this.getObject(id);
       Object.assign(coordsPack,{[id]:{
         x:(gObject.x + (this.camera.origin.x-0.5))*this.canvasRef.resolutionHeight,
         y:(gObject.y + (this.camera.origin.y-0.5))*this.canvasRef.resolutionHeight,
@@ -500,6 +513,83 @@ class RenderEngine extends React.Component{
       this.coordsPack = coordsPack;
       this.renderingOrderById = renderingOrderById;
   }
+  generateObjectsDisplayDimentions(){
+    let res;
+    const canvas = this.canvasRef;
+    const camera = this.camera;
+    const coordsPack = this.coordsPack;
+    const clientUnitaryHeightPercentageConstant = 100 / canvas.resolutionHeight;
+    const tangencialConstant = camera.position.angle;//Uses camera angle
+
+    const recalculate = (gObject = new GraphObject())=>{
+      if (!(gObject.id in this.dimentionsPack)){
+        return true;
+      }else{
+        //console.log("recalculation: "+ gObject.id+ " "+ gObject.pendingRenderingRecalculation);
+        const rack = gObject.pendingRenderingRecalculation;
+        gObject.pendingRenderingRecalculation = false;
+        return rack;
+      }
+    }
+    for (let index = 0; index < this.graphArray.objects.length; index++) {
+      const gObject = this.getObject(this.renderingOrderById[index]);
+
+      if(recalculate(gObject)){ //TODO: add check for camera or window modifications
+        const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
+
+        var objectScale = gObject.scale;
+        var objectLeft = coordsPack[gObject.id].x;
+        var objectTop = coordsPack[gObject.id].y;
+        var objectZ = coordsPack[gObject.id].z;
+        
+        var testD = 0.95;
+
+        if(camera.usePerspective && !gObject.ignoreParallax){
+          const perspectiveDiff = 1-((1/(objectZ-(camera.position.z)))-(1))/((1/camera.maxZ)-(1));
+          testD = perspectiveDiff;
+          const toAddSize = perspectiveDiff * tangencialConstant*(canvas.resolutionHeight)*camera.maxZ;
+          const computedPercentageSize = clientUnitaryHeightPercentageConstant * (toAddSize);
+          const perspectiveScale = computedPercentageSize/100;
+          objectScale *= computedPercentageSize/100;
+  
+          //*recalculate gObject coords
+          var perspectiveLayer = {
+            width:canvas.resolutionHeight*perspectiveScale,
+            height:canvas.resolutionHeight*perspectiveScale
+          }
+          //it will calc were the image must to be, inside the perspectiveLayer
+          objectLeft *= perspectiveLayer.width;
+          objectTop *= perspectiveLayer.height;
+          //now add the origin of the perspectiveLayer
+          objectLeft += -(perspectiveLayer.width-canvas.resolutionHeight)*camera.origin.x;
+          objectTop += -(perspectiveLayer.height-canvas.resolutionHeight)*camera.origin.y;
+        }
+  
+        //By default values for the textboxes
+        var objectWidth = canvas.resolutionWidth*objectScale*gObject.widthScale;
+        var objectHeight = canvas.resolutionHeight*objectScale*gObject.heightScale;
+  
+        if(gObject.textureName!=null){
+          if(gObject.useEngineUnits){
+            objectWidth = texRef.texture.naturalWidth*objectScale*gObject.widthScale*(canvas.resolutionHeight/768);
+            objectHeight = texRef.texture.naturalHeight*objectScale*gObject.heightScale*(canvas.resolutionHeight/768);
+          }else{
+            objectHeight = (texRef.texture.naturalHeight/texRef.texture.naturalWidth)*canvas.resolutionWidth*objectScale*gObject.heightScale;
+          }
+        }
+        res = {
+          x : objectLeft,
+          y : objectTop,
+          z : objectZ,
+          sizeInDisplay : testD,
+          width : objectWidth,
+          height : objectHeight
+        }
+        Object.assign(this.dimentionsPack,{[gObject.id]:res});
+      }
+    }
+
+  }
   renderScene(){
     if(this.isReady){
       return(
@@ -516,52 +606,23 @@ class RenderEngine extends React.Component{
 
           const clientUnitaryHeightPercentageConstant = 100 / canvas.resolutionHeight;
           const tangencialConstant = this.camera.position.angle;//Uses camera angle
+
           this.noRenderedItemsCount = 0;
 
           this.generateRenderingOrder();
+          this.generateObjectsDisplayDimentions();
 
           for (let index = 0; index < this.graphArray.objects.length; index++) {
-            const gObject = this.graphArray.get(this.renderingOrderById[index]);
-            var objectScale = gObject.scale;
-            var objectLeft = this.coordsPack[gObject.id].x;
-            var objectTop = this.coordsPack[gObject.id].y;
-            var objectZ = this.coordsPack[gObject.id].z;
+            const gObject = this.getObject(this.renderingOrderById[index]);
+            const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
+            var objectLeft = this.dimentionsPack[gObject.id].x;
+            var objectTop = this.dimentionsPack[gObject.id].y;
+            var objectZ = this.dimentionsPack[gObject.id].z;
             
-            var testD = 0.95;
-            //TODO: recalculate this only when the camera angles or position have changed or its position 
-            if(this.camera.usePerspective && !gObject.ignoreParallax){
-              const perspectiveDiff = 1-((1/(objectZ-(this.camera.position.z)))-(1))/((1/this.camera.maxZ)-(1));
-              testD = perspectiveDiff;
-              const toAddSize = perspectiveDiff * tangencialConstant*(canvas.resolutionHeight)*this.camera.maxZ;
-              const computedPercentageSize = clientUnitaryHeightPercentageConstant * (toAddSize);
-              const perspectiveScale = computedPercentageSize/100;
-              objectScale *= computedPercentageSize/100;
+            var testD = this.dimentionsPack[gObject.id].sizeInDisplay;
 
-              //*recalculate gobject coords
-              var perspectiveLayer = {
-                width:canvas.resolutionHeight*perspectiveScale,
-                height:canvas.resolutionHeight*perspectiveScale
-              }
-               //it will calc were the image must to be, inside the perspectiveLayer
-              objectLeft *= perspectiveLayer.width;
-              objectTop *= perspectiveLayer.height;
-              //now add the origin of the perspectiveLayer
-              objectLeft += -(perspectiveLayer.width-canvas.resolutionHeight)*this.camera.origin.x;
-              objectTop += -(perspectiveLayer.height-canvas.resolutionHeight)*this.camera.origin.y;
-            }
-
-            var objectWidth = canvas.resolutionWidth*objectScale*gObject.widthScale;
-            var objectHeight;
-            if(gObject.textureName!=null){
-              if(gObject.useEngineUnits){
-                objectWidth = canvas.resolutionHeight*objectScale*gObject.widthScale;
-                objectHeight = canvas.resolutionHeight*objectScale*gObject.heightScale;
-              }else{
-                objectHeight = (this.getTexture(gObject).texture.naturalHeight/this.getTexture(gObject).texture.naturalWidth)*canvas.resolutionWidth*objectScale*gObject.heightScale;
-              }
-            }else{
-              objectHeight = canvas.resolutionHeight*objectScale*gObject.heightScale;
-            }
+            var objectWidth = this.dimentionsPack[gObject.id].width;
+            var objectHeight = this.dimentionsPack[gObject.id].height;
 
             if(!(gObject.opacity == 0) && this.checkObjectBoundaries({x:objectLeft,y:objectTop},{width:objectWidth,height:objectHeight},{width:canvas.resolutionWidth,height:canvas.resolutionHeight})){
                //*part one: global alpha
@@ -610,7 +671,7 @@ class RenderEngine extends React.Component{
                 }
                 if(gObject.textureName!=null){
                   canvas.context.drawImage(
-                    this.getTexture(gObject).getTexture(gObject),
+                    texRef.getTexture(gObject),
                     -(objectWidth)/2,
                     -(objectHeight)/2,
                     objectWidth,
@@ -654,7 +715,7 @@ class RenderEngine extends React.Component{
                 }
                 if(gObject.textureName!=null){
                   canvas.context.drawImage(
-                    this.getTexture(gObject).getTexture(gObject),
+                    texRef.getTexture(gObject),
                     objectLeft-(objectWidth/2),
                     objectTop-(objectHeight/2),
                     objectWidth,
@@ -840,7 +901,7 @@ class RenderEngine extends React.Component{
           for (let index = 0; index < this.anims.objects.length; index++) {
             const anim = this.anims.objects[index];
             if(anim.relatedTo != null){
-              anim.updateState(this.engineTime,(relatedTo)=>{return relatedTo!="engineCamera"?this.graphArray.get(relatedTo):this.camera},this);
+              anim.updateState(this.engineTime,(relatedTo)=>{return relatedTo!="engineCamera"?this.getObject(relatedTo):this.camera},this);
             }
           }  
         }}
@@ -908,7 +969,7 @@ class RenderEngine extends React.Component{
     const triggersIdList = this.triggers.ids();
 
     for (let index = 0; index < reversedRenderOrderList.length; index++) {
-      const gO = this.graphArray.get(reversedRenderOrderList[index]);
+      const gO = this.getObject(reversedRenderOrderList[index]);
 
       var objectWidth = gO.scale*gO.widthScale*(this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
       var objectHeight;

@@ -3,7 +3,7 @@ import { GPU } from "gpu.js";
 import * as StackBlur from "stackblur-canvas";
 class Shader {
   #id
-  #texture
+  #texture;
 
   #gpu
 
@@ -225,6 +225,9 @@ class Shader {
     this.#aberrationAplied = 0;
   }
   get id(){return this.#id;}
+  /**
+   * 
+   */
   get texture(){return this.#texture;}
   // //**bLUR shader
   rArrayCalc(blur){
@@ -252,7 +255,8 @@ class Shader {
           this.#chromaticShader(goofier(),goofier(),goofier());
         }
         return this.#chromaticShader.canvas;
-    }else if (Math.round(graphObject.blur)!=0){
+    }
+    else if (Math.round(graphObject.blur)!=0 && 1 ==2){
       if(this.#blurAplied != Math.round(graphObject.blur) && !(Math.round(graphObject.blur) in this.#renderedTree.blur)){
         this.#blurAplied = Math.round(graphObject.blur);
         const radius = this.#blurAplied;
@@ -275,7 +279,8 @@ class Shader {
       }
       //console.log(Math.round(graphObject.blur));
       return this.#renderedTree.blur[this.#blurAplied];
-    }else{
+    }
+    else{
       return this.#texture;
     }
   }

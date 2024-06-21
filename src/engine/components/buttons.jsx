@@ -101,9 +101,9 @@ class MenuButton extends React.Component{
     super(props);
   }
   render(){
-    this.textSize = (this.props.textSize != undefined ? this.props.textSize : 18)+"px";
+    this.textSize = ("textSize" in this.props ? this.props.textSize : 18)+"px";
     return(
-      <div className={" cursor-pointer m-1 text-white w-fit h-fit hover:text-slate-400 "  + ("style" in this.props ? this.props.style : "") + (this.props.hide ? " hidden":"")} onClick={this.props.action != undefined ? ()=>{this.props.action()} : ()=>{throw new Error("Accion para el botón con texto '"+this.props.text+"' no definida")}} style={{fontSize:this.textSize, fontFamily:"Harry Thin", letterSpacing:"0.15em", transform:"scaleY(0.9)",  filter: "invert(0%)"}}>
+      <div className={" cursor-pointer m-1 text-white w-fit h-fit hover:text-slate-400 "  + ("style" in this.props ? this.props.style : "") + (this.props.hide ? " hidden":"")} onClick={"action" in this.props ? ()=>{this.props.action()} : ()=>{throw new Error("Accion para el botón con texto '"+this.props.text+"' no definida")}} style={{fontSize:this.textSize, fontFamily:"Harry Thin", letterSpacing:"0.15em", transform:"scaleY(0.9)",  filter: "invert(0%)"}}>
         {this.props.text}
       </div>
     );
