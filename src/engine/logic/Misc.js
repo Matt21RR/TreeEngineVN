@@ -106,4 +106,60 @@ function closest(ar,search){
     return Math.abs(b - search) < Math.abs(a - search) ? b : a;
   });
 }
-export {generateRndRGBColor, random, removeCharAt, objectSetValue,objectAddElement,objectChangeKeyName,mobileCheck,halfRounder,isNumeric,closest}
+// @description: wrapText wraps HTML canvas text onto a canvas of fixed width
+// @param context del canvas principal
+// @param text - el texto a probar
+// @param x - coordenada horizontal de origen.
+// @param y - coordenada vertical de origen.
+// @param maxWidth - la medida del ancho maximo del lugar donde se quiere agregar el texto.
+// @param lineHeight - altura entre linea y linea.
+// @returns an array of [ lineText, x, y ] for all lines
+function wrapText(ctx, text, x, y, maxWidth, lineHeight,center = false) {
+  // First, start by splitting all of our text into words, but splitting it into an array split by spaces
+  let words = text.replaceAll('\n',()=>{return ' \n \n '}).split(' ');
+  let line = ''; // This will store the text of the current line
+  let testLine = ''; // This will store the text when we add a word, to test if it's too long
+  let lineArray = []; // This is an array of lines, which the function will return
+
+  const centering = () => {
+    if(center){
+      let metricsF = ctx.measureText(line);
+      let testWidthF = metricsF.width;
+      return (maxWidth-testWidthF)/2;
+    }else{
+      return 0;
+    }
+      
+  }
+  // Lets iterate over each word
+  for(var n = 0; n < words.length; n++) {
+    // Create a test line, and measure it..
+    testLine += `${words[n]} `;
+    let metrics = ctx.measureText(testLine);
+    let testWidth = metrics.width;
+    // If the width of this test line is more than the max width
+    //console.log(line)
+    if ((testWidth > maxWidth && n > 0) || line.indexOf('\n') != -1) {
+        // Then the line is finished, push the current line into "lineArray"
+        lineArray.push([line, x+centering(), y]);
+        // Increase the line height, so a new line is started
+        y += lineHeight;
+        // Update line and test line to use this word as the first word on the next line
+        line = `${words[n]} `;
+        testLine = `${words[n]} `;
+    }
+    else {
+        // If the test line is still less than the max width, then add the word to the current line
+        line += `${words[n]} `;
+    }
+    // If we never reach the full max width, then there is only one line.. so push it into the lineArray so we return something
+    if(n === words.length - 1) {
+        lineArray.push([line, x+centering(), y]);
+        //TODO: Medir el ancho disponible y
+    }
+  }
+  // Return the line array
+  
+  return lineArray;
+}
+export {generateRndRGBColor, random, removeCharAt, objectSetValue,objectAddElement,objectChangeKeyName,mobileCheck,halfRounder,isNumeric,closest,wrapText}

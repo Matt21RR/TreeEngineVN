@@ -10,8 +10,11 @@ class Canvas extends React.Component{
     this.id = "canvas"+performance.now();
     this.mounted = false;
 
+    this.windowHasFocus = true;
+
     this.static = this.props.static ? this.props.static : false;
     this.fps = this.props.fps ? (this.props.fps > 0 ? this.props.fps : 24) : 24;//suggesed max fps = 24
+    this.fpsBackup = this.fps;
     this.scale = this.props.scale ? this.props.scale : 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
 
     this.interval = Math.round(1000 / this.fps);
@@ -39,11 +42,14 @@ class Canvas extends React.Component{
     this.showFps = this.props.showFps;
 
     window.setFps = (x) => { 
+      const canvas = this.element.current;
       this.fps = x; 
       this.stopEngine = (x == 0) && !this.stopEngine; 
       this.interval = Math.floor(1000 / x); 
       if (!this.stopEngine) 
-        this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight}); 
+        this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")}); 
+
+      console.log("setted to: "+x)
     }
     window.getFps = () => {return this.fps;}
     window.setScale = (x) => { this.scale = x;
@@ -97,21 +103,22 @@ class Canvas extends React.Component{
       document.getElementById(this.id).height = this.resolutionHeight;
 
       let self = this;
+      $(window).off("blur");
       $(window).on("blur", function (e) {
-        if(!self.engineKilled){
-          self.stopEngine = true;
+        if(self.windowHasFocus && self.fps != 4){
+          self.windowHasFocus = false;
+          self.fpsBackup = self.fps;
+          window.setFps(4);
         }
       });
+      $(window).off("focus");
       $(window).on("focus", function (e) {
-        if(!self.engineKilled && canvasInstances.checker(self.props.id,self.id)){
-          self.stopEngine = true;
-          //window.finalWarn = 0;
+
+        if(!self.engineKilled && !self.windowHasFocus){
+          self.windowHasFocus = true;
           setTimeout(() => {
-              self.stopEngine = false;
-              if(self.engineThreads != 0)
-                self.engineThreads = 0;
-              self.engine();
-          }, 600);
+            window.setFps(self.fpsBackup);
+          }, 50);
         }
       });
       //set the every graphic object data

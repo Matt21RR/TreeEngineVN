@@ -131,8 +131,8 @@ class InputTextArea extends React.Component {
       $('#'+this.id).highlightWithinTextarea({
         highlight: [
             {
-                highlight: 'new',
-                className: 'text-red-700'
+              highlight: 'new',
+              className: 'text-red-700'
             },
             {//comentario
               highlight: /\/\/[^\*]\s*.*/g,
@@ -144,7 +144,7 @@ class InputTextArea extends React.Component {
               className: 'text-[#98C379]'
             },
             {
-              highlight: ['GraphObject','Trigger','Animation','CodedRoutine','(',')','{','}'],
+              highlight: ['GraphObject','TextureAnim','Trigger','Animation','CodedRoutine','(',')','{','}'],
               className: 'text-[#357FBF]'
             },
             {
@@ -152,8 +152,8 @@ class InputTextArea extends React.Component {
               className: 'text-[#DB974D]'
             },
             {
-                highlight: '=>',
-                className: 'text-[#DB974D]'
+              highlight: '=>',
+              className: 'text-[#DB974D]'
             },
             {
               highlight: [/\d/g,'[',']'],
@@ -242,6 +242,7 @@ class InputTextArea extends React.Component {
               ref={this.inputRef}
               name={this.id}
               id={this.id}
+              spellCheck={false}
               onChange={()=>this.changeValue()}
               onKeyUp={e => (e.key == "Tab" ? e.preventDefault() : null)}
               onKeyDown={e => {

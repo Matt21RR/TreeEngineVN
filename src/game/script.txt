@@ -1,5 +1,9 @@
 SCENE ID a
 
+SET SOUNDS [
+  "openning"
+]
+
 SET TEXTURES [
   "engineLogo",
   "next1",

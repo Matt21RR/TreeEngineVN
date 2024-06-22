@@ -10,10 +10,11 @@ import { RenList } from "../engineComponents/RenList";
 import { Trigger } from "../engineComponents/Trigger";
 
 import { ScriptInterpreter } from "./ScriptInterpreter";
-import { mobileCheck } from "../logic/Misc";
+import { mobileCheck, wrapText } from "../logic/Misc";
 import { Shader } from "./ShadersUnstable";
 import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim";
+import { CodedRoutine } from "../engineComponents/CodedRoutine";
 
 class RenderEngine extends React.Component{
   constructor(props){
@@ -38,6 +39,7 @@ class RenderEngine extends React.Component{
     this.graphObject = GraphObject;
     this.animation = Animation;
     this.scriptInterpreter = ScriptInterpreter;
+    this.codedRoutine = CodedRoutine;
 
     this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
     this.anims = new RenList();
@@ -220,7 +222,8 @@ class RenderEngine extends React.Component{
   cleanConsol(){
     this.setState({
       consol: [],
-    })
+    });
+    this.consolMessagesArray = [];
   }
   componentDidCatch(error,info){
     console.error("RenderEngine several crash!!");
@@ -353,7 +356,7 @@ class RenderEngine extends React.Component{
         scene.keyboardTriggers.forEach(trigger => this.keyboardTriggers.push(new Trigger(trigger)));
         scene.textureAnims.forEach(textureAnim => this.textureAnims.push(new TextureAnim(textureAnim)));
         scene.animations.forEach(animation => this.anims.push(new Animation(animation)));
-        scene.codedRoutines.forEach(codedAnim => this.codedRoutines.push(codedAnim));
+        scene.codedRoutines.forEach(codedRoutine => this.codedRoutines.push(new CodedRoutine(codedRoutine)));
         this.routines = scene.routines;
         this.flags = scene.flags;
         
@@ -415,62 +418,6 @@ class RenderEngine extends React.Component{
       const h = new Function ("engine","return "+ this.replaceReferencesToGameVars(a.substring(1,a.length-1),true).replaceAll(/\n/g,"/n"))
       return h(this);
     })
-  }
-  // @description: wrapText wraps HTML canvas text onto a canvas of fixed width
-  // @param context del canvas principal
-  // @param text - el texto a probar
-  // @param x - coordenada horizontal de origen.
-  // @param y - coordenada vertical de origen.
-  // @param maxWidth - la medida del ancho maximo del lugar donde se quiere agregar el texto.
-  // @param lineHeight - altura entre linea y linea.
-  // @returns an array of [ lineText, x, y ] for all lines
-  wrapText(ctx, text, x, y, maxWidth, lineHeight,center = false) {
-    // First, start by splitting all of our text into words, but splitting it into an array split by spaces
-    let words = text.replaceAll('\n',()=>{return ' \n \n '}).split(' ');
-    let line = ''; // This will store the text of the current line
-    let testLine = ''; // This will store the text when we add a word, to test if it's too long
-    let lineArray = []; // This is an array of lines, which the function will return
-
-    const centering = () => {
-      if(center){
-        let metricsF = ctx.measureText(line);
-        let testWidthF = metricsF.width;
-        return (maxWidth-testWidthF)/2;
-      }else{
-        return 0;
-      }
-        
-    }
-    // Lets iterate over each word
-    for(var n = 0; n < words.length; n++) {
-      // Create a test line, and measure it..
-      testLine += `${words[n]} `;
-      let metrics = ctx.measureText(testLine);
-      let testWidth = metrics.width;
-      // If the width of this test line is more than the max width
-      //console.log(line)
-      if ((testWidth > maxWidth && n > 0) || line.indexOf('\n') != -1) {
-          // Then the line is finished, push the current line into "lineArray"
-          lineArray.push([line, x+centering(), y]);
-          // Increase the line height, so a new line is started
-          y += lineHeight;
-          // Update line and test line to use this word as the first word on the next line
-          line = `${words[n]} `;
-          testLine = `${words[n]} `;
-      }
-      else {
-          // If the test line is still less than the max width, then add the word to the current line
-          line += `${words[n]} `;
-      }
-      // If we never reach the full max width, then there is only one line.. so push it into the lineArray so we return something
-      if(n === words.length - 1) {
-          lineArray.push([line, x+centering(), y]);
-          //TODO: Medir el ancho disponible y
-      }
-    }
-    // Return the line array
-    
-    return lineArray;
   }
   generateRenderingOrder(){
     var zRefs = {}
@@ -634,92 +581,94 @@ class RenderEngine extends React.Component{
                 filterString = "none";
               }
 
-              //*preparatives for part three: if the image need to be rotated
+              //*part three
               //with testD > 0.003 we ensure the very far of|behind the camera elements won't be rendered
-              if(testD>0.003 && gObject.rotate != 0){
-                canvas.context.save();
-                canvas.context.setTransform(//transform using center as origin
-                  1, 
-                  0, 
-                  0, 
-                  1,
-                  objectLeft, 
-                  objectTop); // sets scale and origin
-                canvas.context.rotate(gObject.rotateRad);
-
-                canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
+              if(testD>0.003){
+                let texts;
                 if(gObject.text != null){
-                  if(gObject.boxColor != "transparent"){
-                    canvas.context.fillStyle = gObject.boxColor;
-                    canvas.context.fillRect(
-                      -(objectWidth)/2,
-                      -(objectHeight)/2,
-                      objectWidth,
-                      objectHeight
-                      );
-                  }
-                  canvas.context.fillStyle = gObject.color;
-                  canvas.context.font = (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
-                  const texts = this.replaceCodedExpresions(gObject.text).split("/n");
-                  texts.forEach((text,index) => {
-                    canvas.context.fillText(
-                      text,
-                      -(objectWidth)/2,
-                      -(objectHeight)/2 + (gObject.fontSize*canvas.scale*(1+index)*(canvas.resolutionHeight/700))
-                    );
-                  });
-                }
-                if(gObject.textureName!=null){
-                  canvas.context.drawImage(
-                    texRef.getTexture(gObject),
-                    -(objectWidth)/2,
-                    -(objectHeight)/2,
-                    objectWidth,
-                    objectHeight
-                  );
-                }
-
-                canvas.context.restore();
-              }else if(testD>0.003){
-              //*part three: draw image
-                canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
-                if(gObject.text != null){
-                  if(gObject.boxColor != "transparent"){
-                    canvas.context.fillStyle = gObject.boxColor;
-                    canvas.context.fillRect(
-                      objectLeft,
-                      objectTop,
-                      objectWidth,
-                      objectHeight
-                      );
-                  }
-                  canvas.context.fillStyle = gObject.color;
                   canvas.context.font = (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
 
-                  const texts = this.wrapText(//TODO: Wrap it until all the text get wraped
+                  texts = wrapText(//TODO: Wrap it until all the text get wraped
                     canvas.context,
                     this.replaceCodedExpresions(gObject.text),
-                    (gObject.margin*objectWidth) + objectLeft,
-                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)),
+                    (gObject.margin*objectWidth) + objectLeft - (objectWidth/2),
+                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)) - (objectHeight/2),
                     objectWidth - (gObject.margin*objectWidth)*2,
                     (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)*.6),
                     gObject.center
                   );
-                  texts.forEach((text) => {
-                    canvas.context.fillText(
-                      text[0],
-                      text[1],
-                      text[2]
-                    );
-                  });
                 }
-                if(gObject.textureName!=null){
-                  canvas.context.drawImage(
-                    texRef.getTexture(gObject),
-                    objectLeft-(objectWidth/2),
-                    objectTop-(objectHeight/2),
-                    objectWidth,
-                    objectHeight);
+                canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
+                if(gObject.rotate != 0){
+                  canvas.context.save();
+                  canvas.context.setTransform(//transform using center as origin
+                    1, 
+                    0, 
+                    0, 
+                    1,
+                    objectLeft, 
+                    objectTop); // sets scale and origin
+                  canvas.context.rotate(gObject.rotateRad);
+
+                  if(gObject.text != null){
+                    if(gObject.boxColor != "transparent"){
+                      canvas.context.fillStyle = gObject.boxColor;
+                      canvas.context.fillRect(
+                        -(objectWidth)/2,
+                        -(objectHeight)/2,
+                        objectWidth,
+                        objectHeight
+                        );
+                    }
+                    canvas.context.fillStyle = gObject.color;
+                    texts.forEach((text) => {
+                      canvas.context.fillText(
+                        text[0],
+                        text[1]-objectLeft,
+                        text[2]-objectTop
+                      );
+                    });
+                  }
+                  if(gObject.textureName!=null){
+                    canvas.context.drawImage(
+                      texRef.getTexture(gObject),
+                      -(objectWidth)/2,
+                      -(objectHeight)/2,
+                      objectWidth,
+                      objectHeight
+                    );
+                  }
+
+                  canvas.context.restore();
+                }else{
+                //*part three: draw image
+                  if(gObject.text != null){
+                    if(gObject.boxColor != "transparent"){
+                      canvas.context.fillStyle = gObject.boxColor;
+                      canvas.context.fillRect(
+                        objectLeft-(objectWidth/2),
+                        objectTop-(objectHeight/2),
+                        objectWidth,
+                        objectHeight
+                        );
+                    }
+                    canvas.context.fillStyle = gObject.color;
+                    texts.forEach((text) => {
+                      canvas.context.fillText(
+                        text[0],
+                        text[1],
+                        text[2]
+                      );
+                    });
+                  }
+                  if(gObject.textureName!=null){
+                    canvas.context.drawImage(
+                      texRef.getTexture(gObject),
+                      objectLeft-(objectWidth/2),
+                      objectTop-(objectHeight/2),
+                      objectWidth,
+                      objectHeight);
+                  }
                 }
               }else{
                 this.noRenderedItemsCount++;
@@ -915,15 +864,7 @@ class RenderEngine extends React.Component{
           }
 
           this.codedRoutines.objects.forEach(element => {
-            const numberOfArguments = element.code.length;
-            
-            if(numberOfArguments == 0){
-              element.code();
-            }else if(numberOfArguments == 1){
-              element.code(this);
-            }else if (numberOfArguments == 2){
-              element.code(this,this.engineTime);
-            }
+            element.run(this);
           });
         }}
         afterEffects = {(canvas)=>{

@@ -48,6 +48,8 @@ class GraphObject{
   #pendingRenderingRecalculation = true;
 
   #useEngineUnits
+
+  #parent
   
   #getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
@@ -107,6 +109,8 @@ class GraphObject{
     this.#states = "states" in graphInfo ? new States(this,graphInfo.states) : {};
 
     this.#useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits: true; //for scale
+
+    this.#parent = "parent" in graphInfo ? graphInfo.parent : "";
   }
   get enabled() {return this.#enabled}
   set enabled(x) {this.#enabled = typeof x == "boolean"? x : false}
@@ -372,7 +376,10 @@ class GraphObject{
   set useEngineUnits(x) {this.#useEngineUnits = x}
 
   get pendingRenderingRecalculation() {return this.#pendingRenderingRecalculation;}
-  set pendingRenderingRecalculation(x) {this.#pendingRenderingRecalculation = x;}//unused
+  set pendingRenderingRecalculation(x) {this.#pendingRenderingRecalculation = x;}
+
+  get parent() {return this.#parent;}
+  set parent(x) {this.#parent = x;}
 
 
   get(){// TF THIS ARE bEING USED?

@@ -378,26 +378,29 @@ class ScriptInterpreter {
             }
 
             switch (commandType[1]) {
-              case "GAMEVARS":
+              case "GameVars":
                 scene.gameVars = value;
                 break;
               //*No se permite añadir texturas o sunidos tras creada la escena
-              case "GRAPHOBJECT":
+              case "GraphObject":
                 scene.routines.push(engine=>{
-                  engine.graphArray.push(engine.graphObj.create(value));
+                  engine.graphArray.push(new engine.graphObj(value));
                 });
                 break;
-              case "TRIGGER":
+              case "Trigger":
                 
                 break;
-              case "ANIMATION":
+              case "Animation":
                 scene.routines.push(engine=>{
-                  engine.anims.push(engine.animation.create(value))
+                  engine.anims.push(new engine.animation(value))
                 });
 
                 break;
-              case "CODEDROUTINE":
-                
+              case "CodedRoutine":
+                Object.assign(value[0],{id:commandType[0]})
+                scene.routines.push(engine=>{
+                  engine.codedRoutines.push(new engine.codedRoutine(value[0]))
+                })
                 break;
             
               default:
