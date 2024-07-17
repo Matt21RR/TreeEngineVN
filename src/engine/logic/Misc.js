@@ -116,6 +116,7 @@ function closest(ar,search){
 // @returns an array of [ lineText, x, y ] for all lines
 function wrapText(ctx, text, x, y, maxWidth, lineHeight,center = false) {
   // First, start by splitting all of our text into words, but splitting it into an array split by spaces
+  // console.log(text)
   let words = text.replaceAll('\n',()=>{return ' \n \n '}).split(' ');
   let line = ''; // This will store the text of the current line
   let testLine = ''; // This will store the text when we add a word, to test if it's too long

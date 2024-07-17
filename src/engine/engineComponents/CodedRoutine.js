@@ -13,7 +13,7 @@ class CodedRoutine{
 
     this.#id = tInfo.id;
     this.#enabled = "enabled" in tInfo ? tInfo.enabled : true;
-    this.#continious = "continious" in tInfo ? tInfo.continious : true;
+    this.#continious = "continious" in tInfo ? tInfo.continious : false;
     this.#code = "code" in tInfo ? tInfo.code : null;
   }
 

@@ -1,0 +1,109 @@
+import React  from "react";
+import { WindowsEnvironment } from "./WindowsEnvironment";
+import { Guide } from "../userGuide/Guide";
+import { RenderEngine } from "../engine/renderCore/RenderEngine";
+import { Trigger } from "../engine/engineComponents/Trigger";
+import { TexturesE } from "../engine/tools/TexturesE";
+import { ScriptE } from "../engine/tools/ScriptE";
+import { ObjectsE, TriggersE } from "../engine/tools/SubTools";
+import { EngTools } from "../engine/tools/EngTools";
+
+class Test extends React.Component{
+  constructor(props){
+    super(props);
+    this.engine = new RenderEngine();
+    this.windowsEnvironment = new WindowsEnvironment();
+    this.hide = false;
+
+    this.ObjectsERef = {};
+
+    this.mounted = false;
+  }
+  editionKeys(){
+    const engine = this.engine;
+    const kTDef = {};//Key triggers definition
+    kTDef.KeyR = {
+      onPress:()=>{
+        this.editing = !this.editing;
+        console.log("Perspectiva: "+this.editing);
+        if(this.editing){
+          this.engine.camera.usePerspective = true;
+        }else{
+          this.engine.camera.usePerspective = false;
+        }
+      }
+    };
+
+    kTDef.KeyW = {
+      onHold:()=>{engine.camera.position.z += .1;}
+    }
+    kTDef.KeyS = {
+      onHold:()=>{engine.camera.position.z -= .1;}
+    }
+    kTDef.KeyA = {
+      onHold:()=>{engine.camera.position.x -= .1;}
+    }
+    kTDef.KeyD = {
+      onHold:()=>{engine.camera.position.x += .1;}
+    }
+    kTDef.Space={
+      onHold:()=>{engine.camera.position.y -= .1;}
+    }
+    kTDef.ShiftLeft={
+      onHold:()=>{engine.camera.position.y += .1;}
+    }
+
+    Object.keys(kTDef).forEach(keyDef => {
+      kTDef[keyDef].id = keyDef;
+      this.engine.keyboardTriggers.push(new Trigger(kTDef[keyDef]));
+    });
+    this.forceUpdate();
+  }
+  render(){
+    const env = this.windowsEnvironment;
+    return(<>
+      <WindowsEnvironment 
+        setEnvironment={(env)=>{this.windowsEnvironment = env;}}
+        content={{
+          gameScript:{
+            title:"Game Script",
+            content:<ScriptE engine={this.engine} toolsRef={this} reRender={()=>{this.forceUpdate(); env.forceUpdate();}} />,
+          },
+          textures:{
+            title:"Texturas Dispónibles",
+            content:<TexturesE reRender={()=>{env.forceUpdate();}} />,
+            minimized:true
+          },
+          guide:{
+            title:"Guia del motor",
+            content:<Guide/>,
+            minimized:true
+          },
+          engine:{
+            title:"Redengine",
+            content:<RenderEngine setEngine={(engine)=>{this.engine=engine; this.editionKeys(); env.forceUpdate();}}/>,
+
+          },
+          triggers:{
+            title:"Triggers en escena",
+            content:<TriggersE  engine={this.engine} objectsERef={this.ObjectsERef} reRender={()=>{env.forceUpdate();}} />,
+            minimized:true
+          },
+          objectsInfo:{
+            title:"Objetos en escena",
+            content:<ObjectsE engine={this.engine} reRender={()=>{env.forceUpdate()}} selfRef={(ref)=>{this.ObjectsERef = ref; env.forceUpdate();}}/>,
+            minimized:true
+          },
+          engTools:{
+            title:"Herramientas del motor",
+            content:<EngTools engine={this.engine} reRender={()=>{env.forceUpdate()}}/>,
+            minimized:true
+          }
+        }}
+      
+      />
+    </>);
+  }
+}
+
+export {Test}

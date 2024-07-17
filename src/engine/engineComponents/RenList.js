@@ -3,6 +3,7 @@ class RenList{
     this.objects = new Array();
     this.enabled = new Object();
   }
+  get length(){return this.objects.length;}
   push(GraphObject = new Object()){
     this.objects.push(GraphObject);
   }

@@ -2,8 +2,7 @@ import React from 'react';
 
 import { MenuButton, Button1, ListCheckedBox } from "../components/buttons";
 import { GraphObject } from "../engineComponents/GraphObject";
-import { Window } from '../components/Window';
-
+import { Window } from '../../windows/Window';
 class ObjectsE extends React.Component {
   constructor(props){
     super(props);
@@ -22,9 +21,6 @@ class ObjectsE extends React.Component {
       engine.drawObjectLimits = true;
     }
   }
-  updateWireframe(){
-    this.props.reRender();
-  }
   objectsList(){
     const engine = this.props.engine;
     const reRender = this.props.reRender;
@@ -37,6 +33,7 @@ class ObjectsE extends React.Component {
             this.selectedObject = graphObject.id;
             engine.objectsToDebug = [graphObject.id];
             reRender();
+            this.forceUpdate();
           }}
           enter={()=>{
             this.hoveredObject = graphObject.id;
@@ -65,14 +62,19 @@ class ObjectsE extends React.Component {
   editObject(){
     const engine = this.props.engine;
     if(this.selectedObject != ""){
-      const objInfo = (engine.graphArray.get(this.selectedObject).dump());
-      return(
-        Object.keys(objInfo).map(key=>(
-          <div>
-            {key+" : "+objInfo[key]}
-          </div>
-          ))
-      );
+      try {
+        const objInfo = (engine.graphArray.get(this.selectedObject).dump());
+        return(
+          Object.keys(objInfo).map(key=>(
+            <div>
+              {key+" : "+objInfo[key]}
+            </div>
+            ))
+        );
+      } catch (error) {
+        return(<></>);
+      }
+
     }
   }
   states(){
@@ -91,38 +93,39 @@ class ObjectsE extends React.Component {
     }
   }
   render(){
+    const eng = this.props.engine;
       return(
-        <>
-          <div className="flex flex-col max-h-full">
+        <div className='text-white flex flex-row h-full'>
+          <div className="flex flex-col max-h-full p-2">
             <div>
               Objects List
             </div>
-
+            <MenuButton text="Unselect" action={()=>{eng.objectsToDebug = [];this.selectedObject=""}}/>
             <div className="relative w-full overflow-auto">
               {this.objectsList()}
             </div>
           </div>
-          <div className="flex flex-col max-h-full">
+          <div className="flex flex-col max-h-full p-2">
             <div>
               Create
             </div>
 
             <div className="relative w-full overflow-auto">
-              <Button1 text={"Show states"} action={()=>{this.showStates = true;this.forceUpdate();}}/>
+              <Button1 text={"Show states"} action={()=>{this.showStates = true; this.forceUpdate();}}/>
               {this.createObject()}
             </div>
           </div>
-          <div className="flex flex-col max-h-full">
+          <div className="flex flex-col h-full w-full p-2">
             <div>
               Edit
             </div>
 
-            <div className="relative w-full overflow-auto text-sm px-2">
+            <div className="relative h-full w-full overflow-auto text-sm px-2">
               {this.editObject()}
             </div>
           </div>
           {this.states()}
-        </>
+        </div>
       )
   }
 }
@@ -226,7 +229,7 @@ class TriggersE extends React.Component {
       )
     );
   }
-  renderContent() {
+  render() {
     return (
       <div className='w-full h-full pt-5 pb-16'>
         <div className='relative h-full text-white overflow-auto'>
@@ -243,16 +246,7 @@ class TriggersE extends React.Component {
 
     );
   }
-  render() {
-    return (
-      <Window
-        content={()=>this.renderContent()}
-        clicked={()=>this.props.clicked()}
-        title={"Defined Triggers"}
-        exit={()=>this.props.exit()}
-      />
-    );
-  }
+  
 }
 class SoundsE extends React.Component {
   constructor(props) {super(props);}

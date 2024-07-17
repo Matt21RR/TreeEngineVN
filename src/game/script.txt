@@ -6,65 +6,78 @@ SET SOUNDS [
 
 SET TEXTURES [
   "engineLogo",
-  "next1",
-  "next2",
-  "next3",
-  "next4",
-  "next5",
-  "next6",
-  "next7",
-  "next8",
-  "next9",
-  "next10",
-  "next11",
-  "next12",
-  "next13",
-  "next14",
-  "next15",
+  "spring",
+  "wall",
+  "wood"
 ]
 
-dialogButton = new TextureAnim([
-  "next1",
-  "next2",
-  "next3",
-  "next4",
-  "next5",
-  "next6",
-  "next7",
-  "next8",
-  "next9",
-  "next10",
-  "next11",
-  "next12",
-  "next13",
-  "next14",
-  "next15",
-],{duration:500})
+spring = new GraphObject ({
+  //texture:"spring",
+  scale:.3,
+  text:$("zCamera: "+engine.camera.position.z.toFixed(2)+"\n"
+  +"zWall: "+ +engine.dimentionsPack.wall.z.toFixed(2)+"\n"
+  +"zWood: "+ +engine.dimentionsPack.wood.z.toFixed(2)+"\n"
+  +"zAcomulatedWood: "+ +engine.getObject("wood").accomulatedZ.toFixed(2)+"\n"
+  +"perspective: "+ +engine.camera.usePerspective+"\n"
+)$,
+  boxColor: "orange",
+  x:1,
+  y:.7
+})
+
+tPers = new Trigger("spring",{
+  enabled:true,
+  onRelease:(engine)=>{engine.camera.usePerspective = !engine.camera.usePerspective}
+})
 
 engineLogo = new GraphObject ({
   texture:"engineLogo",
-  //scale:2,
-  //blur:22,
+  scale:2,
+  blur:22,
   x:.85,
   y:.5,
   z:2
 })
 
-nextDialog = new GraphObject ({
-  texture:"dialogButton",
+wall = new GraphObject({
+  texture:"wall",
+  x:.5,
+  y:.5,
   scale:.5,
-  y:.3,
-  x:.3
+  z:2
 })
+
+wallAnim = new Animation("wall",{
+  0:{z:2},
+  2000:{z:0}
+},{enabled:false,infinite:true})
+
+wood = new GraphObject({
+  texture:"wood",
+  x:0,
+  y:0,
+  scale:.5,
+  z:0,
+  parent:"wall"
+})
+
+woodAnim = new Animation("wood",{
+  0:{scale:.5},
+  2000:{scale:0}
+},{enabled:true,infinite:true})
 
 engLogoAnim = new Animation ("engineLogo",{
   0:{blur:24,opacity:0},
   3500:{blur:18,scale:.75, opacity:.3, brightness:4},
   4000:{blur:0,scale:.45, opacity:1, brightness:3},
   6500:{scale:.25, opacity:0, brightness:1} 
-},{enabled:false,onComplete:(engine)=>{engine.cleanConsol();}})
+},{enabled:true,onComplete:(engine)=>{engine.cleanConsol();}})
 
-END FILE
+testSound = new CodedRoutine({
+  code:(engine)=>{engine.soundsList.get("openning").sound.play()},
+  continious:false,
+  enabled:false
+})
 
 SCENE ID mapa
 

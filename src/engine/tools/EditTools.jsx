@@ -132,6 +132,7 @@ class EditTools extends React.Component {
     const statesWindow = this.renderingSubTools.states ? 
     <StatesE 
       clicked={()=>{this.clickWindow("statesWindow")}}
+      props={{}}
       engine={this.engine} 
       objectsERef={this.ObjectsERef}
       reRender={()=>{this.forceUpdate();}} 

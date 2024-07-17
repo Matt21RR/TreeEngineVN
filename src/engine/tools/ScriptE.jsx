@@ -2,16 +2,17 @@ import React from 'react';
 
 import { Button1, IconButton, InputText, InputTextArea } from "../components/buttons";
 import { ScriptInterpreter } from '../renderCore/ScriptInterpreter';
-import { Window } from '../components/Window';
+import { Window } from '../../windows/Window';
 
 import Swal from 'sweetalert2'
+import { GraphObject } from '../engineComponents/GraphObject';
 
 class ScriptE extends React.Component {
   constructor(props) {
     super(props);
     this.history = [];
     this.script = "scriptNotepad" in localStorage ? localStorage.getItem("scriptNotepad") : "";
-    this.sceneIdWhereRun = "";
+    this.sceneIdWhereRun =  "sceneIdWhereRun" in localStorage ? localStorage.getItem("sceneIdWhereRun") : "";
     this.showSaves = false;
   }
   getSaves(){
@@ -72,76 +73,106 @@ class ScriptE extends React.Component {
   renderSaves(){
     if(this.showSaves){
       return(
-        <Window
-          content={()=>this.savesContent()}
-          clicked={()=>this.props.clicked()}
-          title={"Scripts Saved"}
-          exit={()=>{this.showSaves = false; this.forceUpdate();}}
-        />
+        <div className='absolute h-full w-full flex flex-col'>
+          <Window
+            content={()=>this.savesContent()}
+            clicked={()=>this.props.clicked()}
+            title={"Scripts Saved"}
+            exit={()=>{this.showSaves = false; this.forceUpdate();}}
+          />
+        </div>
       );
     }
   }
-  content(){
-    return(
-      <div className='relative h-full w-full flex flex-col'>
-        <div className='relative h-full w-full text-white overflow-auto'>
-            
-          <div className='relative h-full w-full text-white font-[Consolas] code'>
-            <InputTextArea 
-              height={"h-full"} 
-              defaultValue={this.script}
-              changeValue={(value)=>{this.script = value;localStorage.setItem("scriptNotepad",value)}} />
-          </div>
-        </div>
-        <div className='bottom-0 h-8 w-full bg-gray-700 flex flex-row-reverse relative'>
-          <Button1 
-            text="Run!!" 
-            action={()=>{
-              console.log(this.script);
-              const engine = this.props.engine;
-              const k = new ScriptInterpreter;
-              engine.actualSceneId = this.sceneIdWhereRun;
-              k.buildFromText(this.script,(masterScript)=>{engine.loadGame(masterScript); this.props.toolsRef.editionKeys()},(error)=>{engine.consol(error)});
-            }}
-            />
-          <InputText change={(value)=>{this.sceneIdWhereRun = value;}} style="pl-8 max-w-8"/>
-
-          <div className='absolute left-0 top-0 h-full w-fit flex'>
-            <IconButton icon="save" style="h-6 w-6 m-1" action={()=>{
-              Swal.fire({
-                title: "Enter script name",
-                input: "text",
-                inputLabel: "Script Name",
-                showCancelButton: true,
-                inputValidator: (value) => {
-                  if (!value) {
-                    return "You need to write something!";
-                  }
-                  if(Object.keys(this.getSaves()).indexOf(value) != -1){
-                    return "That name are already being used";
-                  }
-                }
-              }).then(saveName=>{
-                this.saveScript(saveName.value,this.script);
-              });
-            }}/>
-            <Button1 text="Load" action={()=>{
-              this.showSaves = true; 
-              this.forceUpdate();}}/>
-          </div>
-        </div>
-      </div>
-    );
+  runScript(){
+    const engine = this.props.engine;
+    const k = new ScriptInterpreter;
+    engine.actualSceneId = this.sceneIdWhereRun;
+    k.buildFromText(this.script,(masterScript)=>{
+      engine.loadGame(masterScript,()=>{
+        this.props.toolsRef.editionKeys();
+        this.props.reRender();
+      });
+    },(error)=>{engine.consol(error)});
   }
-  render() {
-    return (
+  render(){
+    return(
       <>
-        <Window
-          content={()=>this.content()}
-          clicked={()=>this.props.clicked()}
-          title={"Game Script"}
-          exit={()=>this.props.exit()}
-        />
+        <div className='relative h-full w-full flex flex-col'>
+          <div className='relative h-full w-full text-white overflow-auto flex flex-row'>
+            <div className='left-0 w-8 h-full bg-gray-700 flex flex-col relative border-b-2'>
+                <IconButton icon="plus" style="h-6 w-6 m-1" action={()=>{
+                  Swal.fire({
+                    title: "Agregar elemento",
+                    // text: "Seleccione el tipo de elemento que desea agregar en su script",
+                    input: "select",
+                    inputOptions: {
+                      "Elemento compuesto": {
+                        textureAnim:"TextureAnim",
+                        graphObject:"GraphObject",
+                        anim:"Animation",
+                        trigger:"Trigger",
+                        codedRoutine:"CodedRoutine"
+                      },
+                      "Lista plana": {
+                        textures: "Set Textures",
+                        sounds: "Set Sounds"
+                      }
+                    },
+                    inputPlaceholder: "Tipo de elemento",
+                    showCancelButton: true,
+                    inputValidator: (value) => {
+                      if (!value) {
+                        return "Elige una de las opciones de la lista";
+                      }
+                    }
+                  }).then(elementType=>{
+                    // this.saveScript(saveName.value,this.script);
+                  });
+                }}/>
+            </div>
+            <div className='relative h-full w-full text-white font-[Consolas] code'>
+              <InputTextArea 
+                height={"h-full"} 
+                defaultValue={this.script}
+                onControl={{Enter:(e)=>{e.preventDefault(e);this.runScript();}}}
+                changeValue={(value)=>{this.script = value;localStorage.setItem("scriptNotepad",value)}} />
+            </div>
+          </div>
+          <div className='bottom-0 h-8 w-full bg-gray-700 flex flex-row-reverse relative'>
+            <Button1 
+              text="Run!!" 
+              action={()=>{
+                this.runScript();
+              }}
+              />
+            <InputText defaultValue={this.sceneIdWhereRun} change={(value)=>{this.sceneIdWhereRun = value;localStorage.setItem("sceneIdWhereRun",value);}} style="pl-8 max-w-8"/>
+
+            <div className='absolute left-0 top-0 h-full w-fit flex'>
+              <IconButton icon="save" style="h-6 w-6 m-1" action={()=>{
+                Swal.fire({
+                  title: "Enter script name",
+                  input: "text",
+                  inputLabel: "Script Name",
+                  showCancelButton: true,
+                  inputValidator: (value) => {
+                    if (!value) {
+                      return "You need to write something!";
+                    }
+                    if(Object.keys(this.getSaves()).indexOf(value) != -1){
+                      return "That name are already being used";
+                    }
+                  }
+                }).then(saveName=>{
+                  this.saveScript(saveName.value,this.script);
+                });
+              }}/>
+              <Button1 text="Load" action={()=>{
+                this.showSaves = true; 
+                this.forceUpdate();}}/>
+            </div>
+          </div>
+        </div>
         {this.renderSaves()}
       </>
     );

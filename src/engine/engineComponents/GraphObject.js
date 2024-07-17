@@ -51,6 +51,8 @@ class GraphObject{
 
   #parent
   
+  #accomulatedZ //Engine related var, dont changeit through a gamescript
+
   #getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
     const propertyNames = Object.keys(propertyDescriptors);
@@ -100,7 +102,7 @@ class GraphObject{
     //z
     this.#z = "z" in graphInfo ? parseFloat(graphInfo.z) : 0;
     //ignoreParallax forces the object to ignore the camera parallax movement
-    this.#ignoreParallax = "z" in graphInfo ? (graphInfo.ignoreParallax!=undefined?graphInfo.ignoreParallax:false) : true;
+    this.#ignoreParallax = "z" in graphInfo ? ("ignoreParallax" in graphInfo? graphInfo.ignoreParallax:false) : true;
     //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
     //Todo: force the engine to use this when it's a text object.
     this.#widthScale = "widthScale" in graphInfo ? graphInfo.widthScale: 1;
@@ -108,7 +110,7 @@ class GraphObject{
 
     this.#states = "states" in graphInfo ? new States(this,graphInfo.states) : {};
 
-    this.#useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits: true; //for scale
+    this.#useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits:("parent" in graphInfo ? false :true); //for scale
 
     this.#parent = "parent" in graphInfo ? graphInfo.parent : "";
   }
@@ -380,6 +382,9 @@ class GraphObject{
 
   get parent() {return this.#parent;}
   set parent(x) {this.#parent = x;}
+
+  get accomulatedZ() {return this.#accomulatedZ;}
+  set accomulatedZ(x) {this.#accomulatedZ = x;}
 
 
   get(){// TF THIS ARE bEING USED?

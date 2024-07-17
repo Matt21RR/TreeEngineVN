@@ -1,34 +1,10 @@
 import React from 'react';
 
 import { MenuButton } from "../components/buttons";
-import { Window } from '../components/Window';
 import { requiredTextures } from '../../game/RequireFile';
 
 class TexturesE extends React.Component {
   constructor(props) {super(props);}
-  listA() {
-    let textures = this.props.engine.texturesList.objects;
-    return (
-      textures.map((texture) => (
-        <div className={'border-4 flex flex-row w-[98%] relative my-1'}>
-          <div className={'m-1 h-[7.75rem] w-56 '}
-            style={{
-              backgroundImage: ("url('" + texture.texture.currentSrc + "')"),
-              backgroundSize: "contain",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "center"
-            }}/>
-          <div className='absolute right-4 top-1 text-white'>
-            <MenuButton text={texture.id} />
-          </div>
-          <div className='absolute right-4 top-6 text-white'>
-            <MenuButton text={texture.texture.naturalWidth + "x" + texture.texture.naturalHeight} />
-          </div>
-        </div>
-      )
-      )
-    );
-  }
   listB() {
     let textures = requiredTextures;
     return (
@@ -49,7 +25,7 @@ class TexturesE extends React.Component {
       )
     );
   }
-  renderContent() {
+  render() {
     return (
       <div className='relative w-full h-full pt-5 flex flex-col'>
         <div className='relative h-full w-full text-white overflow-auto'>
@@ -64,16 +40,6 @@ class TexturesE extends React.Component {
         </div>
       </div>
 
-    );
-  }
-  render() {
-    return (
-      <Window
-        content={()=>this.renderContent()}
-        clicked={()=>this.props.clicked()}
-        title={"Available textures"}
-        exit={()=>this.props.exit()}
-      />
     );
   }
 }

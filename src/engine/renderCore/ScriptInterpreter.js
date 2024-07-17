@@ -2,15 +2,51 @@ import $ from "jquery";
 import { requiredTextures, requiredSounds } from "../../game/RequireFile";
 import { isNumeric } from "../logic/Misc";
 const script = require("../../game/script.txt");
+const modulesFile = require("../../game/modules.txt");
 
 class ScriptInterpreter {
   textCommands = [];
+  modulesLoader(errorConsol,fun){
+    $.get(modulesFile).then(e => {
+      try {
+        const res = this.separateScenes(this.buildPrimitiveArray(e));
+        var modules = {}
+        res.forEach(e=>{
+          Object.assign(modules,e);
+        })
+        fun(modules);
+      } catch (error) { 
+        errorConsol("Error! error de lectura de los modulos");
+        errorConsol("Compruebe la sintaxis del archivo de modulos");
+        errorConsol(error.message);
+        console.log(error);
+      }
+    }).catch(
+      error=>{
+        errorConsol(error);
+        fun({});
+      }
+    )
+  }
   build(func,errorConsol){
     $.get(script).then(e => {
       try {
-        const res = this.convertToEngineCommands(this.separateScenes(this.buildPrimitiveArray(e)));
-        console.log(res);
-        func(res);
+        this.modulesLoader(errorConsol,(modules)=>{
+          var primitiveArray = this.buildPrimitiveArray(e);
+          primitiveArray.forEach((primitive,index)=>{
+            if("ADD MODULE" in primitive){
+              const moduleId = primitive["ADD MODULE"];
+              if(!(moduleId in modules)){
+                throw new Error("That module: "+moduleId+", in primitive #"+index+" don't exist in the modules file");
+              }
+              primitiveArray.splice(index,1,modules[moduleId]);
+            }
+          })
+          console.log(primitiveArray);
+          const res = this.convertToEngineCommands(this.separateScenes(primitiveArray));
+          console.log(res);
+          func(res);
+        });
       } catch (error) {
         errorConsol("Error! error de lectura del script");
         errorConsol(error.message);
@@ -21,9 +57,26 @@ class ScriptInterpreter {
   }
   buildFromText(script,func,errorConsol){
     try {
-      const res = this.convertToEngineCommands(this.separateScenes(this.buildPrimitiveArray(script)));
-      console.log(res);
-      func(res);
+      this.modulesLoader(errorConsol,(modules)=>{
+        var primitiveArray = this.buildPrimitiveArray(script);
+        primitiveArray.forEach((primitive,index)=>{
+          if("ADD MODULE" in primitive){
+            const moduleId = primitive["ADD MODULE"];
+            if(!(moduleId in modules)){
+              throw new Error("That module: "+moduleId+", in primitive #"+index+" don't exist in the modules file");
+            }
+            primitiveArray.splice(index,1);
+            modules[moduleId].forEach((moduleElement,index2)=>{
+              primitiveArray.splice(index+index2,0,moduleElement);
+            })
+
+          }
+        })
+        console.log(primitiveArray);
+        const res = this.convertToEngineCommands(this.separateScenes(primitiveArray));
+        console.log(res);
+        func(res);
+      });
     } catch (error) {
       errorConsol("Error! error de lectura del script")
       errorConsol(error.message)
@@ -136,7 +189,6 @@ class ScriptInterpreter {
         acomulateLines = "";
         indexWhereCommandObjectStart = 0;
       }else if(lineF.replaceAll(" ","") == ""){
-        // acomulateLines = "";
         indexWhereCommandObjectStart = 0;
       }
 
@@ -266,6 +318,11 @@ class ScriptInterpreter {
                 commandStacks.push({[sceneId]:commandStack});commandStack =[];    
             }
             sceneId = command["SCENE ID"];
+        }else if(Object.keys(command)[0] == "MODULE ID"){
+          if(sceneId != ""){
+              commandStacks.push({[sceneId]:commandStack});commandStack =[];    
+          }
+          sceneId = command["MODULE ID"];
         }else if(Object.keys(command)[0] == "END" && command.END == "FILE"){
           commandStacks.push({[sceneId]:commandStack});
           commandStack =[];    
@@ -286,7 +343,7 @@ class ScriptInterpreter {
       const sceneId = Object.keys(commandStack)[0];
       let scene = {
         gameVars:{},
-        textures:null,
+        textures:{},
         textureAnims:[],
         sounds:null,
         graphObjects:[],
@@ -333,24 +390,25 @@ class ScriptInterpreter {
           value = this.stringToValue(valueInString,this.textCommands[comNumber+1],true);
         }else{
           value = this.stringToValue(valueInString,this.textCommands[comNumber+1]);
-        }  
-        console.log(value);
+        }
+
         
         if(passFlag){
-          if(commandType[0] == "SHOW"){
-            if(commandType[1] == "DIALOG"){
-              console.log(commandType[2],value);
+            if(commandType[0].indexOf("$") == 0){
+              console.log(commandType[1],value);
               scene.routines.push((engine)=>{
                 engine.dialogNumber = 0;
-                engine.voiceFrom = commandType[2];
+                engine.voiceFrom = commandType[0].replace("$","");
                 engine.dialog = value;
 
                 engine.graphArray.get("dialogbox").text = "";
                 engine.graphArray.get("dialogbox").opacity = 1;
 
+                engine.graphArray.get("voiceByName").opacity = 1;
+
                 engine.continue = false;
               });
-            }else if(commandType[1] == "NARRATION"){
+            }else if(commandType[0] == "NARRATION"){
               scene.routines.push((engine)=>{
                   engine.triggers.get("avanzarNarracion").enabled = true;
                   engine.paragraphNumber = 0;
@@ -363,7 +421,6 @@ class ScriptInterpreter {
 
                   engine.continue = false;
                 });
-            }
           }else if(commandType[0] == "new"){
             if(commandType[2] == ""){
               console.warn("No id");
@@ -439,11 +496,9 @@ class ScriptInterpreter {
           }else{
             Object.assign(scene.idDirectory,{[commandType[0]]:commandType[3]})//{id:type}
           }
-
           var res = {};
           switch (commandType[3]) {
             case "GameVars":
-              //Here you will need to add the id to the "value" object
               Object.assign(value[0],{id:commandType[0]})
               scene.gameVars = value[0];
               break;
@@ -460,11 +515,7 @@ class ScriptInterpreter {
               Object.assign(res,{id:commandType[0]});
               Object.assign(res,{relatedTo:value[0]});
               Object.assign(res,value[1])
-              if(res.relatedTo == "Keyboard"){
-                scene.keyboardTriggers.push(res);
-              }else{
-                scene.triggers.push(res);
-              }
+              scene.triggers.push(res);
               break;
             case "Animation":
               if( isNumeric(Object.keys(value[1])[0])){ //using keyframes
@@ -486,17 +537,26 @@ class ScriptInterpreter {
               throw new Error("Command #"+comNumber+" ,is not a registered command: "+Object.keys(command)[0]);
               break;
           }
+        }else if(commandType[0] == "new"){
+          var res = {};
+          switch (commandType[1]) {
+            case "KeyboardTrigger":
+              // Object.assign(res,{id:commandType[0]});
+              Object.assign(res,{keys:value[0]});
+              Object.assign(res,value[1])
+              scene.keyboardTriggers.push(res);
+              break;
+          }
         }else if(commandType[0] == "SET"){
           switch (commandType[1]) {
             case "GAMEVARS":
               scene.gameVars = value;
               break;
             case "TEXTURES":
-              var res = new Object();
+              // var res = new Object();
               value.forEach((textureName) => {
-                Object.assign(res,{[textureName]:requiredTextures[textureName]});
+                Object.assign(scene.textures,{[textureName]:requiredTextures[textureName]});
               });
-              scene.textures = res;
               break;
             case "SOUNDS":
               var res = new Object();
@@ -509,6 +569,10 @@ class ScriptInterpreter {
         }else if(commandType[0] == "END"){
           if(command.END == "DEFINITION"){
             if(!passFlag)passFlag=true;
+          }
+        }else if(commandType[0] == "ADD"){
+          if(commandType[1] == "MODULE"){
+
           }
         }
       });

@@ -5,7 +5,6 @@ class Trigger{
   #relatedTo
   #enabled
 
-  #onPress //Keyboard
   #onHold
   #onRelease
   #onEnter
@@ -20,7 +19,6 @@ class Trigger{
     this.#enabled = "enabled" in tInfo ? tInfo.enabled : true;
     //if superposition is true the engine will ignore the graphObjects that are over the graphobject related to the trigger
     //superposition: tInfo.superposition != undefined ? tInfo.superposition : false,
-    this.#onPress = "onPress" in tInfo ? tInfo.onPress : null;//Special for keyboard
     this.#onHold = "onHold" in tInfo ? tInfo.onHold : null;
     this.#onRelease = "onRelease" in tInfo ? tInfo.onRelease : null;
     this.#onEnter = "onEnter" in tInfo ? tInfo.onEnter : null;
@@ -34,9 +32,6 @@ class Trigger{
 
   get enabled() {return this.#enabled;}
   set enabled(x){this.#enabled = x;}
-
-  get onPress() {return this.#onPress;}
-  set onPress(x) {this.#onPress = x;}
 
   get onHold() {return this.#onHold;}
   set onHold(x) {this.#onHold = x;}
@@ -70,4 +65,55 @@ class Trigger{
   }
 }
 
-export {Trigger}
+class KeyboardTrigger{
+  #keys
+  #enabled
+
+  #onPress
+  #onHold
+  #onRelease
+
+  constructor(tInfo){
+    this.#keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
+    this.#enabled = "enabled" in tInfo ? tInfo.enabled : true;
+    this.#onPress = "onPress" in tInfo ? tInfo.onPress : null;
+    this.#onHold = "onHold" in tInfo ? tInfo.onHold : null;
+    this.#onRelease = "onRelease" in tInfo ? tInfo.onRelease : null;
+  }
+
+  get id(){return this.#keys.join(" ")}
+
+  get keys(){return this.#keys}
+
+  get enabled() {return this.#enabled;}
+  set enabled(x){this.#enabled = x;}
+
+  get onPress() {return this.#onPress;}
+  set onPress(x) {this.#onPress = x;}
+
+  get onHold() {return this.#onHold;}
+  set onHold(x) {this.#onHold = x;}
+
+  get onRelease() {return this.#onRelease;}
+  set onRelease(x) {this.#onRelease = x;}
+
+
+  check(engineRef = new RenderEngine(),action = new String()){
+    if(this[action] == null || !this.enabled){
+      return;
+    }
+    const numberOfArguments = this[action].length;
+    if(numberOfArguments == 0){
+      this[action]();
+    }else if(numberOfArguments == 1){
+      this[action](engineRef);
+    }else if (numberOfArguments == 2){
+      const graphObjectRef = engineRef.graphArray.get(this.relatedTo);
+      this[action](engineRef,graphObjectRef);
+    }else{
+      throw new Error("Too much arguments (",numberOfArguments,") for the function defined to the action ",action,", for the keyboardtrigger",this.id)
+    }
+  }
+}
+
+export {Trigger, KeyboardTrigger}

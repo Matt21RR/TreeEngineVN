@@ -10,6 +10,8 @@ class Canvas extends React.Component{
     this.id = "canvas"+performance.now();
     this.mounted = false;
 
+    this.renderEngine = "engine" in this.props ? this.props.engine:{};
+
     this.windowHasFocus = true;
 
     this.static = this.props.static ? this.props.static : false;
@@ -43,6 +45,7 @@ class Canvas extends React.Component{
 
     window.setFps = (x) => { 
       const canvas = this.element.current;
+      if(canvas == null){return;}
       this.fps = x; 
       this.stopEngine = (x == 0) && !this.stopEngine; 
       this.interval = Math.floor(1000 / x); 
@@ -106,9 +109,10 @@ class Canvas extends React.Component{
       $(window).off("blur");
       $(window).on("blur", function (e) {
         if(self.windowHasFocus && self.fps != 4){
+          self.renderEngine.pressedKeys = [];
           self.windowHasFocus = false;
           self.fpsBackup = self.fps;
-          window.setFps(4);
+          window.setFps(3);
         }
       });
       $(window).off("focus");
@@ -212,14 +216,12 @@ class Canvas extends React.Component{
     }
     var renderer = (fps) => {
       context.filter = 'none';
-
       this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
-
       const actualGlobalAlpha = context.globalAlpha;
-
-      this.afterEffects({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
+      // this.afterEffects({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
 
       if(this.showFps){
+        context.globalCompositeOperation = "xor";
         context.filter = 'none';
         context.globalAlpha = 1;
         context.beginPath();
@@ -228,12 +230,26 @@ class Canvas extends React.Component{
         context.fillText("Redengine v0.0.0", 5, 15*this.scale);
         context.fillText("Fps: "+fps.promedio, 5, 30*this.scale);
         context.fillText("Interval: "+fps.elapsed.toFixed(4), 5, 45*this.scale);
-        context.fillText("Threads: "+this.engineThreads, 5, 60*this.scale);
+        var mOrigin = this.renderEngine.mouse.origin;
+        if(mOrigin != null){
+          if(!(mOrigin in this.renderEngine.dimentionsPack)){
+            this.renderEngine.mouse.origin = null;
+            console.log("that mouse origin don't exists anymore: "+mOrigin);
+            mOrigin = null;
+          }
+        }
+        var mouse = {
+          x : mOrigin == null ? this.renderEngine.mouse.x : this.renderEngine.mouse.x - this.renderEngine.dimentionsPack[mOrigin].x/this.resolutionHeight,
+          y : mOrigin == null ? this.renderEngine.mouse.y : this.renderEngine.mouse.y - (this.renderEngine.dimentionsPack[mOrigin].y/this.resolutionHeight),
+        };
+        context.fillText("Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2)+" ,origin:"+mOrigin, 5, 60*this.scale);
         context.fillText("Res: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 75*this.scale);
         context.fillText("scale: "+this.scale+" : "+(Math.floor(window.devicePixelRatio*100)/100), 5, 90*this.scale);
+        context.fillText("Keys: "+this.renderEngine.pressedKeys.join(" "),5,105*this.scale);
         context.closePath();
         context.fill();
         context.globalAlpha = actualGlobalAlpha;
+        context.globalCompositeOperation = "source-over";
       }
     }
     var then = performance.now();
@@ -241,8 +257,8 @@ class Canvas extends React.Component{
     var drawnFrames = 0, startTimer = 0, now,maxFps = 0;
     var draw = (newtime) => {
       if(!canvasInstances.checker(this.props.id,this.id)){
-        this.CELGF("Multicalling to draw detected");
-        this.CELGF("killing engine recall");
+        // this.CELGF("Multicalling to draw detected");
+        // this.CELGF("killing engine recall");
         return;
       }            
       if(this.stopEngine){

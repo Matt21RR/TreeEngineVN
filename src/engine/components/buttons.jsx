@@ -8,11 +8,13 @@ import save from "../res/engineRes/save.svg";
 import squares from "../res/engineRes/squares.svg";
 import square from "../res/engineRes/square.svg";
 import minus from "../res/engineRes/minus.svg";
+import plus from "../res/engineRes/plus.svg";
 
 import gsap from "gsap";
 import $ from "jquery";
 import './highlight-within-textarea/jquery.highlight-within-textarea.js';
 import './highlight-within-textarea/jquery.highlight-within-textarea.css';
+import Swal from "sweetalert2";
 
 const icons ={
   trash:trash,
@@ -22,7 +24,8 @@ const icons ={
   save:save,
   squares:squares,
   square:square,
-  minus:minus
+  minus:minus,
+  plus:plus
 }
 
 class ListCheckedBox extends React.Component{
@@ -52,6 +55,19 @@ class ListCheckedBox extends React.Component{
     return(
       <div className="flex flex-col w-auto mx-1">
         {this.list()}
+      </div>
+    );
+  }
+}
+class BaseButton extends React.Component{
+  render(){
+    return(
+      <div 
+        className={("style" in this.props ? this.props.style : "") + ((this.props.hide) ? " hidden":"")} 
+        onClick={()=>{this.props.action()}}
+        onMouseEnter={()=>{if("enter" in this.props){this.props.enter();}}}
+        onMouseLeave={()=>{if("leave" in this.props){this.props.leave();}}}>
+        {this.props.text}
       </div>
     );
   }
@@ -123,6 +139,7 @@ class InputTextArea extends React.Component {
     this.id = "inputTextArea" + String(window.performance.now()).replaceAll(".","");
     this.handleClickOutside = this.handleClickOutside.bind(this);
     this.mounted = false;
+    this.caretPosWhenBlur = {start:0,end:0}
   }
   componentDidMount() {
     if(!this.mounted){
@@ -238,29 +255,72 @@ class InputTextArea extends React.Component {
             <textarea
               className={height + "w-full resize-none outline-none align-top border-none bg-transparent text-transparent caret-white p-2"}
               type="text"
+              onBlur={(e)=>{
+                const element = $("#"+this.id).get(0);
+                var start = element.selectionStart;
+                var end = element.selectionEnd;
+                this.caretPosWhenBlur = {start:start,end:end};
+              }}
               defaultValue={"value" in this.props? this.props.value : ""}
               ref={this.inputRef}
               name={this.id}
               id={this.id}
               spellCheck={false}
               onChange={()=>this.changeValue()}
-              onKeyUp={e => (e.key == "Tab" ? e.preventDefault() : null)}
+              onKeyUp={e => {
+                if(e.key == "Tab"){e.preventDefault();}
+              }}
               onKeyDown={e => {
-                if (e.key == 'Tab') {
-                  e.preventDefault();
-                  const element = $("#"+this.id).get(0);
-                  var start = element.selectionStart;
-                  var end = element.selectionEnd;
-              
-                  // set textarea value to: text before caret + tab + text after caret
-                  element.value = element.value.substring(0, start) +
-                    "  " + element.value.substring(end);
-              
-                  // put caret at right position again
-                  element.selectionStart =
-                    element.selectionEnd = start + 2;
-
-                  this.changeValue();
+                if(e.ctrlKey){
+                  if("onControl" in this.props){
+                    if(e.key in this.props.onControl){this.props.onControl[e.key](e);}
+                  }
+                }else{
+                  if (e.key == 'Tab') {
+                    e.preventDefault();
+                    const element = $("#"+this.id).get(0);
+                    var start = element.selectionStart;
+                    var end = element.selectionEnd;
+                
+                    if(e.shiftKey){
+                      // set textarea value to: text before caret + tab + text after caret
+                      element.value = element.value.substring(0, start-2) + element.value.substring(end);
+                      console.log(element.value.substring(start-2,end));
+                      // put caret at right position again
+                      element.selectionStart =
+                      element.selectionEnd = start - 2;
+                    }else{
+                      // set textarea value to: text before caret + tab + text after caret
+                      element.value = element.value.substring(0, start) +
+                      "  " + element.value.substring(end);
+                      
+                      // put caret at right position again
+                      element.selectionStart =
+                      element.selectionEnd = start + 2;
+                    }
+                
+                    this.changeValue();
+                    $('#'+this.id).trigger("load");
+                  }
+                  if (e.key == 'Enter') { //Avoid autoscroll on enter
+                    e.preventDefault();
+                    const element = $("#"+this.id).get(0);
+                    var start = element.selectionStart;
+                    var end = element.selectionEnd;
+                
+                    // set textarea value to: text before caret + tab + text after caret
+                    element.value = element.value.substring(0, start) +
+                      '\r\n' + element.value.substring(end);
+                
+                    this.changeValue();
+                    $('#'+this.id).trigger("load");
+                    // this.forceUpdate();
+                    // put caret at right position again
+                    element.selectionStart =
+                    element.selectionEnd = start+1;
+  
+  
+                  }
                 }
               }} />
           </div>
@@ -274,7 +334,7 @@ class InputText extends React.Component{
     return(
       <input 
         className={" bg-black my-0.5 px-1 rounded-md text-white text-[12px] " + ("style" in this.props ? this.props.style : "") + ((this.props.hide) ? " hidden":"")} 
-        defaultValue={"value" in this.props ? this.props.value : ""}
+        defaultValue={"defaultValue" in this.props ? this.props.defaultValue : ""}
         onClick={()=>{if("action" in this.props){this.props.action()}}}
         onChange={(e)=>{if("change" in this.props){this.props.change(e.target.value)}}}
         onMouseEnter={()=>{if("enter" in this.props){this.props.enter();}}}
@@ -283,4 +343,4 @@ class InputText extends React.Component{
     );
   }
 }
-export {Button1, MenuButton, PauseButton, IconButton, ListCheckedBox, InputTextArea, InputText}
+export {Button1, BaseButton, MenuButton, PauseButton, IconButton, ListCheckedBox, InputTextArea, InputText}

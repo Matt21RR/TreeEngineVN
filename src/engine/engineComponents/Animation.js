@@ -203,7 +203,7 @@ class Animation{
       elapsed-=this.#startedAt;
 
       if(!this.#done && this.#duration == 0){//Si es una animacion instantanea
-
+        console.warn("animacion de tipo instantanea")
         const k = Object.keys(this.#to);
         k.forEach(toKey =>{
           if(toKey != "onComplete"){
@@ -226,8 +226,12 @@ class Animation{
 
         this.#pendingTimersFix = true;
 
-        if(typeof this.#onComplete == "function")
+        if(typeof this.#onComplete == "function" && Object.keys(this.#keyframes).length == 0){
+          console.log(this.#keyframes);
+          console.log(this.#onComplete);
           this.#onComplete(engine);
+        }
+          
         return;
 
       }else if(!this.#done){

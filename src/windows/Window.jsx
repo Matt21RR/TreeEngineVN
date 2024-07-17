@@ -1,7 +1,7 @@
 import React from 'react';
 import $ from "jquery";
 import Draggable from 'react-draggable';
-import { IconButton } from "../components/buttons";
+import { IconButton } from "../engine/components/buttons";
 
 
 class Window extends React.Component {
@@ -18,6 +18,9 @@ class Window extends React.Component {
       height:""
     };
     this.resizingFrom = "";
+  }
+  componentDidUpdate(){
+    // console.log(this.id,this.props.minimized);
   }
   renderWindowTop(){
     return(
@@ -38,7 +41,7 @@ class Window extends React.Component {
             icon="minus" 
             style={" hover:bg-gray-600 w-11 h-8 min-w-[3rem]"}
             iconStyle={"w-3 h-3 my-auto mx-auto"}
-            action={()=>{this.props.exit();}}/>
+            action={()=>{this.props.minimize(); this.forceUpdate();}}/>
           <div 
             className='h-full w-[-webkit-fill-available] text-[14px] my-auto cursor-default select-none relative flex'
             id={this.id}
@@ -158,7 +161,7 @@ class Window extends React.Component {
           }}
           />
         <div 
-          className="absolute -left-[3px] h-full w-[6px] cursor-e-resize"
+          className="absolute -left-[3px] top-0 h-full w-[6px] cursor-e-resize"
           id={"left"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
@@ -167,7 +170,7 @@ class Window extends React.Component {
           }}
           />
         <div 
-          className="absolute -right-[3px] h-full w-[6px] cursor-e-resize"
+          className="absolute -right-[3px] top-0 h-full w-[6px] cursor-e-resize"
           id={"right"+this.id}
           onMouseDown={(e)=>{
             e.preventDefault();
@@ -241,9 +244,24 @@ class Window extends React.Component {
             this.reduceSize();
           }
         }}
+        onDrag={(e)=>{
+          //Check if windowTop are outside the browserWindow
+          if(e.clientY < 0){
+            e.preventDefault();
+            // this.props.minimize(); this.forceUpdate();
+          }
+        }}
         handle={"#"+this.id}
       >
-        <div className={'absolute top-0 left-0 flex flex-col pointer-events-auto '}  style={("minRes" in this.props ? {width:this.props.minRes.width+"px", height:this.props.minRes.height+"px"} : {width:"400px", height:"300px"})} id={"body"+this.id}>
+        <div className={'absolute top-0 left-0 flex flex-col pointer-events-auto '}  
+          style={{
+            width: "minRes" in this.props ? this.props.minRes.width+"px" : "400px", 
+            height: "minRes" in this.props ? this.props.minRes.height+"px" : "300px",
+            pointerEvents: this.props.minimized ? "none":"auto",
+            opacity: this.props.minimized ? (this.props.preview? .5 : 1) : 1, 
+            display: this.props.minimized ? (this.props.preview? "inherit" : "none"):"inherit"
+          }} 
+          id={"body"+this.id}>
           <div className='flex flex-row w-full h-full'>
             <div className='relative w-full h-full min-w-full max-h-full border-[1px] border-gray-700 flex flex-col'>
               {this.renderWindowTop()}

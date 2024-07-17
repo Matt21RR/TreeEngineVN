@@ -1,0 +1,16 @@
+@font-face {
+  font-family: 'liberationItalic';
+  src: url('./fonts/liberation_serif/LiberationSerif-Italic.ttf');
+}
+@font-face {
+  font-family: 'montserrat';
+  src: 'Montserrat';
+}
+@font-face {
+  font-family: 'barlow';
+  src: 'Barlow Condensed Medium';
+}
+@font-face {
+  font-family: 'times';
+  src: 'Times New Roman';
+}
