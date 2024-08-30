@@ -9,8 +9,7 @@ import { Template } from './Template';
 import { EditTools } from './engine/tools/EditTools';
 import { Guide } from './userGuide/Guide';
 import { Test } from './windows/Test';
-
-
+import { AudioPlayer } from './engine/tools/AudioPlayer';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

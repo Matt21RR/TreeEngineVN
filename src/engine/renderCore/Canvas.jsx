@@ -40,10 +40,10 @@ class Canvas extends React.Component{
     
 
     //*Debug
-    this.debug = false;
     this.showFps = this.props.showFps;
+    this.animatingElapsed = 0;
 
-    window.setFps = (x) => { 
+    this.setFps = (x) => { 
       const canvas = this.element.current;
       if(canvas == null){return;}
       this.fps = x; 
@@ -52,16 +52,13 @@ class Canvas extends React.Component{
       if (!this.stopEngine) 
         this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")}); 
 
-      console.log("setted to: "+x)
+      // console.log("setted to: "+x)
     }
-    window.getFps = () => {return this.fps;}
     window.setScale = (x) => { this.scale = x;
       const canvas = this.element.current;
       canvas.getContext("2d").scale(x,x);
       this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")}); 
     }
-    window.setDebug = (x) => { this.debug = x; }
-    window.setShowFps = (x) => { this.showFps = x; }
   }
   
   componentDidUpdate(){
@@ -69,7 +66,6 @@ class Canvas extends React.Component{
     const resW = Math.floor(this.props.displayResolution.width * this.scale * window.devicePixelRatio);
     
     if(resH != this.resolutionHeight || resW != this.resolutionWidth){
-      //window.finalWarn = 0;
       if(!this.engineKilled && canvasInstances.checker(this.props.id,this.id)){
         const canvas = this.element.current;
         this.resolutionHeight = resH;
@@ -112,7 +108,7 @@ class Canvas extends React.Component{
           self.renderEngine.pressedKeys = [];
           self.windowHasFocus = false;
           self.fpsBackup = self.fps;
-          window.setFps(3);
+          this.setFps(3);
         }
       });
       $(window).off("focus");
@@ -121,7 +117,7 @@ class Canvas extends React.Component{
         if(!self.engineKilled && !self.windowHasFocus){
           self.windowHasFocus = true;
           setTimeout(() => {
-            window.setFps(self.fpsBackup);
+            this.setFps(self.fpsBackup);
           }, 50);
         }
       });
@@ -159,7 +155,9 @@ class Canvas extends React.Component{
     var animator = (fps) => {
       //*ANIMATE
       try {
+        const animateStartAt = performance.now();
         this.props.animateGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps.maxFps});
+        this.animatingElapsed = performance.now()-animateStartAt;
       } catch (error) {//!KILL ENGINE
         context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
         context.filter = 'none';
@@ -215,13 +213,14 @@ class Canvas extends React.Component{
       }
     }
     var renderer = (fps) => {
+      const renderingStartAt = performance.now();
       context.filter = 'none';
       this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
       const actualGlobalAlpha = context.globalAlpha;
-      // this.afterEffects({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
 
+      const renderingEndAt = performance.now();
       if(this.showFps){
-        context.globalCompositeOperation = "xor";
+        context.globalCompositeOperation = "darker";
         context.filter = 'none';
         context.globalAlpha = 1;
         context.beginPath();
@@ -246,6 +245,8 @@ class Canvas extends React.Component{
         context.fillText("Res: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 75*this.scale);
         context.fillText("scale: "+this.scale+" : "+(Math.floor(window.devicePixelRatio*100)/100), 5, 90*this.scale);
         context.fillText("Keys: "+this.renderEngine.pressedKeys.join(" "),5,105*this.scale);
+        context.fillText("GPU: "+(renderingEndAt-renderingStartAt).toFixed(2) + "ms" ,5,120*this.scale);
+        context.fillText("CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,5,135*this.scale);
         context.closePath();
         context.fill();
         context.globalAlpha = actualGlobalAlpha;

@@ -7,6 +7,7 @@ import { TexturesE } from "../engine/tools/TexturesE";
 import { ScriptE } from "../engine/tools/ScriptE";
 import { ObjectsE, TriggersE } from "../engine/tools/SubTools";
 import { EngTools } from "../engine/tools/EngTools";
+import { FileExplorer } from "../engine/tools/FileExplorer";
 
 class Test extends React.Component{
   constructor(props){
@@ -65,9 +66,14 @@ class Test extends React.Component{
       <WindowsEnvironment 
         setEnvironment={(env)=>{this.windowsEnvironment = env;}}
         content={{
+          fileExplorer:{
+            title:"File Explorer",
+            content:<FileExplorer/>
+          },
           gameScript:{
             title:"Game Script",
             content:<ScriptE engine={this.engine} toolsRef={this} reRender={()=>{this.forceUpdate(); env.forceUpdate();}} />,
+            minimized:true
           },
           textures:{
             title:"Texturas Dispónibles",
@@ -82,7 +88,7 @@ class Test extends React.Component{
           engine:{
             title:"Redengine",
             content:<RenderEngine setEngine={(engine)=>{this.engine=engine; this.editionKeys(); env.forceUpdate();}}/>,
-
+            minimized:true
           },
           triggers:{
             title:"Triggers en escena",

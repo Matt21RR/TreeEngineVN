@@ -2,86 +2,28 @@ import $ from "jquery";
 import { requiredTextures, requiredSounds } from "../../game/RequireFile";
 import { isNumeric } from "../logic/Misc";
 const script = require("../../game/script.txt");
-const modulesFile = require("../../game/modules.txt");
 
 class ScriptInterpreter {
   textCommands = [];
-  modulesLoader(errorConsol,fun){
-    $.get(modulesFile).then(e => {
-      try {
-        const res = this.separateScenes(this.buildPrimitiveArray(e));
-        var modules = {}
-        res.forEach(e=>{
-          Object.assign(modules,e);
-        })
-        fun(modules);
-      } catch (error) { 
-        errorConsol("Error! error de lectura de los modulos");
-        errorConsol("Compruebe la sintaxis del archivo de modulos");
-        errorConsol(error.message);
-        console.log(error);
-      }
-    }).catch(
-      error=>{
-        errorConsol(error);
-        fun({});
-      }
-    )
-  }
+
   build(func,errorConsol){
     $.get(script).then(e => {
-      try {
-        this.modulesLoader(errorConsol,(modules)=>{
-          var primitiveArray = this.buildPrimitiveArray(e);
-          primitiveArray.forEach((primitive,index)=>{
-            if("ADD MODULE" in primitive){
-              const moduleId = primitive["ADD MODULE"];
-              if(!(moduleId in modules)){
-                throw new Error("That module: "+moduleId+", in primitive #"+index+" don't exist in the modules file");
-              }
-              primitiveArray.splice(index,1,modules[moduleId]);
-            }
-          })
-          console.log(primitiveArray);
-          const res = this.convertToEngineCommands(this.separateScenes(primitiveArray));
-          console.log(res);
-          func(res);
-        });
-      } catch (error) {
-        errorConsol("Error! error de lectura del script");
-        errorConsol(error.message);
-        console.log(error);
-      }
-
+      this.buildFromText(e,errorConsol).then((res)=>{func(res)});
     }).catch(error=>errorConsol(error));
   }
-  buildFromText(script,func,errorConsol){
-    try {
-      this.modulesLoader(errorConsol,(modules)=>{
-        var primitiveArray = this.buildPrimitiveArray(script);
-        primitiveArray.forEach((primitive,index)=>{
-          if("ADD MODULE" in primitive){
-            const moduleId = primitive["ADD MODULE"];
-            if(!(moduleId in modules)){
-              throw new Error("That module: "+moduleId+", in primitive #"+index+" don't exist in the modules file");
-            }
-            primitiveArray.splice(index,1);
-            modules[moduleId].forEach((moduleElement,index2)=>{
-              primitiveArray.splice(index+index2,0,moduleElement);
-            })
-
-          }
-        })
-        console.log(primitiveArray);
-        const res = this.convertToEngineCommands(this.separateScenes(primitiveArray));
-        console.log(res);
-        func(res);
-      });
-    } catch (error) {
-      errorConsol("Error! error de lectura del script")
-      errorConsol(error.message)
-      console.log(error);
-    }
+  buildFromText(e,errorConsol){
+    const self = this;
+    return new Promise(function (resolve, reject) {
+      try {
+        var primitiveArray = self.buildPrimitiveArray(e);
+        const res = self.convertToEngineCommands(self.separateScenes(primitiveArray));
+        resolve(res);
+      } catch (error) {
+        errorConsol("Error! error de lectura del script")
+        errorConsol(error.message)
+        console.log(error);
+      }
+    });
   }
   //Se reconocen las variables del juego con $. ej $clima
   replaceReferencesToGameVars(script,insideCodedExpr=false){
@@ -193,7 +135,7 @@ class ScriptInterpreter {
       }
 
     });
-    console.log(ar);
+    // console.log(ar);
     return(ar);
   }
   setReplacer(line,lIndex){
@@ -210,7 +152,7 @@ class ScriptInterpreter {
     });
     
     const type = command[0];
-    console.log(type);
+    // console.log(type,line);
     const branch = command[1];
     let id;
     let parsedParams;
@@ -331,254 +273,293 @@ class ScriptInterpreter {
         }
         
     });
+    // console.warn(commandStacks,commandStack);
     return commandStacks;
   }
   convertToEngineCommands(commandStacks){
-    var passFlag = false;
     var roadMap = {
       scenes:{},
       gameVars:{},//gamevars to add to the thread
     }
     commandStacks.forEach(commandStack=>{
       const sceneId = Object.keys(commandStack)[0];
-      let scene = {
-        gameVars:{},
-        textures:{},
-        textureAnims:[],
-        sounds:null,
-        graphObjects:[],
-        triggers:[],
-        keyboardTriggers:[],
-        animations:[],
-        codedRoutines:[],
-        routines:[],
-        flags:{},
+      Object.assign(roadMap.scenes,{[sceneId]:this.convertAScene(commandStack[sceneId])})
+    });
+    return roadMap.scenes;
+  }
 
-        idDirectory:{}//Esto será usado para saber que es lo que es está intentando cambiar (graphObject|trigger|animation)
+  convertAScene(commandsOfScene){
+    var passFlag = false;
+    let scene = {
+      gameVars:{},
+      textures:{},
+      textureAnims:[],
+      sounds:{},
+      graphObjects:[],
+      triggers:[],
+      keyboardTriggers:[],
+      animations:[],
+      codedRoutines:[],
+      routines:[],
+      flags:{},
+
+      idDirectory:{}//Esto será usado para saber que es lo que es está intentando cambiar (graphObject|trigger|animation)
+    }
+    commandsOfScene.forEach((command,comNumber)=>{
+      const commandType = Object.keys(command)[0].split(" ");
+      var valueInString = command[Object.keys(command)[0]];
+      if(valueInString[0] == "("){
+        valueInString = valueInString.split("");
+        valueInString[0] = "[";
+        valueInString.pop();
+        valueInString.push("]");
+        valueInString = valueInString.join("");
       }
-      commandStack[sceneId].forEach((command,comNumber)=>{
-        //console.log(command);
-        const commandType = Object.keys(command)[0].split(" ");
-        var valueInString = command[Object.keys(command)[0]];
-        if(valueInString[0] == "("){
-          valueInString = valueInString.split("");
-          valueInString[0] = "[";
-          valueInString.pop();
-          valueInString.push("]");
-          valueInString = valueInString.join("");
-        }
-        let value;
-        //Las siguientes dos ordenes le indicaran al motor cuando dejar de ejecutar las ordenes en secuencia
-        if(commandType[0] == "WAIT"){
-          scene.routines.push((engine)=>{
-            engine.continue = false;
-            if(!isNaN(command.WAIT)){
-              setTimeout(()=>{engine.continue = true},command.WAIT*1)
-            }
-          });
-        }else if(commandType[0] == "CONTINUE"){
-          scene.routines.push((engine)=>{
-            engine.continue = true;
-          });
-        }else if(commandType[0] == "JUMPTO"){//Esta orden le indicara al motor que debe de saltar hasta cierta orden y continuar la secuencia de ejecucion
-          scene.routines.push("engine.routineNumber = engine.flags."+commandType[1]);
-        }else if(commandType[0] == "FLAG"){
-          Object.assign(scene.flags,{[commandType[1]]:scene.routines.length})//TODO: habrá que revisar si el valor length corresponde
-        }else if(commandType[0] == "END"){//Excepcion para la palabra clave end
-          
-        }else if(commandType[1] == "CODEDROUTINE" || commandType[1] == "TRIGGER" || commandType[1] == "ANIMATION" || commandType[1] == "DIALOG" || commandType[1] == "NARRATION"){
-          value = this.stringToValue(valueInString,this.textCommands[comNumber+1],true);
-        }else{
-          value = this.stringToValue(valueInString,this.textCommands[comNumber+1]);
-        }
+      let value;
+      //Las siguientes dos ordenes le indicaran al motor cuando dejar de ejecutar las ordenes en secuencia
+      if(commandType[0] == "WAIT"){
+        scene.routines.push((engine)=>{
+          engine.continue = false;
+          if(!isNaN(command.WAIT)){
+            setTimeout(()=>{engine.continue = true},command.WAIT*1)
+          }
+        });
+      }else if(commandType[0] == "CONTINUE"){
+        scene.routines.push((engine)=>{
+          engine.continue = true;
+        });
+      }else if(commandType[0] == "JUMPTO"){//Esta orden le indicara al motor que debe de saltar hasta cierta orden y continuar la secuencia de ejecucion
+        scene.routines.push("engine.routineNumber = engine.flags."+commandType[1]);
+      }else if(commandType[0] == "FLAG"){
+        Object.assign(scene.flags,{[commandType[1]]:scene.routines.length})//TODO: habrá que revisar si el valor length corresponde
+      }else if(commandType[0] == "END"){//Excepcion para la palabra clave end
+         
+      }else if(valueInString == "ALL"){
+        value = "ALL";
+      }else if(commandType[1] == "CODEDROUTINE" || commandType[1] == "TRIGGER" || commandType[1] == "ANIMATION" || commandType[1] == "DIALOG" || commandType[1] == "NARRATION"){
+        value = this.stringToValue(valueInString,this.textCommands[comNumber+1],true);
+      }else{
+        value = this.stringToValue(valueInString,this.textCommands[comNumber+1]);
+      }
 
-        
-        if(passFlag){
-            if(commandType[0].indexOf("$") == 0){
-              console.log(commandType[1],value);
-              scene.routines.push((engine)=>{
-                engine.dialogNumber = 0;
-                engine.voiceFrom = commandType[0].replace("$","");
-                engine.dialog = value;
+      
+      if(passFlag){
+          if(commandType[0].indexOf("$") == 0){
+            scene.routines.push((engine)=>{
+              engine.dialogNumber = 0;
+              engine.voiceFrom = commandType[0].replace("$","");
+              engine.dialog = value;
 
-                engine.graphArray.get("dialogbox").text = "";
-                engine.graphArray.get("dialogbox").opacity = 1;
+              engine.graphArray.get("dialogbox").text = "";
+              engine.graphArray.get("dialogbox").enabled = true;
 
-                engine.graphArray.get("voiceByName").opacity = 1;
+              engine.graphArray.get("voiceByName").enabled = true;
+
+              engine.continue = false;
+            });
+          }else if(commandType[0] == "NARRATION"){
+            scene.routines.push((engine)=>{
+                engine.triggers.get("avanzarNarracion").enabled = true;
+                engine.paragraphNumber = 0;
+                engine.voiceFrom = "nobody";
+                engine.narration = value.join("\n");
+
+                engine.paragraph += '\n' + engine.narration.split('\n')[0];
+                engine.graphArray.get("narrationBox").text = "";
+                engine.graphArray.get("narrationBox").enabled = true;
 
                 engine.continue = false;
               });
-            }else if(commandType[0] == "NARRATION"){
-              scene.routines.push((engine)=>{
-                  engine.triggers.get("avanzarNarracion").enabled = true;
-                  engine.paragraphNumber = 0;
-                  engine.voiceFrom = "nobody";
-                  engine.narration = value.join("\n");
-
-                  engine.paragraph += '\n' + engine.narration.split('\n')[0];
-                  engine.graphArray.get("narrationBox").text = "";
-                  engine.graphArray.get("narrationBox").opacity = 1;
-
-                  engine.continue = false;
-                });
-          }else if(commandType[0] == "new"){
-            if(commandType[2] == ""){
-              console.warn("No id");
-            }else{
-              if(commandType[2] in scene.idDirectory){
-                throw new Error (commandType[2] + " was already used as id for a "+ scene.idDirectory[commandType[2]])
-              }else{
-                Object.assign(scene.idDirectory,{[commandType[2]]:commandType[1]})//{id:type}
-                //Here you will need to add the id to the "value" object
-                Object.assign(value,{id:commandType[2]})
-              }
-            }
-
-            switch (commandType[1]) {
-              case "GameVars":
-                scene.gameVars = value;
-                break;
-              //*No se permite añadir texturas o sunidos tras creada la escena
-              case "GraphObject":
-                scene.routines.push(engine=>{
-                  engine.graphArray.push(new engine.graphObj(value));
-                });
-                break;
-              case "Trigger":
-                
-                break;
-              case "Animation":
-                scene.routines.push(engine=>{
-                  engine.anims.push(new engine.animation(value))
-                });
-
-                break;
-              case "CodedRoutine":
-                Object.assign(value[0],{id:commandType[0]})
-                scene.routines.push(engine=>{
-                  engine.codedRoutines.push(new engine.codedRoutine(value[0]))
-                })
-                break;
-            
-              default:
-                //throw new Error("Command #"+comNumber+" ,is not a registered command: "+Object.keys(command)[0]);
-                break;
-            }
-          }else if(commandType[0] == "SET"){
-            console.log("using set in the onLoad thread");
-            console.log("g",value);
-            switch (commandType[1]) {
-              case "GRAPHOBJECT":
-                scene.graphObjects.push(value);
-                scene.routines.push((engine)=>{
-
-                });
-                break;
-              case "TRIGGER":
-                scene.triggers.push(value);
-                break;
-              case "ANIMATION":
-                scene.animations.push(value);
-                break;
-              case "CODED_ANIMATION":
-                scene.codedAnimations.push(value);
-                break;
-              case "SCENE":
-  
-              default:
-                // throw new Error("Command #"+comNumber+" ,is not a registered command: "+Object.keys(command)[0]);
-                break;
-            }
-          }
-        }else if(commandType[1] == "=" && commandType[2] == "new"){
-          if(commandType[0] in scene.idDirectory){
-            throw new Error (commandType[0] + " was already used as id for a "+ scene.idDirectory[commandType[0]])
+        }else if(commandType[0] == "new"){
+          if(commandType[2] == ""){
+            console.warn("No id");
           }else{
-            Object.assign(scene.idDirectory,{[commandType[0]]:commandType[3]})//{id:type}
+            if(commandType[2] in scene.idDirectory){
+              throw new Error (commandType[2] + " was already used as id for a "+ scene.idDirectory[commandType[2]])
+            }else{
+              Object.assign(scene.idDirectory,{[commandType[2]]:commandType[1]})
+              Object.assign(value,{id:commandType[2]})
+            }
           }
-          var res = {};
-          switch (commandType[3]) {
+
+          switch (commandType[1]) {
             case "GameVars":
-              Object.assign(value[0],{id:commandType[0]})
-              scene.gameVars = value[0];
+              scene.gameVars = value;
               break;
-            case "TextureAnim":
-              res = {list:value[0]};
-              Object.assign(res,{id:commandType[0]});
-              Object.assign(res,value[1])
-              scene.textureAnims.push(res);
+            //*No se permite añadir texturas o sunidos tras creada la escena
             case "GraphObject":
-              Object.assign(value[0],{id:commandType[0]})
-              scene.graphObjects.push(value[0]);
+              scene.routines.push(engine=>{
+                engine.graphArray.push(new engine.graphObj(value));
+              });
               break;
             case "Trigger":
-              Object.assign(res,{id:commandType[0]});
-              Object.assign(res,{relatedTo:value[0]});
-              Object.assign(res,value[1])
-              scene.triggers.push(res);
+              
               break;
             case "Animation":
-              if( isNumeric(Object.keys(value[1])[0])){ //using keyframes
-                res = {keyframes:value[1]}
-              }else{//using to
-                res = {to:value[1]}
-              }
-              Object.assign(res,{id:commandType[0]})
-              Object.assign(res,{relatedTo:value[0]})
-              Object.assign(res,value[2])
-              scene.animations.push(res);
+              scene.routines.push(engine=>{
+                engine.anims.push(new engine.animation(value))
+              });
+
               break;
             case "CodedRoutine":
               Object.assign(value[0],{id:commandType[0]})
-              scene.codedRoutines.push(value[0]);
+              scene.routines.push(engine=>{
+                engine.codedRoutines.push(new engine.codedRoutine(value[0]))
+              })
               break;
           
             default:
-              throw new Error("Command #"+comNumber+" ,is not a registered command: "+Object.keys(command)[0]);
-              break;
-          }
-        }else if(commandType[0] == "new"){
-          var res = {};
-          switch (commandType[1]) {
-            case "KeyboardTrigger":
-              // Object.assign(res,{id:commandType[0]});
-              Object.assign(res,{keys:value[0]});
-              Object.assign(res,value[1])
-              scene.keyboardTriggers.push(res);
+              //throw new Error("Command #"+comNumber+" ,is not a registered command: "+Object.keys(command)[0]);
               break;
           }
         }else if(commandType[0] == "SET"){
+          console.log("using set in the onLoad thread");
+          console.log("g",value);
           switch (commandType[1]) {
-            case "GAMEVARS":
-              scene.gameVars = value;
+            case "GRAPHOBJECT":
+              scene.graphObjects.push(value);
+              scene.routines.push((engine)=>{
+
+              });
+              break;
+            case "TRIGGER":
+              scene.triggers.push(value);
+              break;
+            case "ANIMATION":
+              scene.animations.push(value);
+              break;
+            case "CODED_ANIMATION":
+              scene.codedAnimations.push(value);
+              break;
+            case "SCENE":
+
+            default:
+              // throw new Error("Command #"+comNumber+" ,is not a registered command: "+Object.keys(command)[0]);
+              break;
+          }
+        }
+      }else if(commandType[1] == "=" && commandType[2] == "new"){
+        if(commandType[0] in scene.idDirectory){
+          throw new Error (commandType[0] + " was already used as id for a "+ scene.idDirectory[commandType[0]])
+        }else{
+          Object.assign(scene.idDirectory,{[commandType[0]]:commandType[3]})//{id:type}
+        }
+        var res = {};
+        switch (commandType[3]) {
+          case "GameVars":
+            Object.assign(value[0],{id:commandType[0]})
+            scene.gameVars = value[0];
+            break;
+          case "TextureAnim":
+            res = {list:value[0]};
+            Object.assign(res,{id:commandType[0]});
+            Object.assign(res,value[1])
+            scene.textureAnims.push(res);
+          case "GraphObject":
+            Object.assign(value[0],{id:commandType[0]})
+            scene.graphObjects.push(value[0]);
+            break;
+          case "Trigger":
+            Object.assign(res,{id:commandType[0]});
+            Object.assign(res,{relatedTo:value[0]});
+            Object.assign(res,value[1])
+            scene.triggers.push(res);
+            break;
+          case "Animation":
+            if( isNumeric(Object.keys(value[1])[0])){ //using keyframes
+              res = {keyframes:value[1]}
+            }else{//using to
+              res = {to:value[1]}//!WILL BE UNSUPPORTED
+            }
+            Object.assign(res,{id:commandType[0]})
+            Object.assign(res,{relatedTo:value[0]})
+            Object.assign(res,value[2])
+            scene.animations.push(res);
+            break;
+          case "CodedRoutine":
+            Object.assign(value[0],{id:commandType[0]})
+            scene.codedRoutines.push(value[0]);
+            break;
+        
+          default:
+            throw new Error("Command #"+comNumber+" ,is not a registered command: "+Object.keys(command)[0]);
+            break;
+        }
+      }else if(commandType[0] == "new"){
+        var res = {};
+        switch (commandType[1]) {
+          case "KeyboardTrigger":
+            // Object.assign(res,{id:commandType[0]});
+            Object.assign(res,{keys:value[0]});
+            Object.assign(res,value[1])
+            scene.keyboardTriggers.push(res);
+            break;
+        }
+      }else if(commandType[0] == "LOAD"){
+        if(value == "ALL"){
+          switch (commandType[1]) {
+            case "TEXTURES":
+              Object.keys(requiredTextures).forEach((textureName) => {
+                Object.assign(scene.textures,{[textureName]:requiredTextures[textureName]});
+              });
+              break;
+            case "SOUNDS":
+              Object.keys(requiredSounds).forEach((soundName) => {
+                Object.assign(scene.sounds,{[soundName]:requiredSounds[soundName]});
+              });
+              break;
+          }
+        }else{
+          switch (commandType[1]) {
+            case "SCRIPT":
+              if(!passFlag)passFlag=true;
+              scene.routines.push((engine)=>{
+                engine.loadFile(value);
+              });
               break;
             case "TEXTURES":
-              // var res = new Object();
               value.forEach((textureName) => {
                 Object.assign(scene.textures,{[textureName]:requiredTextures[textureName]});
               });
               break;
             case "SOUNDS":
-              var res = new Object();
               value.forEach((soundName) => {
-                Object.assign(res,{[soundName]:requiredSounds[soundName]});
+                Object.assign(scene.sounds,{[soundName]:requiredSounds[soundName]});
               });
-              scene.sounds = res;
               break;
           }
-        }else if(commandType[0] == "END"){
-          if(command.END == "DEFINITION"){
-            if(!passFlag)passFlag=true;
-          }
-        }else if(commandType[0] == "ADD"){
-          if(commandType[1] == "MODULE"){
-
-          }
         }
-      });
-      Object.assign(roadMap.scenes,{[sceneId]:scene})
+      }else if(commandType[0] == "SET"){
+        switch (commandType[1]) {
+          case "GAMEVARS":
+            scene.gameVars = value;
+            break;
+        }
+      }else if(commandType[0] == "END"){
+        if(command.END == "DEFINITION"){
+          if(!passFlag)passFlag=true;
+        }
+      }else if(commandType[0] == "ADD"){
+        if(commandType[1] == "MODULE"){
+
+        }
+      }else if(commandType[0] == "SHOW"){
+        scene.routines.push((engine)=>{
+          const id = commandType[1];
+          engine.graphArray.get(id).enabled = true;
+          if(commandType.length > 2){
+            const graphObjectStatus = commandType[2];
+            engine.graphArray.get(id).is = graphObjectStatus;
+          }
+        });
+      }else if(commandType[0] == "REMOVE"){
+        scene.routines.push((engine)=>{
+          const id = commandType[1];
+          engine.graphArray.get(id).enabled = false;
+        })
+      }
     });
-    return roadMap.scenes;
+    return scene;
   }
 
   directReferencesReplacer(script){

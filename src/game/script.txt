@@ -1,10 +1,10 @@
 SCENE ID a
 
-SET SOUNDS [
+LOAD SOUNDS [
   "openning"
 ]
 
-SET TEXTURES [
+LOAD TEXTURES [
   "engineLogo",
   "spring",
   "wall",
@@ -15,11 +15,11 @@ spring = new GraphObject ({
   //texture:"spring",
   scale:.3,
   text:$("zCamera: "+engine.camera.position.z.toFixed(2)+"\n"
-  +"zWall: "+ +engine.dimentionsPack.wall.z.toFixed(2)+"\n"
-  +"zWood: "+ +engine.dimentionsPack.wood.z.toFixed(2)+"\n"
-  +"zAcomulatedWood: "+ +engine.getObject("wood").accomulatedZ.toFixed(2)+"\n"
-  +"perspective: "+ +engine.camera.usePerspective+"\n"
-)$,
+    +"zWall: "+ +engine.dimentionsPack.wall.z.toFixed(2)+"\n"
+    +"zWood: "+ +engine.dimentionsPack.wood.z.toFixed(2)+"\n"
+    +"zAcomulatedWood: "+ +engine.getObject("wood").accomulatedZ.toFixed(2)+"\n"
+    +"perspective: "+ +engine.camera.usePerspective+"\n"
+  )$,
   boxColor: "orange",
   x:1,
   y:.7
@@ -81,14 +81,14 @@ testSound = new CodedRoutine({
 
 SCENE ID mapa
 
-SET TEXTURES [
+LOAD TEXTURES [
   "mapa",
   "tienda",
   "restaurante",
   "correo"
 ]
 
-SET SOUNDS [
+LOAD SOUNDS [
   "openning"
 ]
 
@@ -299,7 +299,7 @@ SHOW DIALOG ... [
 
 
 SCENE ID prueba
-SET TEXTURES ["aishaImg"]
+LOAD TEXTURES ["aishaImg"]
 gold = new GraphObject({
   size: .5,
   texture: "aishaImg",

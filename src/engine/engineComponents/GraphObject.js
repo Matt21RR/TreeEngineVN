@@ -1,5 +1,7 @@
 class GraphObject{
-  #enabled
+  #enabled //TODO: use I'T
+  #info //Convenient var to storage info related to this graphObject: ex. info:{name:Chara Newman, age:22}
+
   #text
   #center
   #color
@@ -8,10 +10,8 @@ class GraphObject{
   #boxColor
   #margin
 
-  #texture
+  #texture //unused
   #textureName
-
-  #canvasFunction
 
   #id
   #brightness
@@ -30,24 +30,25 @@ class GraphObject{
 
   #opacity
 
-  #y
   #x
-
-  #scale
-
-  #rotate
-
+  #y
   #z
 
-  #ignoreParallax
-
+  #scale
   #widthScale
   #heightScale
+  #rotate
+
+
+
+  #ignoreParallax
 
   #states = new States(this);
   #pendingRenderingRecalculation = true;
 
   #useEngineUnits
+
+  #type
 
   #parent
   
@@ -61,7 +62,11 @@ class GraphObject{
   }
 
   constructor(graphInfo = new Object()){
-    this.#enabled = "enabled" in graphInfo ? graphInfo.enabled : true;//exclude from calculation and renderin
+    this.#enabled = "enabled" in graphInfo ? graphInfo.enabled : false;//exclude from calculation and renderin
+    this.#info = "info" in graphInfo ? graphInfo.info : {};
+
+    this.#type = "type" in graphInfo ? graphInfo.type : "default";
+
     this.#text = "text" in graphInfo ? graphInfo.text:null;
     this.#center = "center" in graphInfo ? graphInfo.center : false;
     this.#color = "color" in graphInfo ? graphInfo.color:"gray";
@@ -115,7 +120,26 @@ class GraphObject{
     this.#parent = "parent" in graphInfo ? graphInfo.parent : "";
   }
   get enabled() {return this.#enabled}
-  set enabled(x) {this.#enabled = typeof x == "boolean"? x : false}
+  set enabled(x) {
+    this.#enabled = x;
+    this.#pendingRenderingRecalculation = true;
+  }
+
+  get info() {return this.#info}
+  set info(x) {this.#info = x}
+  getInfo(key){if(key in this.#info){return this.#info[key];} throw new Error(key+" not exist in info from "+this.#id)}
+  setInfo(key, value){
+    if(key in this.#info){
+      this.#info[key] = value;
+      return;
+    }else{
+      Object.assign(this.#info,{[key]:value});
+      console.warn(key+" not exist in info from "+this.#id+", adding...");
+    }
+  }
+
+  get type(){return this.#type}
+  set type(x) {this.#type = x}
 
   get text() {return this.#text;}
   set text(x) {this.#text = typeof x == "string"? x : null}

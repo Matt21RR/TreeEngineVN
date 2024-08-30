@@ -2,6 +2,7 @@ import React from 'react';
 import $ from "jquery";
 import Draggable from 'react-draggable';
 import { IconButton } from "../engine/components/buttons";
+import gsap from 'gsap';
 
 
 class Window extends React.Component {
@@ -9,18 +10,15 @@ class Window extends React.Component {
     super(props);
     this.id = "window" + String(window.performance.now()).replaceAll(".","");
     this.resizeBlocked = "resizeBlocked" in this.props ? this.props.resizeBlocked : false;
-    this.onResize = "onResize" in this.props ? this.props.onResize : ()=>{console.log("Nada en window")};
+    this.onResize = "onResize" in this.props ? this.props.onResize : ()=>{ };
     this.fullSized = false;
     this.unfullSizedData = {
-      top:"",
-      left:"",
-      width:"",
-      height:""
+      top:0,
+      left:0,
+      width:0,
+      height:0
     };
     this.resizingFrom = "";
-  }
-  componentDidUpdate(){
-    // console.log(this.id,this.props.minimized);
   }
   renderWindowTop(){
     return(
@@ -62,30 +60,32 @@ class Window extends React.Component {
     const coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",");
 
     this.unfullSizedData = {
-      width:w.style.width,
-      height:w.style.height,
-      left:w.style.left,
-      top:w.style.top
+      width:w.style.width.replace("px","")*1,
+      height:w.style.height.replace("px","")*1,
+      left:w.style.left.replace("px","")*1,
+      top:w.style.top.replace("px","")*1
     }
-
-    w.style.width = window.innerWidth+"px";
-    w.style.height = window.innerHeight+"px";
-    w.style.left = (coords[0]*-1)+"px";
-    w.style.top = (coords[1].replace(" ","")*-1)+"px";
     
-    this.onResize();
+    gsap.to("#body"+this.id,{duration:.15,width:window.innerWidth,ease:"linear",
+      height:window.innerHeight,
+      left:(coords[0]*-1),
+      top:(coords[1].replace(" ","")*-1),
+      onComplete:()=>{this.onResize();}
+    }); 
   }
   reduceSize(){
     this.fullSized = false;
     this.forceUpdate();
 
-    var w = document.getElementById("body"+this.id);
-    w.style.width = this.unfullSizedData.width;
-    w.style.height = this.unfullSizedData.height;
-    w.style.left = this.unfullSizedData.left;
-    w.style.top = this.unfullSizedData.top;
+    gsap.to("#body"+this.id,{duration:.15,ease:"linear",
+      width:this.unfullSizedData.width,
+      height:this.unfullSizedData.height,
+      left:this.unfullSizedData.left,
+      top:this.unfullSizedData.top,
+      onComplete:()=>{this.onResize();}
+    });
 
-    this.onResize();
+    // this.onResize();
   }
   resize(border,ev){
     if(this.resizeBlocked){return;}
@@ -231,14 +231,14 @@ class Window extends React.Component {
           if(this.fullSized){
             console.log(this.unfullSizedData);
             var w = document.getElementById("body"+this.id);
-            this.unfullSizedData.width = this.unfullSizedData.width == "" ? "400px" : this.unfullSizedData.width;
-            this.unfullSizedData.height = "300px";
+            this.unfullSizedData.width = this.unfullSizedData.width == 0 ? 400 : this.unfullSizedData.width;
+            this.unfullSizedData.height = 300;
 
             const coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",");
 
 
-            this.unfullSizedData.left = (+e.clientX - (coords[0]*1) - (this.unfullSizedData.width.replace("px","")/2)) + "px";
-            this.unfullSizedData.top = (-e.clientY - (coords[1]*1) + 20) +"px";
+            this.unfullSizedData.left = (+e.clientX - (coords[0]*1) - (this.unfullSizedData.width/2));
+            this.unfullSizedData.top = (-e.clientY - (coords[1]*1) + 20);
             console.log(this.unfullSizedData);
 
             this.reduceSize();

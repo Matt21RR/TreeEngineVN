@@ -203,7 +203,7 @@ class Animation{
       elapsed-=this.#startedAt;
 
       if(!this.#done && this.#duration == 0){//Si es una animacion instantanea
-        console.warn("animacion de tipo instantanea")
+        // console.warn("animacion de tipo instantanea")
         const k = Object.keys(this.#to);
         k.forEach(toKey =>{
           if(toKey != "onComplete"){

@@ -3,9 +3,24 @@ class RenList{
     this.objects = new Array();
     this.enabled = new Object();
   }
-  get length(){return this.objects.length;}
-  push(GraphObject = new Object()){
-    this.objects.push(GraphObject);
+  get length(){
+    if(this.objects.length > 0){
+      if("id" in this.objects[0]){
+        if("enabled" in this.objects[0]){
+          return this.objects.filter(e=>{return e.enabled}).length;
+        }
+      }
+    }
+    return this.objects.length;
+  }
+  push(graphObject = new Object()){
+    if("id" in graphObject){
+      if(this.exist(graphObject.id)){
+        console.warn("Element with "+ graphObject.id + " id already exists");
+        return;
+      }
+    }
+    this.objects.push(graphObject);
   }
   remove( objectId = new String()){
     const graphIds = this.objects.map(e=>e.id);
@@ -31,8 +46,13 @@ class RenList{
     const graphIds = this.objects.map(e=>e.id);
     return graphIds.indexOf(objectId) != -1;
   }
-  ids(){
-    return this.objects.map(e => {return e.id;});
+  ids(includeDisabled = false){
+    if(includeDisabled){
+      return this.objects.map(e => {return e.id;});
+    }else{
+      return this.objects.filter(e => {return e.enabled;}).map(e => {return e.id;});
+    }
+    
   }
   relatedToList(){
     return this.objects.map(e => {return {[e.id]:e.relatedTo};});

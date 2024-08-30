@@ -13,9 +13,9 @@ class WindowsEnvironment extends React.Component{
     this.previewTable = [];
     Object.keys(this.windowsContent).map(windowId=>{Object.assign(this.executionTable, {[windowId]:true})});
     Object.keys(this.windowsContent).map(windowId=>{if("minimized" in this.windowsContent[windowId]){this.minimizedTable.push(windowId);}});
-    console.log(this.minimizedTable);
+    // console.log(this.minimizedTable);
     this.renderingOrder = Object.keys(this.windowsContent);
-    console.log(this.windowsContent,this.executionTable,this.renderingOrder);
+    // console.log(this.windowsContent,this.executionTable,this.renderingOrder);
   }
   clickWindow(windowId){
     if(this.renderingOrder.indexOf(windowId) == (this.renderingOrder.length-1)){

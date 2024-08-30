@@ -7,6 +7,15 @@ import { Window } from '../../windows/Window';
 import Swal from 'sweetalert2'
 import { GraphObject } from '../engineComponents/GraphObject';
 
+class Files extends React.Component {
+  constructor(props){
+    super(props);
+  }
+  getFiles(){
+    
+  }
+
+}
 class ScriptE extends React.Component {
   constructor(props) {
     super(props);
@@ -88,12 +97,11 @@ class ScriptE extends React.Component {
     const engine = this.props.engine;
     const k = new ScriptInterpreter;
     engine.actualSceneId = this.sceneIdWhereRun;
-    k.buildFromText(this.script,(masterScript)=>{
+    k.buildFromText(this.script,(error)=>{engine.consol(error)}).then((masterScript)=>{
       engine.loadGame(masterScript,()=>{
-        this.props.toolsRef.editionKeys();
         this.props.reRender();
       });
-    },(error)=>{engine.consol(error)});
+    })
   }
   render(){
     return(

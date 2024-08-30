@@ -1,14 +1,21 @@
 import React from "react";
 
+import arrow from "../res/engineRes/arrow.svg";
 import trash from "../res/engineRes/trash.svg";
 import show from "../res/engineRes/eye.svg";
+import file from "../res/engineRes/file.svg";
+import folder from "../res/engineRes/folder.svg";
 import hide from "../res/engineRes/eye-closed.svg";
 import cross from "../res/engineRes/cross.svg";
 import save from "../res/engineRes/save.svg";
 import squares from "../res/engineRes/squares.svg";
 import square from "../res/engineRes/square.svg";
+import squareFull from "../res/engineRes/squareFull.svg";
 import minus from "../res/engineRes/minus.svg";
 import plus from "../res/engineRes/plus.svg";
+import play from "../res/engineRes/play.svg";
+import pause from "../res/engineRes/pause.svg";
+import repeat from "../res/engineRes/repeat.svg";
 
 import gsap from "gsap";
 import $ from "jquery";
@@ -17,15 +24,22 @@ import './highlight-within-textarea/jquery.highlight-within-textarea.css';
 import Swal from "sweetalert2";
 
 const icons ={
+  arrow:arrow,
   trash:trash,
   show:show,
+  file:file,
+  folder:folder,
   hide:hide,
   cross:cross,
   save:save,
   squares:squares,
   square:square,
+  squareFull:squareFull,
   minus:minus,
-  plus:plus
+  plus:plus,
+  play:play,
+  pause:pause,
+  repeat:repeat
 }
 
 class ListCheckedBox extends React.Component{
@@ -91,7 +105,7 @@ class IconButton extends React.Component{
   }
   render(){
     return(
-      <div className={"cursor-pointer flex "+ ("style" in this.props ? this.props.style : "h-6 w-6 m-1")} onClick={()=>{this.props.action()}}>
+      <div className={"cursor-pointer flex "+ ("style" in this.props ? this.props.style : "h-6 w-6 m-1")+ ((this.props.hide) ? " hidden":"")} onClick={()=>{this.props.action()}}>
         <div className={"bg-cover bg-no-repeat " + ("iconStyle" in this.props ? this.props.iconStyle : "w-full h-full")}
              style={{backgroundImage:"url('"+icons[this.props.icon]+"')"}} />
       </div>

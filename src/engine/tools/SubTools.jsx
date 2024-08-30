@@ -105,16 +105,6 @@ class ObjectsE extends React.Component {
               {this.objectsList()}
             </div>
           </div>
-          <div className="flex flex-col max-h-full p-2">
-            <div>
-              Create
-            </div>
-
-            <div className="relative w-full overflow-auto">
-              <Button1 text={"Show states"} action={()=>{this.showStates = true; this.forceUpdate();}}/>
-              {this.createObject()}
-            </div>
-          </div>
           <div className="flex flex-col h-full w-full p-2">
             <div>
               Edit

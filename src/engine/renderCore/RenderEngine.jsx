@@ -15,7 +15,6 @@ import { Shader } from "./ShadersUnstable";
 import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim";
 import { CodedRoutine } from "../engineComponents/CodedRoutine";
-import _ from "lodash";
 
 class RenderEngine extends React.Component{
   constructor(props){
@@ -32,7 +31,11 @@ class RenderEngine extends React.Component{
     this.isMobile = mobileCheck();
     this.mounted = false; //internal check
     this.canvasRef = {}; //Reference to the canvas used to render the scene
+
     this.engineTime = 0;
+    this.engineSpeed = 1;
+    this.stopEngine = false; //Stop engine time
+
 
     this.actualSceneId = "";//Guardar esto
     this.masterScript = {};
@@ -42,6 +45,9 @@ class RenderEngine extends React.Component{
     this.scriptInterpreter = ScriptInterpreter;
     this.codedRoutine = CodedRoutine;
 
+    this.baseScriptsPaths = [];
+
+    this.base = {};//shared resources
     this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
     this.anims = new RenList();
     this.triggers = new RenList();
@@ -97,7 +103,8 @@ class RenderEngine extends React.Component{
     this.showObjectsInfo = false;
     this.drawObjectLimits = true;
     this.showCanvasGrid = false;
-    this.drawTriggers = true;
+    this.drawTriggers = false;
+    this.showFps = true;
 
     this.objectsToDebug = [];//id of the object
     this.setMouseOrigin = false;
@@ -109,13 +116,13 @@ class RenderEngine extends React.Component{
     window.setDrawObjectLimits = (x) => {this.drawObjectLimits = x;}
     window.setShowObjectsInfo = (x) => {this.showObjectsInfo = x;}
     window.setShowCanvasGrid = (x) => {this.showCanvasGrid = x;}
-    window.renderEngineTerminal = (code) =>{ code(this);}
+    window.terminal = (code) =>{ code(this);}
+    window.getFile = (link,then) =>{$.get(link).then(doc=>{then(doc);}).catch((err)=>{throw new Error(err)})}
     window.engineRef = this;
   }  
   componentDidMount(){
     if (!this.mounted) {
       this.mounted = true;
-      // console.clear();
       //* ASPECT RATIO
       window.setTimeout(() => {
         this.aspectRatioCalc();
@@ -131,14 +138,25 @@ class RenderEngine extends React.Component{
           }, 800);
       }).observe(document.getElementById("display"+this.id))
        
+      //*lOAD BASE COMPONENTS (the stuff you will use in all scenes)
+
       //*LOAD GAME
       const k = new ScriptInterpreter();
-      k.build((masterScript)=>{this.loadGame(masterScript); if("setEngine" in  this.props ){this.props.setEngine(this);}},(error)=>{this.consol(error)});
+      this.getBaseResourcesScripts().then(()=>{
+        k.build(
+          (masterScript)=>{
+            this.loadGame(masterScript); 
+            if("setEngine" in  this.props ){
+              this.props.setEngine(this);
+            }
+          },
+          (error)=>{this.consol(error);}
+        );
+      });
       
       //*TECLADO
       const self = this;
       document.body.addEventListener("keydown",function(e){
-        
         if(self.pressedKeys.indexOf(e.code) == -1){
           self.pressedKeys.push(e.code);
           const mix = self.pressedKeys.join(" ");
@@ -155,6 +173,57 @@ class RenderEngine extends React.Component{
         }
       });
     }
+  }
+
+  loadFile(path){ //will request a script file and continue the execution when the file have been loaded
+    return new Promise((resolve,reject)=>{
+      const interpretator = new ScriptInterpreter();
+      const merger = (resources)=>{//merge al the different resources to the base var
+        const elements = resources[Object.keys(resources)[0]];
+        Object.keys(elements).forEach(key=>{
+          // console.log(self.base,elements);
+          if(key in this.base){
+            Object.assign(this.base[key],elements[key]);
+          }else{
+            Object.assign(this.base,{[key]:elements[key]});
+          }
+  
+        })
+      };
+      $.get(path).then(scriptFile=>{
+        interpretator.buildFromText(scriptFile,(err)=>{this.consol(err); reject("Error trying to interpretate "+path);})
+          .then(resources=>{
+            console.log(resources);
+            if(Object.keys(resources).length > 0){
+              merger(resources);
+            }else{
+              console.warn(path+" don't have content");
+            }
+            resolve();
+          });
+      });
+    })
+  }
+  getBaseResourcesScripts(){
+    this.base = {};
+    const self = this;
+    //create a self-calling function
+
+    return new Promise(function (resolve, reject) {
+      self.loadFile("http://localhost/renderEngineBackend/game/main.txt")
+      .then(()=>{
+        self.loadFile("http://localhost/renderEngineBackend/game/scripts/loadAll.txt")
+        .then(()=>{
+          self.loadFile("http://localhost/renderEngineBackend/game/scripts/dialogModule.txt")
+          .then(()=>{
+            self.loadFile("http://localhost/renderEngineBackend/game/scripts/appearances.txt")
+            .then(()=>{
+              resolve();
+            });
+          });
+        });
+      }).catch(()=>{self.consol("PLEASE, CREATE THE 'main.txt' FILE IN THE ROOT OF YOUR PROJECT.")})
+    })
   }
   /**
    * 
@@ -184,10 +253,6 @@ class RenderEngine extends React.Component{
     return res;
   }
 
-  getSound(id){
-    return this.soundsList.get(id);
-  }
-
   aspectRatioCalc(op = this.aspectRatio) {
     const w = document.getElementById("display"+this.id);
 
@@ -199,7 +264,6 @@ class RenderEngine extends React.Component{
       } else {
         newWidth = w.offsetWidth;
       }
-      console.log(newWidth,newHeight);
       gsap.to(document.getElementById("engineDisplay"+this.id), 0, 
         { 
           width : newWidth + "px", 
@@ -237,14 +301,18 @@ class RenderEngine extends React.Component{
     console.log(info);
   }
   loadGame(masterScript,fun = null){
+    this.isReady = false;
+    this.forceUpdate();
+
     this.masterScript = masterScript;
     if(this.actualSceneId == ""){
       this.actualSceneId = Object.keys(this.masterScript)[0];
     }
-    this.loadScene(this.actualSceneId,fun);
+    this.loadSceneResources(this.actualSceneId,fun);
   }
   loadSounds(sndsData,fun = null){
-    if(sndsData != null){
+    var res = [];
+    if(Object.keys(sndsData).length > 0){
       Promise.all(Object.keys(sndsData).map(sndName=>
         new Promise(resolve=>{
           fetch(sndsData[sndName]).then(res=>res.blob()).then( blob =>{
@@ -279,16 +347,21 @@ class RenderEngine extends React.Component{
   }
   loadTextures(texturesData,fun = null){
     if(texturesData != null){
-      Promise.all(Object.keys(texturesData).map(textureName=>
-        new Promise(resolve=>{
-          const image = new Image();
-          image.src = texturesData[textureName];
-          image.addEventListener('load',()=>{
-            const res = new Object({[textureName]:image});
-            this.texturesList.push(new Shader(image,textureName))
-            resolve(res);
-          });
-        })
+      Promise.all(Object.keys(texturesData).map(textureName=>{
+          if(this.texturesList.exist(textureName)){
+            new Promise(resolve=>{console.warn(textureName + " already in engine.textureList");resolve({});});
+          }else{
+            new Promise(resolve=>{
+              const image = new Image();
+              image.src = texturesData[textureName];
+              image.addEventListener('load',()=>{
+                const res = new Object({[textureName]:image});
+                this.texturesList.push(new Shader(image,textureName))
+                resolve(res);
+              });
+            })
+          }
+        }
       )).then(textures => {
         if(typeof fun == "function")
           fun();
@@ -299,66 +372,84 @@ class RenderEngine extends React.Component{
         console.error("===============================");
       });
     }else{
-      console.warn("No sounds in this scene");
+      console.warn("No textures in this scene");
       if(typeof fun == "function")
           fun();
     }
     
   }
-  loadScene(sceneId,fun =null){
+  dataCleaner(){
+     //reset values
+     this.engineTime = 0;
+     this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
+     this.anims = new RenList();
+     this.triggers = new RenList();
+     this.keyboardTriggers = new RenList();
+     this.textureAnims = new RenList();
+ 
+     this.camera = {
+       maxZ:1000,
+       origin:{x:.5,y:.5},//position of the virtual engineDisplay
+       position:{x:.5,y:.5,z:0,angle:0},//position od the camera in the space.... angle? who knows (0_-)
+       usePerspective:false, //or use3D
+       useTHREE3d:false
+     }
+     this.dimentionsPack = {};
+ 
+     this.codedRoutines = new RenList();
+     this.routines = new Array();
+     this.flags = new Object();
+     this.routineNumber = -1;
+     this.continue = true;
+     //Dialogs
+     this.voiceFrom = "";
+     this.paragraphNumber = 0;
+     this.paragraph = "";
+     this.dialogNumber = 0;
+     this.dialog = [];
+     this.narration = "";
+  }
+  loadBaseResources(){
+    const self = this;
+    return new Promise(function (resolve, reject) {
+      const base = self.base;
+      self.loadSounds(base.sounds,()=>{
+        self.loadTextures(base.textures,()=>{
+          Object.assign(self.gameVars,base.gameVars);
+  
+          base.graphObjects.map(object =>{object.textureName=object.texture; return object});
+  
+          base.graphObjects.forEach(object => self.graphArray.push(new GraphObject(object)));
+          base.triggers.forEach(trigger => self.triggers.push(new Trigger(trigger)));
+          base.keyboardTriggers.forEach(trigger => self.keyboardTriggers.push(new KeyboardTrigger(trigger)));
+          base.textureAnims.forEach(textureAnim => self.textureAnims.push(new TextureAnim(textureAnim)));
+          base.animations.forEach(animation => self.anims.push(new Animation(animation)));
+          base.codedRoutines.forEach(codedRoutine => self.codedRoutines.push(new CodedRoutine(codedRoutine)));
+          self.routines = base.routines;
+          self.flags = base.flags;
+          
+          resolve()
+        });
+      });
+    })
+  }
+  loadSceneResources(sceneId,fun =null){
     //TODO: Check the textures object and destroy all gpu instances
-    while(this.texturesList.objects.length > 0){
-      this.texturesList.objects[0].destroy();
-      this.texturesList.remove(this.texturesList.objects[0].id)
-    }
+    // while(this.texturesList.objects.length > 0){
+    //   this.texturesList.objects[0].destroy();
+    //   this.texturesList.remove(this.texturesList.objects[0].id)
+    // }
+    this.dataCleaner();
 
-    this.actualSceneId = sceneId;
-    let scene = this.masterScript[sceneId];
-    this.isReady = false;
-    this.forceUpdate();
-    //reset values
-    this.engineTime = 0;
-    this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
-    this.graphObject = GraphObject;
-    this.animation = Animation;
-    this.anims = new RenList();
-    this.triggers = new RenList();
-    this.keyboardTriggers = new RenList();
-    this.textureAnims = new RenList();
-    this.codedRoutines = new RenList();
-    this.routines = new Array();
-    this.flags = new Object();
-    this.routineNumber = -1;
-
-    this.camera = {
-      maxZ:1000,
-      origin:{x:.5,y:.5},//position of the virtual engineDisplay
-      position:{x:.5,y:.5,z:0,angle:0},//position od the camera in the space.... angle? who knows (0_-)
-      usePerspective:false, //or use3D
-      useTHREE3d:false
-    }
-    this.dimentionsPack = {};
-
-    this.codedRoutines = new RenList();
-    this.routines = new Array();
-    this.flags = new Object();
-    this.routineNumber = -1;
-    this.continue = true;
-    //Dialogs
-    this.voiceFrom = "";
-    this.paragraphNumber = 0;
-    this.paragraph = "";
-    this.dialogNumber = 0;
-    this.dialog = [];
-    this.narration = "";
+    this.loadBaseResources().then(
+      ()=>{
+        this.actualSceneId = sceneId;
+        let scene = this.masterScript[sceneId];
     
-    this.loadSounds(scene.sounds,()=>{
-      this.loadTextures(scene.textures,()=>{
-        //change texture reference with the actual file
         Object.assign(this.gameVars,scene.gameVars);
-
+    
         scene.graphObjects.map(object =>{object.textureName=object.texture; return object});
-
+    
         scene.graphObjects.forEach(object => this.graphArray.push(new GraphObject(object)));
         scene.triggers.forEach(trigger => this.triggers.push(new Trigger(trigger)));
         scene.keyboardTriggers.forEach(trigger => this.keyboardTriggers.push(new KeyboardTrigger(trigger)));
@@ -372,8 +463,8 @@ class RenderEngine extends React.Component{
         this.forceUpdate();
         if(fun != null)
           fun()
-      });
-    });
+      }
+    );
   }
 
   checkObjectBoundaries(oTopLeftCorner,objectRes,canvasRes){
@@ -508,7 +599,7 @@ class RenderEngine extends React.Component{
       }
     }
     const arrayiseTree = this.arrayiseTree();
-    for (let index = 0; index < this.graphArray.objects.length; index++) {
+    for (let index = 0; index < this.graphArray.length; index++) {
       const gObject = this.getObject(arrayiseTree[index]);
 
       if(recalculate(gObject)){ //TODO: add check for camera or window modifications
@@ -619,7 +710,7 @@ class RenderEngine extends React.Component{
         id={"renderCanvas"} 
         fps={24} 
         scale={1} 
-        showFps={"showFps" in this.props ? this.props.showFps : true}
+        showFps={this.showFps}
         engine={this}
         renderGraphics={(canvas)=>{
           this.canvasRef = canvas;
@@ -630,11 +721,9 @@ class RenderEngine extends React.Component{
 
           this.noRenderedItemsCount = 0;
 
-          this.generateCalculationOrder();
-          this.generateObjectsDisplayDimentions();
-
-          for (let index = 0; index < this.graphArray.objects.length; index++) {
-            const gObject = this.getObject(this.renderingOrderById[index]);
+          const availableIdsToRender = this.renderingOrderById.filter(id =>{return this.graphArray.ids().indexOf(id) != -1}); 
+          for (let index = 0; index < this.graphArray.length; index++) {
+            const gObject = this.getObject(availableIdsToRender[index]);
             const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
 
             const multiply = (!this.camera.usePerspective && !gObject.ignoreParallax) ? this.camera.position.z+1 : 1;
@@ -648,7 +737,10 @@ class RenderEngine extends React.Component{
             var objectWidth = this.dimentionsPack[gObject.id].width *multiply;
             var objectHeight = this.dimentionsPack[gObject.id].height *multiply;
 
-            if(!(gObject.opacity == 0) && this.checkObjectBoundaries({x:objectLeft,y:objectTop},{width:objectWidth,height:objectHeight},{width:canvas.resolutionWidth,height:canvas.resolutionHeight})){
+            if(
+              !(gObject.opacity == 0) 
+              // && this.checkObjectBoundaries({x:objectLeft,y:objectTop},{width:objectWidth,height:objectHeight},{width:canvas.resolutionWidth,height:canvas.resolutionHeight})
+            ){
                //*part one: global alpha
               canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
 
@@ -827,9 +919,9 @@ class RenderEngine extends React.Component{
           if(this.showCanvasGrid){
             if(this.drawPerspectiveLayersLimits && this.camera.usePerspective){}else{
               const base = {
-                x: -this.camera.position.x+.5,
+                x: -this.camera.position.x,
                 y: -this.camera.position.y,
-                z: -this.camera.position.z+0.65
+                z: -this.camera.position.z
               }
               const grid = {
                 x: base.x,
@@ -845,8 +937,8 @@ class RenderEngine extends React.Component{
 
               //*recalculate gobject coords
               var perspectiveLayer = {
-                width:canvas.resolutionHeight*perspectiveScale,
-                height:canvas.resolutionHeight*perspectiveScale
+                width:canvas.resolutionHeight,
+                height:canvas.resolutionHeight
               }
                 //it will calc were the image must to be, inside the perspectiveLayer
               grid.x *= perspectiveLayer.width;
@@ -855,14 +947,14 @@ class RenderEngine extends React.Component{
               grid.x += -(perspectiveLayer.width-canvas.resolutionHeight)*this.camera.origin.x;
               grid.y += -(perspectiveLayer.height-canvas.resolutionHeight)*this.camera.origin.y;
 
-              const height = canvas.resolutionHeight * perspectiveScale;
+              const height = canvas.resolutionHeight;
 
               canvas.context.beginPath();
               canvas.context.lineWidth = 1;
               canvas.context.strokeStyle = "green";
               //create grid
               const length = 2
-              for (let line = -1; line < length; line +=.1) {
+              for (let line = 0; line < length; line +=.1) {
                 //vertical
                 canvas.context.moveTo(
                   (height*line) + grid.x,
@@ -917,7 +1009,7 @@ class RenderEngine extends React.Component{
             }
           });
           
-          this.engineTime += canvas.fps.elapsed;
+          this.engineTime += (canvas.fps.elapsed * (this.stopEngine ? 0 : this.engineSpeed));
           for (let index = 0; index < this.anims.objects.length; index++) {
             const anim = this.anims.objects[index];
             if(anim.relatedTo != null){
@@ -926,7 +1018,6 @@ class RenderEngine extends React.Component{
           }  
         }}
         animateGraphics={(canvas)=>{
-          //console.log(this.routines,this.routineNumber);
           if(this.continue){
             if((this.routineNumber+1)<this.routines.length){
               this.routineNumber++;
@@ -937,6 +1028,8 @@ class RenderEngine extends React.Component{
           this.codedRoutines.objects.forEach(element => {
             element.run(this);
           });
+          this.generateCalculationOrder();
+          this.generateObjectsDisplayDimentions();
         }}
         />
       );
@@ -968,7 +1061,6 @@ class RenderEngine extends React.Component{
     mY = clientY/mouse.target.clientHeight;
     //move mouse "digital coords" with camera origin
     mX += (0.5-this.camera.origin.x);
-    // mX *= (this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
     mY += (0.5-this.camera.origin.y);
 
     this.mouse.x = mX * (this.canvasRef.resolutionWidth/this.canvasRef.resolutionHeight);
@@ -979,11 +1071,12 @@ class RenderEngine extends React.Component{
 
     var targetGraphObjectId = "";
     var reversedRenderOrderList = [].concat(this.renderingOrderById).reverse();
+    const availableIdsToRender = reversedRenderOrderList.filter(id =>{return this.graphArray.ids().indexOf(id) != -1}); 
     const objectsWithTriggersList = this.triggers.relatedToReversedList();
     const triggersIdList = this.triggers.objects.filter(e=>{return e.enabled}).map(e=>{return e.id});
 
-    for (let index = 0; index < reversedRenderOrderList.length; index++) {
-      const gO = this.dimentionsPack[reversedRenderOrderList[index]];
+    for (let index = 0; index < availableIdsToRender.length; index++) {
+      const gO = this.dimentionsPack[availableIdsToRender[index]];
 
       var objectWidth = gO.width;
       var objectHeight = gO.height;
@@ -995,7 +1088,6 @@ class RenderEngine extends React.Component{
           if(mY<=(gOy+(objectHeight))){
             if(mX<=(gOx+(objectWidth))){
               targetGraphObjectId = gO.id;
-              // console.log(gO.id,this.getObject(gO.id).opacity);
               if(targetGraphObjectId in objectsWithTriggersList){
                 objectsWithTriggersList[targetGraphObjectId].forEach(triggerId => {
                   try {
@@ -1014,7 +1106,6 @@ class RenderEngine extends React.Component{
         }
       }
     }
-    // console.log("?")
     if(action == "mouseMove"){
       //onLeave part, activar el onLeave en todos aquellos triggers que no se activaron previamente
       let unexecutedTriggers;
@@ -1046,7 +1137,6 @@ class RenderEngine extends React.Component{
           onMouseDown={(e)=>this.checkTriggers(e,"onHold")}
           onMouseUp={(e)=>{e.preventDefault();console.log(e.button);this.checkTriggers(e,"onRelease")}}
           onWheel={(e)=>{this.camera.position.z -=(e.deltaY/1000)}}
-          //This may be used only in the dev mode(elements aligment, etc)
           onMouseMove={(e)=>{if(this.mouseListener+(1000/40) < performance.now()){this.mouseListener = performance.now();this.checkTriggers(e,"mouseMove")}}}
         />
       );
