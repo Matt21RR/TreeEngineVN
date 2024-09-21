@@ -1,4 +1,5 @@
 import React from 'react';
+import $ from "jquery";
 
 import { Button1, IconButton, InputText, InputTextArea } from "../components/buttons";
 import { ScriptInterpreter } from '../renderCore/ScriptInterpreter';
@@ -7,15 +8,103 @@ import { Window } from '../../windows/Window';
 import Swal from 'sweetalert2'
 import { GraphObject } from '../engineComponents/GraphObject';
 
-class Files extends React.Component {
-  constructor(props){
+class TextE extends React.Component {
+  constructor(props) {
     super(props);
-  }
-  getFiles(){
-    
+    this.fileRoute = "";
+    this.history = [];
+    this.script = "scriptNotepad" in localStorage ? localStorage.getItem("scriptNotepad") : "";
+    this.sceneIdWhereRun =  "sceneIdWhereRun" in localStorage ? localStorage.getItem("sceneIdWhereRun") : "";
+    this.showSaves = false;
+    this.mounted = false;
   }
 
+  updateTextContent(content){
+    const route = this.fileRoute;
+    $.post("http://localhost/renderEngineBackend/index.php", {route: route, action: "update", content: content})
+    .then((response) => {
+      Swal.fire("Guardado", "", "success");
+      return JSON.parse(response);
+    });
+  }
+  getSaves(){
+    var saves = localStorage.getItem("fastSaves");
+    if(saves == null){localStorage.setItem("fastSaves",JSON.stringify({}));}
+    return saves != null ? JSON.parse(saves) : {};
+  }
+  fastSave(script){
+    var saves = this.getSaves();
+    Object.assign(saves,{[this.fileRoute] : script});
+    localStorage.setItem("fastSaves",JSON.stringify(saves));
+  }
+  runScript(){
+    const engine = this.props.engine;
+    const k = new ScriptInterpreter;
+    engine.actualSceneId = this.sceneIdWhereRun;
+    k.buildFromText(this.script,(error)=>{engine.consol(error)}).then((masterScript)=>{
+      engine.loadGame(masterScript,()=>{
+        this.props.reRender();
+      });
+    })
+  }
+  routeBar(){
+    return(
+      <div className='left-0 w-full h-8 bg-gray-700 flex flex-row relative'>
+        <Button1 text="Reload" style="mx-2 my-auto h-6"/>
+        <InputText 
+          defaultValue={this.fileRoute} 
+          change={(value)=>{
+
+          }} 
+          style="mx-4 grow"/>
+      </div>
+    );
+  }
+  render(){
+    return(
+      <>
+        <div className='relative h-full w-full flex flex-col'>
+        {this.routeBar()}
+          <div className='relative h-full w-full text-white overflow-auto flex flex-row'>
+            <div className='relative h-full w-full text-white font-[Consolas] code'>
+              <InputTextArea 
+                height={"h-full"} 
+                defaultValue={this.script}
+                onControl={{Enter:(e)=>{e.preventDefault(e);this.runScript();}}}
+                changeValue={(value)=>{
+                  this.script = value;
+                  this.fastSave(value)
+                }} />
+            </div>
+          </div>
+          <div className='bottom-0 h-8 w-full bg-gray-700 flex flex-row-reverse relative'>
+            <Button1 
+              text="Run!!" 
+              action={()=>{
+                this.runScript();
+              }}
+              />
+            <InputText 
+              defaultValue={this.sceneIdWhereRun} 
+              change={(value)=>{
+                this.sceneIdWhereRun = value;
+                localStorage.setItem("sceneIdWhereRun",value);
+              }} 
+              style="pl-8 max-w-8"/>
+
+            <div className='absolute left-0 top-0 h-full w-fit flex'>
+              <IconButton icon="save" style="h-6 w-6 m-1" action={()=>{
+                this.updateTextContent(this.script);
+              }}/>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 }
+
+
 class ScriptE extends React.Component {
   constructor(props) {
     super(props);
@@ -187,4 +276,4 @@ class ScriptE extends React.Component {
   }
 }
 
-export {ScriptE}
+export {ScriptE,TextE}

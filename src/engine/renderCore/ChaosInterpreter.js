@@ -2,27 +2,129 @@ import $ from "jquery";
 import { isArray } from "lodash";
 class ChaosInterpreter {
   constructor(){
-
+    this.sounds = {};
+    this.textures = {};
+    this.scripts = {};
+    this.scriptsUrls = {};
+    this.projectRoot = "http://localhost/renderEngineBackend/game/";
+    this.listScripts();
   }
-  kreator(script){
-    var instructions = this.instructionsDesintegrator(script);
-    var scenes = this.separateScenes(instructions);
-    let res = [];
-    if(isArray(scenes)){
-      scenes = scenes.map(instruction=>{
-        return this.evaluateStuff(instruction);
+  getSound(){
+    return this.projectRoot + "snd/sounds.json";
+  }
+  getTexture(){
+    return this.projectRoot + "img/textures.json";
+  }
+  getScript(id){
+    //Preload JSONs
+  }
+  listScripts(){
+    return new Promise((resolve,reject)=>{
+      fetch(this.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
+        Object.keys(scriptsData).forEach((scriptId)=>{
+          scriptsData[scriptId] = this.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
+        })
+        Object.assign(scriptsData,{"gameEntrypoint":"http://localhost/renderEngineBackend/game/main.txt"})
+        this.scriptsUrls = scriptsData
+        resolve(scriptsData);
       });
-    }else{
-      Object.keys(scenes).map(sceneName=>{
-        const scene = scenes[sceneName];
-        scene.forEach(instruction=>{
-          res =  this.evaluateStuff(instruction);
+    })
+  }
+  loadScripts(doNothing){
+    const self = this;
+    return new Promise((resolve,reject)=>{
+      if(doNothing){
+        resolve();
+      }else{
+        fetch(this.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
+          Promise.all(
+            Object.keys(scriptsData).map(scriptId => {
+              const jsonPath = this.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","")
+              return new Promise(resolveScript=>{
+                fetch(jsonPath).then(
+                  scriptData => {return scriptData.text();}).then((res2)=>{
+                    self.kreator(res2,false).then(
+                    (textScr)=>{
+                      Object.assign(self.scripts,textScr);
+                      resolveScript();
+                    }
+                  )}
+                )
+              })
+            })
+          ).then(()=>{resolve()});
         });
-        scenes[sceneName] = res;
+      }
+    })
+  }
+  kreator(script,loadAudioVisual = true){
+    return new Promise((resolve,reject)=>{
+      //TODO: add textures and sounds js exists check
+      this.loadScripts(!loadAudioVisual).then(()=>{
+        var instructions = this.instructionsDesintegrator(script);
+        var scenes = this.separateScenes(instructions);
+        let res = [];
+        if(isArray(scenes)){
+          if(loadAudioVisual){
+            res.push("engine.loadTexture('"+this.getTexture()+"').then(()=>{");
+            res.push("engine.loadSound('"+this.getSound()+"').then(()=>{");
+          }
+            scenes.map((instruction,idx)=>{
+              res = res.concat(this.evaluateStuff(idx,instruction));
+            });
+          if (loadAudioVisual) {
+            res.push("  });");
+            res.push("});");
+          }
+          scenes = {"gameEntrypoint":res};
+        }else{
+          Object.keys(scenes).map(sceneName=>{
+            const scene = scenes[sceneName];
+  
+            if(loadAudioVisual){
+              res.push("engine.loadTexture('"+this.getTexture()+"').then(()=>{");
+              res.push("engine.loadSound('"+this.getSound()+"').then(()=>{");
+            }
+              scene.forEach((instruction,idx)=>{
+                res = res.concat(this.evaluateStuff(idx,instruction));
+              });
+            if (loadAudioVisual) {
+              res.push("  });");
+              res.push("});");
+            }
+            scenes[sceneName] = res;
+            res = [];
+          })
+        }
+        console.log(scenes);
+        resolve(scenes);
       })
-    }
-    console.log(scenes);
+    });
+  }
+  checkIfIsWord(line){
+    const arr = line.match(/([a-z]|[A-Z])+/g);
+    if(arr != null)
+      if(arr.length == 1)
+        return true;
+      
+    return false;
+  }
+  checkIfKeywordInLine(line){
+    const keywords = ["set","run","new","wait","continue","jumpto","flag"];
 
+    for (let index = 0; index < keywords.length; index++) {
+      const keyword = keywords[index];
+      const parts = line.split(" ").filter(e=>{return e != ""});
+      if(parts.length>0){
+        // console.log(parts.length);
+        if(parts[0] == keyword){
+          return true;
+        }else if(this.checkIfIsWord(parts[0]) && parts[1] == "=>"){
+          console.error("akkord"); 
+        }
+      }
+    }
+    return false;
   }
   instructionsDesintegrator(script){
     var instructions = [];
@@ -36,9 +138,13 @@ class ChaosInterpreter {
 
     script.split(/\r\n|\r|\n/,-1).forEach((line) =>{
       var lineF = line;
-      if(counter != 0){
 
+      if(counter != 0){
+        if(this.checkIfKeywordInLine(lineF)){
+          lineF = this.evaluateStuff(0,this.instructionsDesintegrator(lineF)[0],false).join("");
+        }
       }
+
       acomulateLines+=lineF; 
 
       lineF.split("").forEach(char=>{
@@ -78,6 +184,10 @@ class ChaosInterpreter {
         if(parameters.length != 0){
           command = parameters.shift();
         }
+        if (command == "" && parameters.length == 0){
+          command = value;
+          value = "";
+        }
 
         instructions.push({
           command : command,
@@ -91,11 +201,6 @@ class ChaosInterpreter {
         indexWhereCommandObjectStart = 0;
       }
     });
-    console.log(instructions);
-    console.log(this.separateScenes(instructions));
-    instructions.forEach(instruction => {
-      console.log(this.evaluateStuff(instruction));
-    })
     return(instructions);
   }
   separateScenes(primitiveScripts){
@@ -126,14 +231,16 @@ class ChaosInterpreter {
    * @param {String} instruction 
    * @param {String} Scrapped Value of the instruction
    */
-  evaluateStuff(instruction){
+  evaluateStuff(index, instruction,routine = true){
     let command = instruction.command;
     let parameters = instruction.parameters;
     let creationType = "";
+    let settingType = "";
     let id = "";
     let value = instruction.value;
     let text = instruction.text;
     let res = [];
+    let pre = "";
 
     var dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
 
@@ -144,20 +251,29 @@ class ChaosInterpreter {
       value.shift();
       value.pop();
       value = value.join("");
-      value = "["+value+"]"
+      if(creationType == "Animation" || creationType=="TextureAnim" || creationType=="Trigger" || creationType=="KeyboardTrigger"){
+        value = "["+value+"]"
+      }else{
+        value = value
+      }
     }
     if(parameters.length == 3){
       if(parameters[0] == "=" && parameters[1] == "new"){
         id = '"'+command+'"';
-        creationAdecuation();
         creationType = parameters[2];
+        creationAdecuation();
       }
     }
     if(command == "new"){
-      creationAdecuation();
       creationType = parameters[0];
+      creationAdecuation();
+    }
+    if(command == "set"){
+      settingType = parameters[0];
+      id = parameters[1];
     }
 
+    // res.push("//**Instruction #"+index+"*/")
     switch(command){
       case ">":
         res.push(
@@ -167,75 +283,99 @@ class ChaosInterpreter {
       case "load":
         const loadType = parameters[0];
         switch (loadType) {
-          case "textures":
+          case "script":
             res.push(
-              "engine.continue = false;",
-              "$.get("+value+").then()"
+              this.scripts[value.replaceAll('"',"")].join("")
             );
             break;
-          case "sounds":
-            
-            break;
+        }
+        break;
+      case "run":
+        const runType = parameters[0];
+        switch (runType) {
           case "script":
-
+            console.log(this.scripts);
+            res.push(
+              "engine.routines.push((engine)=>{",
+              " engine.loadScript('"+this.scriptsUrls[value.replaceAll('"',"")]+"')",
+              "});"
+            );
             break;
         }
         break;
       case "wait":
         res.push(
-          "engine.continue = false;"
+          "engine.routines.push((engine)=>{"
         );
         if(value != ""){
           const time = value*1;
           res.push(
-            "setTimeout(()=>{engine.continue = true},"+ (time)+");"
+            "engine.continue = false; setTimeout(()=>{engine.continue = true;},"+ (time)+");"
+          );
+        }else{
+          res.push(
+            "engine.continue = false;"
           );
         }
+        res.push(
+          "});"
+        );
         break;
       case "continue":
         res.push(
-          "engine.continue = true;"
+          "engine.routines.push((engine)=>{",
+          "engine.continue = true;",
+          "});"
         );
         break;
       case "narration":
         res.push(
-          "engine.triggers.get('avanzarNarracion').enabled = true;",
-          "engine.paragraphNumber = 0;",
-          "engine.voiceFrom = 'nobody';",
-          "engine.narration = ("+value+").join('\n');",
-          "",
-          "engine.paragraph += '\n' + engine.narration.split('\n')[0];",
-          "engine.graphArray.get('narrationBox').text = '';",
-          "engine.graphArray.get('narrationBox').enabled = true;",
-          "",
-          "engine.continue = false;",
+          "engine.routines.push((engine)=>{",
+            "engine.triggers.get('avanzarNarracion').enabled = true;",
+            "engine.paragraphNumber = 0;",
+            "engine.voiceFrom = 'nobody';",
+            "engine.narration = "+value+";",
+
+            "engine.paragraph += engine.narration[0];",
+            "engine.graphArray.get('narrationBox').text = '';",
+            "engine.graphArray.get('narrationBox').enabled = true;",
+
+            "engine.continue = false;",
+          "});"
         );
 
         break;
       case "$":
         res.push(
-          "engine.dialogNumber = 0;",
-          "engine.voiceFrom = "+parameters[0]+";",
-          "engine.dialog = "+value+";",
-          "",
-          "engine.graphArray.get('dialogbox').text = '';",
-          "engine.graphArray.get('dialogbox').enabled = true;",
-          "",
-          "engine.graphArray.get('voiceByName').enabled = true;",
-          "",
-          "engine.continue = false;",
+          "engine.routines.push((engine)=>{",
+            "engine.dialogNumber = 0;",
+            "engine.voiceFrom = '"+parameters[0]+"';",
+            "engine.dialog = "+value+";",
+
+            "engine.graphArray.get('dialogbox').text = '';",
+            "engine.graphArray.get('dialogbox').enabled = true;",
+
+            "engine.graphArray.get('voiceByName').enabled = true;",
+
+            "engine.continue = false;",
+          "});"
         );
         break;
       case "create":
+        if(routine){
+          res.push(
+            "engine.routines.push((engine)=>{"
+          );
+        }
         res.push(
           "var "+dynaVarName+" = "+value+";"
         );
         switch(creationType){
           case "GraphObject":
             res.push(
-              "Object.assign("+dynaVarName+",{id:"+id+"})",
+              "Object.assign("+dynaVarName+",{id:"+id+"});",
 
-              "engine.graphArray.push(new GraphObject("+dynaVarName+"));"
+              "engine.graphArray.push(new engine.constructors.graphObject("+dynaVarName+"));"
             );
             break;
           case "TextureAnim":
@@ -246,7 +386,7 @@ class ChaosInterpreter {
               "};",
               "Object.assign(data"+dynaVarName+","+dynaVarName+"[1]);",
 
-              "engine.textureAnims.push(new TextureAnim(data"+dynaVarName+")));"
+              "engine.textureAnims.push(new engine.constructors.textureAnim(data"+dynaVarName+"));"
             );
             break;
           case "Trigger":
@@ -257,7 +397,7 @@ class ChaosInterpreter {
               "};",
               "Object.assign(data"+dynaVarName+","+dynaVarName+"[1]);",
 
-              "engine.triggers.push(new Trigger(data"+dynaVarName+")));"
+              "engine.triggers.push(new engine.constructors.trigger(data"+dynaVarName+"));"
             );
             break;
           case "KeyboardTrigger":
@@ -267,7 +407,7 @@ class ChaosInterpreter {
               "};",
               "Object.assign(data"+dynaVarName+","+dynaVarName+"[1]);",
 
-              "engine.keyboardTriggers.push(new KeyboardTrigger(data"+dynaVarName+")));"
+              "engine.keyboardTriggers.push(new engine.constructors.keyboardTrigger(data"+dynaVarName+"));"
             );
             break;
           case "Animation":
@@ -279,17 +419,81 @@ class ChaosInterpreter {
               "};",
               "Object.assign(data"+dynaVarName+","+dynaVarName+"[2]);",
               
-              "engine.anims.push(new Animation(data"+dynaVarName+")));"
+              "engine.anims.push(new engine.constructors.animation(data"+dynaVarName+"));"
             );
             break;
           case "CodedRoutine":
             res.push(
-              "Object.assign("+dynaVarName+",{id:"+id+"})",
+              "Object.assign("+dynaVarName+",{id:"+id+"});",
 
-              "engine.codedRoutines.push(new CodedRoutine("+dynaVarName+"));"
+              "engine.codedRoutines.push(new engine.constructors.codedRoutine("+dynaVarName+"));"
             );
             break;
         }
+        if(routine){
+          res.push(
+            "});"
+          );
+        }
+        break;
+      case "set":
+        if(routine){
+          res.push(
+            "engine.routines.push((engine)=>{"
+          );
+        }
+        res.push(
+          "var "+dynaVarName+" = "+value+";"
+        );
+        res.push(
+          "Object.keys("+dynaVarName+").forEach(key=>{",
+        );
+        switch(settingType){
+          case "GraphObject":
+            res.push(
+              "engine.graphArray.get('"+id+"')[key] = "+dynaVarName+"[key];"
+            );
+            break;
+          case "TextureAnim":
+            res.push(
+              "engine.textureAnims.get('"+id+"')[key] = "+dynaVarName+"[key];"
+            );
+            break;
+          case "Trigger":
+            res.push(
+              "engine.triggers.get('"+id+"')[key] = "+dynaVarName+"[key];"
+            );
+            break;
+          case "KeyboardTrigger":
+            res.push(
+              "engine.keyboardTriggers.get('"+id+"')[key] = "+dynaVarName+"[key];"
+            );
+            break;
+          case "Animation":
+            res.push(
+              "engine.anims.get('"+id+"')[key] = "+dynaVarName+"[key];"
+            );
+            break;
+          case "CodedRoutine":
+            res.push(
+              "engine.codedRoutines.get('"+id+"')[key] = "+dynaVarName+"[key];"
+            );
+            break;
+        }
+        res.push(
+          "});",
+        );
+        if(routine){
+          res.push(
+            "});"
+          );
+        }
+        break;
+    }
+    if(res.length == 0 && instruction.text != ""){
+      console.warn("Unable to generate excecution code from this:");
+      console.warn("Routine: "+routine);
+      console.table(instruction);
     }
     return res;
   }

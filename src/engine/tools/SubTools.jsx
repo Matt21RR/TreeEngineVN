@@ -100,7 +100,7 @@ class ObjectsE extends React.Component {
             <div>
               Objects List
             </div>
-            <MenuButton text="Unselect" action={()=>{eng.objectsToDebug = [];this.selectedObject=""}}/>
+            <MenuButton text="Unselect" action={()=>{eng.objectsToDebug = [];this.selectedObject=""; this.forceUpdate();}}/>
             <div className="relative w-full overflow-auto">
               {this.objectsList()}
             </div>
@@ -224,6 +224,7 @@ class TriggersE extends React.Component {
       <div className='w-full h-full pt-5 pb-16'>
         <div className='relative h-full text-white overflow-auto'>
           <div className='relative h-full w-full px-8 text-white'>
+            <MenuButton text="Reload" action={()=>{this.forceUpdate();}}/>
             {this.list()}
           </div>
         </div>

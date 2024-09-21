@@ -108,7 +108,7 @@ class Canvas extends React.Component{
           self.renderEngine.pressedKeys = [];
           self.windowHasFocus = false;
           self.fpsBackup = self.fps;
-          this.setFps(3);
+          self.setFps(3);
         }
       });
       $(window).off("focus");
@@ -117,7 +117,7 @@ class Canvas extends React.Component{
         if(!self.engineKilled && !self.windowHasFocus){
           self.windowHasFocus = true;
           setTimeout(() => {
-            this.setFps(self.fpsBackup);
+            self.setFps(self.fpsBackup);
           }, 50);
         }
       });

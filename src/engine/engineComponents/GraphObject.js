@@ -75,8 +75,8 @@ class GraphObject{
     this.#boxColor = "boxColor" in graphInfo ? graphInfo.boxColor : "transparent";
     this.#margin = "margin" in graphInfo ? graphInfo.margin : 0;
 
-    this.#texture = "textureFile" in graphInfo ? graphInfo.textureFile:null;
-    this.#textureName = "textureName" in graphInfo ? graphInfo.textureName:null;
+    this.#texture = "texture" in graphInfo ? graphInfo.texture:null;
+    this.#textureName = "texture" in graphInfo ? graphInfo.texture:null;
     //Properties of the graph
     this.#id = "id" in graphInfo ? graphInfo.id: "error";
     this.#brightness = "brightness" in graphInfo ? graphInfo.brightness: 1;

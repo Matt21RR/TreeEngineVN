@@ -146,14 +146,15 @@ class InputTextArea extends React.Component {
     this.state = {
       focus: false,
       inputMinHeight: 0,
-      error: ((typeof this.props.changeValue) == "undefined") || (typeof this.props.value == "undefined") || !(typeof this.props.changeValue == "function"),
+      error: ((typeof this.props.action) == "undefined") || (typeof this.props.value == "undefined") || !(typeof this.props.action == "function"),
     }
+    this.value=0;
     this.inputBoxRef = React.createRef();
     this.inputRef = React.createRef();
-    this.id = "inputTextArea" + String(window.performance.now()).replaceAll(".","");
+    this.id = "id" in this.props ? this.props.id : ("inputTextArea" + String(window.performance.now()).replaceAll(".",""));
     this.handleClickOutside = this.handleClickOutside.bind(this);
     this.mounted = false;
-    this.caretPosWhenBlur = {start:0,end:0}
+    this.caretPosWhenBlur = {start:0,end:0};
   }
   componentDidMount() {
     if(!this.mounted){
@@ -175,7 +176,7 @@ class InputTextArea extends React.Component {
               className: 'text-[#98C379]'
             },
             {
-              highlight: ['GraphObject','TextureAnim','Trigger','Animation','CodedRoutine','(',')','{','}'],
+              highlight: ['GraphObject','TextureAnim','Trigger','KeyboardTrigger','Animation','CodedRoutine','(',')','{','}'],
               className: 'text-[#357FBF]'
             },
             {
@@ -199,7 +200,7 @@ class InputTextArea extends React.Component {
               className: 'text-[#A18649]'
             },
             {
-              highlight: ['SET','WAIT','SHOW'],
+              highlight: [/^\s*(set){1}(\W)/gm,/^\s*(run){1}(\W)/gm,/^\s*(wait){1}(\W)/gm,/^\s*(show){1}(\W)/gm,/^\s*(load){1}(\W)/gm,/^\s*(\$){1}(\W)/gm,/^\s*(narration){1}(\W)/gm],
               className: 'text-green-600'
             }
         ]
@@ -225,7 +226,7 @@ class InputTextArea extends React.Component {
     }
   }
   hover() {
-    if (!this.state.error && (typeof this.props.changeValue == "function")) {
+    if (!this.state.error && (typeof this.props.action == "function")) {
       this.setState({
         focus: true
       });
@@ -233,9 +234,9 @@ class InputTextArea extends React.Component {
       gsap.to(inputBoxRef, { borderColor: 'rgb(0, 115, 170)' });
     }
   }
-  changeValue(){
-    if(typeof this.props.changeValue == "function"){
-      this.props.changeValue(this.inputRef.current.value);
+  action(){
+    if(typeof this.props.action == "function"){
+      this.props.action(this.inputRef.current.value);
     }
   }
   unhover() {
@@ -247,7 +248,7 @@ class InputTextArea extends React.Component {
         gsap.to(inputBoxRef, { borderColor: '#000' });
 
         //*DevelopMode
-        if (typeof this.props.changeValue == "undefined") {
+        if (typeof this.props.action == "undefined") {
           this.inputRef.current.value = "NoFunctionToCallback";
         }
         //*EndDevelopMode
@@ -258,13 +259,13 @@ class InputTextArea extends React.Component {
   render() {
     let height = typeof this.props.height == 'string' ? ' ' + this.props.height + ' ' : ' h-36 ';
 
-    let fatherStyle = typeof this.props.fatherStyle == 'string' ? ' ' + this.props.fatherStyle + ' ' : '';
+    let fatherStyle = typeof this.props.fatherStyle == 'string' ? ' ' + this.props.fatherStyle + ' ' : 'bg-transparent';
     return (
       <>
         <label htmlFor={this.id} onClick={() => { this.hover() }} className="p-0 m-0 relative h-full w-full">
           <div
             ref={this.inputBoxRef}
-            className={"p-0 h-full select-none w-full bg-transparent overflow-x-hidden  " + fatherStyle}
+            className={"p-0 h-full select-none w-full overflow-x-hidden  " + fatherStyle}
           >
             <textarea
               className={height + "w-full resize-none outline-none align-top border-none bg-transparent text-transparent caret-white p-2"}
@@ -280,7 +281,7 @@ class InputTextArea extends React.Component {
               name={this.id}
               id={this.id}
               spellCheck={false}
-              onChange={()=>this.changeValue()}
+              onChange={()=>this.action()}
               onKeyUp={e => {
                 if(e.key == "Tab"){e.preventDefault();}
               }}
@@ -313,7 +314,7 @@ class InputTextArea extends React.Component {
                       element.selectionEnd = start + 2;
                     }
                 
-                    this.changeValue();
+                    this.action();
                     $('#'+this.id).trigger("load");
                   }
                   if (e.key == 'Enter') { //Avoid autoscroll on enter
@@ -326,7 +327,7 @@ class InputTextArea extends React.Component {
                     element.value = element.value.substring(0, start) +
                       '\r\n' + element.value.substring(end);
                 
-                    this.changeValue();
+                    this.action();
                     $('#'+this.id).trigger("load");
                     // this.forceUpdate();
                     // put caret at right position again
@@ -357,4 +358,200 @@ class InputText extends React.Component{
     );
   }
 }
-export {Button1, BaseButton, MenuButton, PauseButton, IconButton, ListCheckedBox, InputTextArea, InputText}
+class InputList extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      animate: false,
+      showAnimationDone: false,
+      activateHideAnimation: false,
+      zIndex: (10),
+      error: ((typeof this.props.action) == "undefined") || (typeof this.props.value == "undefined") || (typeof this.props.options == "undefined"),
+      heightPerOption: (typeof this.props.height == 'string' ? this.props.height : 16),
+    }
+    this.value = 0;
+    this.inputRef = React.createRef();
+    this.optionsBoxRef = React.createRef();
+    this.handleClickOutside = this.handleClickOutside.bind(this);
+    this.preventDefault = this.preventDefault.bind(this);
+  }
+  calculateHeight() {
+    let boxHeight;
+
+    const optionsBox = this.optionsBoxRef.current.childNodes[1];
+    const customMaxHeight = (this.props.optionsBoxHeight ? this.props.optionsBoxHeight : 0);
+
+    if (customMaxHeight > 0 && customMaxHeight < optionsBox.scrollHeight) {
+      boxHeight = customMaxHeight;
+
+    } else {
+      boxHeight = optionsBox.scrollHeight;
+
+    }
+    return boxHeight
+  }
+  componentWillUnmount() {
+    document.removeEventListener("mousedown", this.handleClickOutside);
+  }
+  componentDidUpdate() {
+    if (this.state.animate && !this.state.showAnimationDone && !this.state.activateHideAnimation) {
+      this.animateHover();
+      this.setState({ showAnimationDone: true });
+    }
+    if (this.state.showAnimationDone && this.state.activateHideAnimation) {
+      this.setState(
+        {
+          animate: false,
+          showAnimationDone: false,
+          activateHideAnimation: false,
+          optionsBoxHeight: 0
+        },
+        () => {
+          this.animateUnHover();
+        }
+      );
+    }
+  }
+  handleClickOutside(e) {
+    if (this.inputRef && !this.inputRef.current.contains(e.target)) {
+      this.unhover();
+    }
+  }
+  animateHover() {
+    const optionsBox = this.optionsBoxRef.current.childNodes[1];
+    gsap.to(optionsBox, 0.4, { height: this.calculateHeight() });
+
+    const inputRef = this.inputRef.current;
+    gsap.to(inputRef, { borderColor: 'rgb(0, 115, 170)' });
+  }
+  animateUnHover() {
+    const optionsBox = this.optionsBoxRef.current.childNodes[1];
+    gsap.to(optionsBox, 0.4, { height: '0' });
+    let inputRef = this.inputRef.current;
+    gsap.to(inputRef, { borderColor: '#000' });
+  }
+  hover() {
+    this.animateHover();
+    document.addEventListener("mousedown", this.handleClickOutside);
+  }
+  unhover() {
+    this.animateUnHover();
+    document.removeEventListener("mousedown", this.handleClickOutside);
+  }
+  preventDefault(e) {
+    e.preventDefault();
+  }
+  action(value,option) {
+    if (!this.state.error && (typeof this.props.action == "function")) {
+      this.props.action(value);
+      this.value = value;
+      this.forceUpdate();
+    }
+  }
+  calcScrollAutoDisplace(){
+    let heightPerOption = this.state.heightPerOption;
+    let optionsBoxHeight = this.calculateHeight();
+    let optionsBox = this.optionsBoxRef.current.childNodes[1];
+    let actualOptionInYAxis = (this.value+1)*heightPerOption;
+
+    if(actualOptionInYAxis > (optionsBox.scrollTop+optionsBoxHeight)){
+      optionsBox.scrollTop = actualOptionInYAxis-optionsBoxHeight;
+    }else if((actualOptionInYAxis-heightPerOption) < optionsBox.scrollTop){
+      optionsBox.scrollTop = (actualOptionInYAxis-heightPerOption);
+    }
+  }
+  renderOptions(/*customHeight*/) {
+    let options = this.props.options;
+    let startFrom = this.props.start;
+    let selected = this.value;
+    let customHeight = "h-[28px] ";
+    // console.log(customHeight);
+    if (options) {
+      if (options.length > 0) {
+        if (startFrom) {
+          return (
+            options.map(
+              (option, index) => (
+                <div
+                  className={(selected == index + startFrom ? "text-white " : "") + (index == 0 ? "" : "") + " py-[2px] text-[13px] px-2 cursor-pointer flex min-" + (customHeight.replace(/ /g, ""))}
+                  style={{ backgroundColor: (selected == index + startFrom ? "rgb(10, 67, 145)" : "") }}
+                  key={index}
+                  value={index}
+                  onClick={() => { this.action(index + startFrom, option) }}>
+                  <div className="my-auto w-fit h-fit text-[13px]">
+                    {option}
+                  </div>
+                </div>
+              )
+            )
+          );
+        } else { 
+          return (
+            options.map(
+              (option, index) => (
+                <div
+                  className={(selected == index ? "text-white " : "") + (index == 0 ? "" : "") + " py-[2px] text-[13px] px-2 cursor-pointer flex min-" + (customHeight.replace(/ /g, ""))}
+                  style={{ backgroundColor: (selected == index ? "rgb(10, 67, 145)" : "") }}
+                  key={index}
+                  value={index}
+                  onClick={() => { this.action(index, option) }}>
+                  <div className="my-auto w-fit h-fit">
+                    {option}
+                  </div>
+                </div>
+              )
+            )
+          );
+        }
+      }
+      else {
+        return ("NOOPTIONS");
+      }
+    }
+    else {
+      return ("NOOPTIONS");
+    }
+  }
+  render() {
+    let placeholder = (typeof this.props.placeholder == 'string' ? this.props.placeholder : 'Seleccionar');
+    let textValue = this.value != null ? this.props.options[this.value] : placeholder;
+    let height = "h-[28px] ";
+
+    let fatherStyle = typeof this.props.fatherStyle == 'string' ? ' ' + this.props.fatherStyle + ' ' : '';
+
+    let errorStyle = (this.state.error ? "border-red-600 border-4" : "border-[#0b2140] border-[1px]");
+    return (
+      <div className={height + " flex max-w-[200px] m-1"}>
+        <div
+          style={{ zIndex: this.state.zIndex }}
+          className={"select-none relative z-[" + this.state.zIndex + "] focus:outline-none text-black h-fit w-full " + errorStyle + " rounded-md bg-white overflow-x-hidden " + fatherStyle}
+          ref={this.inputRef}
+          tabIndex={0}
+          onFocus={() => { this.hover() }}
+          onBlur={() => { this.unhover() }}
+          onMouseEnter={() => { this.hover() }}
+          onMouseLeave={() => { this.unhover() }}>
+          <div
+            className={(height) + "flex w-full px-2 " + (this.value == null ? 'text-gray-500' : '')}
+            onClick={() => { this.hover() }}>
+            <div className="my-auto w-full text-[13px]">
+              <div className="w-full whitespace-nowrap text-ellipsis overflow-hidden">{textValue}</div>
+              
+            </div>
+          </div>
+          <div
+            className=" w-full h-fit relative"
+            ref={this.optionsBoxRef}>
+            <div className="absolute top-0 w-full h-0"/>
+            <div
+              className={"w-full h-0 flex flex-col "+("overflow-auto")}>
+              {this.renderOptions(/*height*/)}
+            </div>
+            <div className="absolute bottom-0 w-full h-0"/>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+export {Button1, BaseButton, MenuButton, PauseButton, IconButton, ListCheckedBox, InputTextArea, InputText, InputList}

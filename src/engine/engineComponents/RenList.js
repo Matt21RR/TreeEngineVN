@@ -30,12 +30,15 @@ class RenList{
   }
   get(objectId = new String()){
     const graphIds = this.objects.map(e=>e.id);
-    if(graphIds.indexOf(objectId) != -1)
+    if(graphIds.indexOf(objectId) != -1){
       if(Object.keys(this.objects[graphIds.indexOf(objectId)]).indexOf("get") != -1){
         return this.objects[graphIds.indexOf(objectId)].get();
       }else{
         return this.objects[graphIds.indexOf(objectId)];
       }
+    }else{
+      throw new Error(objectId +" don't exists in this list");
+    }
   }
   /**
    * Verify if exists a object with the provided id

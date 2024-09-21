@@ -1,8 +1,41 @@
 import React from "react";
-import { Button1, IconButton } from "../components/buttons";
+import { Button1, IconButton, InputList } from "../components/buttons";
 import Swal from "sweetalert2";
+import { Chaos } from "../renderCore/ChaosInterpreter";
 class EngTools extends React.Component{
-  constructor(props){super(props);}
+  constructor(props){
+    super(props);
+    this.scripts = {};
+    this.selectedScript = 0;
+    this.mounted = false;
+  }
+  componentDidMount(){
+    if(!this.mounted){
+      this.mounted = true;
+      const chaos = new Chaos();
+      chaos.listScripts().then(scriptsId=>{
+        this.scripts = scriptsId;
+        this.forceUpdate();
+      })
+    }
+  }
+
+  scriptSelector(){
+    const engine = this.props.engine;
+    return (
+      <div className="flex">
+        <InputList 
+          options={Object.keys(this.scripts)}
+          action={(e)=>{this.selectedScript = e;}}
+          value={0}
+        ></InputList>
+        <Button1 text={"Run!!"} action={()=>{
+          engine.loadScript(this.scripts[Object.keys(this.scripts)[this.selectedScript]]);
+          this.forceUpdate();
+        }}/>
+      </div>
+    );
+  }
   speedControls(){
     const engine = this.props.engine;
     return (
@@ -55,6 +88,19 @@ class EngTools extends React.Component{
         engine.camera.usePerspective = !engine.camera.usePerspective;
         this.forceUpdate();
       }}/>
+      <Button1 text={"Restart canvas"} action={()=>{
+        const canvasObject = engine.canvasRef.object;
+        engine.canvasRef.object.stopEngine = false;
+        engine.canvasRef.object.engineKilled = false;
+        engine.canvasRef.object.resizeTimeout = 0;
+        engine.canvasRef.object.engineThreads = 0;
+        engine.canvasRef.object.resolutionHeight = Math.floor(canvasObject.props.displayResolution.height * canvasObject.scale *window.devicePixelRatio);
+        engine.canvasRef.object.resolutionWidth = Math.floor(canvasObject.props.displayResolution.width * canvasObject.scale *window.devicePixelRatio);
+        const fps = canvasObject.props.fps ? (canvasObject.props.fps > 0 ? canvasObject.props.fps : 24) : 24;//suggesed max fps = 24
+        engine.canvasRef.object.setFps(fps);
+        engine.canvasRef.object.engine();
+        this.forceUpdate();
+      }}/>
       <Button1 text={"Draw triggers: "+engine.drawTriggers} action={()=>{
         engine.drawTriggers = !engine.drawTriggers;
         engine.forceUpdate();
@@ -70,6 +116,7 @@ class EngTools extends React.Component{
         Swal.fire({title:"cameraData",html:JSON.stringify(engine.camera).replaceAll(",","<br>")});
         this.forceUpdate();
       }}/>
+      {this.scriptSelector()}
       {this.speedControls()}
       {this.fpsControls()}
     </>)

@@ -1,5 +1,5 @@
 import React from "react";
-import $ from "jquery";
+import $, { cleanData } from "jquery";
 import {Howl} from 'howler';
 
 import { Canvas } from "./Canvas";
@@ -15,6 +15,7 @@ import { Shader } from "./ShadersUnstable";
 import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim";
 import { CodedRoutine } from "../engineComponents/CodedRoutine";
+import { Chaos } from "./ChaosInterpreter";
 
 class RenderEngine extends React.Component{
   constructor(props){
@@ -24,6 +25,7 @@ class RenderEngine extends React.Component{
     this.state = {
       consol: [],//only used by script interpreter errors
     }
+    this.projectRoot = "";
     this.aspectRatio = "16:9";
     this.engineDisplayRes = {width:0,height:0};
     this.resizeTimeout = 0;
@@ -40,6 +42,14 @@ class RenderEngine extends React.Component{
     this.actualSceneId = "";//Guardar esto
     this.masterScript = {};
 
+    this.constructors = {
+      graphObject : GraphObject,
+      animation : Animation,
+      textureAnim : TextureAnim,
+      trigger: Trigger,
+      keyboardTrigger : KeyboardTrigger,
+      codedRoutine : CodedRoutine,
+    }
     this.graphObject = GraphObject;
     this.animation = Animation;
     this.scriptInterpreter = ScriptInterpreter;
@@ -141,18 +151,8 @@ class RenderEngine extends React.Component{
       //*lOAD BASE COMPONENTS (the stuff you will use in all scenes)
 
       //*LOAD GAME
-      const k = new ScriptInterpreter();
-      this.getBaseResourcesScripts().then(()=>{
-        k.build(
-          (masterScript)=>{
-            this.loadGame(masterScript); 
-            if("setEngine" in  this.props ){
-              this.props.setEngine(this);
-            }
-          },
-          (error)=>{this.consol(error);}
-        );
-      });
+
+      this.entryPoint();
       
       //*TECLADO
       const self = this;
@@ -173,6 +173,71 @@ class RenderEngine extends React.Component{
         }
       });
     }
+  }
+  entryPoint(){
+    this.loadScript("http://localhost/renderEngineBackend/game/main.txt");
+  }
+  loadScript(scriptRoute){
+    console.log(scriptRoute);
+    this.dataCleaner();
+    const h = new Chaos();
+    var self = this;
+    $.get(scriptRoute).then(scriptFile=>{
+      this.projectRoot = h.projectRoot;
+      h.kreator(scriptFile).then(scriptData=>{
+        var commands = scriptData["gameEntrypoint"];
+        commands = commands.join("");
+        const commandsF = new Function ("engine",commands);
+        console.log(commandsF);
+        commandsF(self);
+        self.isReady = true;
+        self.forceUpdate();
+        if("setEngine" in  self.props ){
+          self.props.setEngine(self);
+        }
+      })
+    })
+  }
+  aspectRatioCalc(op = this.aspectRatio) {
+    const w = document.getElementById("display"+this.id);
+
+    if (op != "unset") {
+      let newWidth = Math.floor((w.offsetHeight / (op.split(":")[1] * 1)) * (op.split(":")[0] * 1));
+      let newHeight = Math.floor((w.offsetWidth / (op.split(":")[0] * 1)) * (op.split(":")[1] * 1));
+      if (newWidth <= w.offsetWidth) {
+        newHeight = w.offsetHeight;
+      } else {
+        newWidth = w.offsetWidth;
+      }
+      gsap.to(document.getElementById("engineDisplay"+this.id), 0, 
+        { 
+          width : newWidth + "px", 
+          height : newHeight + "px"
+        } 
+      );
+      this.engineDisplayRes = {width:newWidth,height:newHeight};
+      this.forceUpdate();  
+    } else {
+      document.getElementById("engineDisplay"+this.id).style.width = "";
+      document.getElementById("engineDisplay"+this.is).style.height = "";
+    }
+  }
+  /**
+   * Used to show info over the render engineDisplay (canvas)
+   * @param {string} text 
+   * @param {string} color, default white
+   */
+  consol(text,color="white") {
+    this.consolMessagesArray.push({text:text,color:color});
+    this.setState({
+      consol: (this.consolMessagesArray),
+    })
+  }
+  cleanConsol(){
+    this.setState({
+      consol: [],
+    });
+    this.consolMessagesArray = [];
   }
 
   loadFile(path){ //will request a script file and continue the execution when the file have been loaded
@@ -253,48 +318,6 @@ class RenderEngine extends React.Component{
     return res;
   }
 
-  aspectRatioCalc(op = this.aspectRatio) {
-    const w = document.getElementById("display"+this.id);
-
-    if (op != "unset") {
-      let newWidth = Math.floor((w.offsetHeight / (op.split(":")[1] * 1)) * (op.split(":")[0] * 1));
-      let newHeight = Math.floor((w.offsetWidth / (op.split(":")[0] * 1)) * (op.split(":")[1] * 1));
-      if (newWidth <= w.offsetWidth) {
-        newHeight = w.offsetHeight;
-      } else {
-        newWidth = w.offsetWidth;
-      }
-      gsap.to(document.getElementById("engineDisplay"+this.id), 0, 
-        { 
-          width : newWidth + "px", 
-          height : newHeight + "px"
-        } 
-      );
-      this.engineDisplayRes = {width:newWidth,height:newHeight};
-      this.forceUpdate();  
-    } else {
-      document.getElementById("engineDisplay"+this.id).style.width = "";
-      document.getElementById("engineDisplay"+this.is).style.height = "";
-    }
-  }
-  /**
-   * Used to show info over the render engineDisplay (canvas)
-   * @param {string} text 
-   * @param {string} color, default white
-   */
-  consol(text,color="white") {
-    this.consolMessagesArray.push({text:text,color:color});
-    this.setState({
-      consol: (this.consolMessagesArray),
-    })
-  }
-  cleanConsol(){
-    this.setState({
-      consol: [],
-    });
-    this.consolMessagesArray = [];
-  }
-
   componentDidCatch(error,info){
     console.error("RenderEngine several crash!!");
     console.warn(error);
@@ -308,75 +331,85 @@ class RenderEngine extends React.Component{
     if(this.actualSceneId == ""){
       this.actualSceneId = Object.keys(this.masterScript)[0];
     }
-    this.loadSceneResources(this.actualSceneId,fun);
   }
-  loadSounds(sndsData,fun = null){
-    var res = [];
-    if(Object.keys(sndsData).length > 0){
-      Promise.all(Object.keys(sndsData).map(sndName=>
-        new Promise(resolve=>{
-          fetch(sndsData[sndName]).then(res=>res.blob()).then( blob =>{
-            var reader = new FileReader() ;
-            reader.onload = function(){ resolve({Base64:this.result,ext:sndsData[sndName].split('.').at(-1),id:sndName}) } ; // <--- `this.result` contains a base64 data URI
-            reader.readAsDataURL(blob) ;
+  loadSound(indexPath){
+    const self = this;
+    return new Promise(function (resolve, reject) {
+      if(indexPath.indexOf(".")==0){
+        indexPath = indexPath.substring(1);
+      }
+      fetch(indexPath)
+        .then(res =>{return res.json()})
+        .then(soundsList=>{
+          if(Object.keys(soundsList).length > 0){
+            Promise.all(Object.keys(soundsList).map(sndName=>
+              new Promise(resolveFile=>{
+                fetch(self.projectRoot + "snd/" + soundsList[sndName].replace("./","")).then(res=>res.blob()).then( blob =>{
+                  var reader = new FileReader() ;
+                  reader.onload = function(){ 
+                    resolveFile({Base64:this.result,ext:soundsList[sndName].split('.').at(-1),id:sndName}) 
+                  };
+                  reader.readAsDataURL(blob) ;
+                });
+              })
+            )).then(sounds => {
+              sounds.forEach(snd => {
+                var sound = new Howl({
+                  src: [snd.Base64],
+                  format: snd.ext
+                });
+                self.soundsList.push({sound:sound,id:snd.id})
+              });
+              resolve();
+            }).catch(reason =>{
+              console.error("===============================");
+              console.error("Error during sounds load phase:");
+              console.error(reason);
+              console.error("===============================");
+            });
+          }else{
+            console.warn("No sounds in this file: "+indexPath);
+            if(typeof fun == "function")
+                resolve();
+          }
+        })
+    })
+  }
+  loadTexture(indexPath){
+    const self = this;
+    return new Promise(function (resolve, reject) {
+      if(indexPath.indexOf(".")==0){
+        indexPath = indexPath.substring(1);
+      }
+      fetch(indexPath)
+        .then(res =>{return res.json()})
+        .then(texturesData=>{
+          Promise.all(Object.keys(texturesData).map(textureName=>{
+            if(self.texturesList.exist(textureName)){
+              new Promise(resolveFile=>{console.warn(textureName + " already in engine.textureList");resolveFile({});});
+            }else{
+              new Promise(resolveFile=>{
+                const image = new Image();
+                image.crossOrigin = "Anonymous";
+                image.src = self.projectRoot + "img/" + texturesData[textureName].replace("./","");
+                console.log(texturesData[textureName]);
+                image.addEventListener('load',()=>{
+                  const res = new Object({[textureName]:image});
+                  self.texturesList.push(new Shader(image,textureName))
+                  resolveFile(res);
+                });
+              })
+            }
+          })).then(() => {
+            resolve();
+          }).catch(reason =>{
+            console.error("===============================");
+            console.error("Error during textures load phase:");
+            console.error(reason);
+            console.error("===============================");
           });
         })
-      )).then(sounds => {
-        sounds.forEach(snd => {
-          var sound = new Howl({
-            src: [snd.Base64],
-            format: snd.ext
-          });
-          this.soundsList.push({sound:sound,id:snd.id})
-        });
-
-        if(typeof fun == "function")
-          fun();
-      }).catch(reason =>{
-        console.error("===============================");
-        console.error("Error during sounds load phase:");
-        console.error(reason);
-        console.error("===============================");
-      });
-    }else{
-      console.warn("No sounds in this scene");
-      if(typeof fun == "function")
-          fun();
-    }
-    
-  }
-  loadTextures(texturesData,fun = null){
-    if(texturesData != null){
-      Promise.all(Object.keys(texturesData).map(textureName=>{
-          if(this.texturesList.exist(textureName)){
-            new Promise(resolve=>{console.warn(textureName + " already in engine.textureList");resolve({});});
-          }else{
-            new Promise(resolve=>{
-              const image = new Image();
-              image.src = texturesData[textureName];
-              image.addEventListener('load',()=>{
-                const res = new Object({[textureName]:image});
-                this.texturesList.push(new Shader(image,textureName))
-                resolve(res);
-              });
-            })
-          }
-        }
-      )).then(textures => {
-        if(typeof fun == "function")
-          fun();
-      }).catch(reason =>{
-        console.error("===============================");
-        console.error("Error during textures load phase:");
-        console.error(reason);
-        console.error("===============================");
-      });
-    }else{
-      console.warn("No textures in this scene");
-      if(typeof fun == "function")
-          fun();
-    }
-    
+      })
   }
   dataCleaner(){
      //reset values
@@ -408,63 +441,6 @@ class RenderEngine extends React.Component{
      this.dialogNumber = 0;
      this.dialog = [];
      this.narration = "";
-  }
-  loadBaseResources(){
-    const self = this;
-    return new Promise(function (resolve, reject) {
-      const base = self.base;
-      self.loadSounds(base.sounds,()=>{
-        self.loadTextures(base.textures,()=>{
-          Object.assign(self.gameVars,base.gameVars);
-  
-          base.graphObjects.map(object =>{object.textureName=object.texture; return object});
-  
-          base.graphObjects.forEach(object => self.graphArray.push(new GraphObject(object)));
-          base.triggers.forEach(trigger => self.triggers.push(new Trigger(trigger)));
-          base.keyboardTriggers.forEach(trigger => self.keyboardTriggers.push(new KeyboardTrigger(trigger)));
-          base.textureAnims.forEach(textureAnim => self.textureAnims.push(new TextureAnim(textureAnim)));
-          base.animations.forEach(animation => self.anims.push(new Animation(animation)));
-          base.codedRoutines.forEach(codedRoutine => self.codedRoutines.push(new CodedRoutine(codedRoutine)));
-          self.routines = base.routines;
-          self.flags = base.flags;
-          
-          resolve()
-        });
-      });
-    })
-  }
-  loadSceneResources(sceneId,fun =null){
-    //TODO: Check the textures object and destroy all gpu instances
-    // while(this.texturesList.objects.length > 0){
-    //   this.texturesList.objects[0].destroy();
-    //   this.texturesList.remove(this.texturesList.objects[0].id)
-    // }
-    this.dataCleaner();
-
-    this.loadBaseResources().then(
-      ()=>{
-        this.actualSceneId = sceneId;
-        let scene = this.masterScript[sceneId];
-    
-        Object.assign(this.gameVars,scene.gameVars);
-    
-        scene.graphObjects.map(object =>{object.textureName=object.texture; return object});
-    
-        scene.graphObjects.forEach(object => this.graphArray.push(new GraphObject(object)));
-        scene.triggers.forEach(trigger => this.triggers.push(new Trigger(trigger)));
-        scene.keyboardTriggers.forEach(trigger => this.keyboardTriggers.push(new KeyboardTrigger(trigger)));
-        scene.textureAnims.forEach(textureAnim => this.textureAnims.push(new TextureAnim(textureAnim)));
-        scene.animations.forEach(animation => this.anims.push(new Animation(animation)));
-        scene.codedRoutines.forEach(codedRoutine => this.codedRoutines.push(new CodedRoutine(codedRoutine)));
-        this.routines = scene.routines;
-        this.flags = scene.flags;
-        
-        this.isReady = true;
-        this.forceUpdate();
-        if(fun != null)
-          fun()
-      }
-    );
   }
 
   checkObjectBoundaries(oTopLeftCorner,objectRes,canvasRes){
@@ -504,29 +480,6 @@ class RenderEngine extends React.Component{
       }
     }
     return false;
-  }
-
-  replaceReferencesToGameVars(script,insideCodedExpr=false){
-    //TODO: construir multiples reemplazos para cuando hay datos a izquierda, a derecha, a derecha e izquierda
-    if(insideCodedExpr){
-      return script.replaceAll(/\¬+(\w)+/g,(a,_)=>{return "engine.gameVars." + a.substring(1)+ ""})
-    }else{
-      return script.replaceAll(/\$+(\w)+/g,(a,_)=>{return "'engine.gameVars." + a.substring(1)+ "'"})
-    }
-  }
-  replaceCodedExpresions(script){
-    //TODO: construir multiples reemplazos para cuando hay datos a izquierda, a derecha, a derecha e izquierda
-    return script.replaceAll(/\$\(?(.\n*)+\)\$/g,(a,_)=>{
-      const h = new Function ("engine","return "+ this.replaceReferencesToGameVars(a.substring(1,a.length-1),true).replaceAll(/\n/g,"//n"))
-      try {
-        return h(this).toString().replaceAll(/\/\/n/g,"\n");  
-      } catch (error) {
-        console.error(h);
-        throw new Error(error);
-        return "CODED TEXT ERROR!!!!";
-      }
-      
-    })
   }
   generateCalculationOrder(){
     var ordered = 0;
@@ -578,7 +531,6 @@ class RenderEngine extends React.Component{
   play(songId){
     this.soundsList.get(songId).sound.play();
   }
-
   generateObjectsDisplayDimentions(){
     let res;
     const canvas = this.canvasRef;
@@ -759,7 +711,7 @@ class RenderEngine extends React.Component{
 
                   texts = wrapText(//TODO: Wrap it until all the text get wraped
                     canvas.context,
-                    this.replaceCodedExpresions(gObject.text),
+                    gObject.text,
                     (gObject.margin*objectWidth) + objectLeft - (objectWidth/2),
                     (gObject.margin*objectHeight) + objectTop + (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)) - (objectHeight/2),
                     objectWidth - (gObject.margin*objectWidth)*2,
@@ -771,9 +723,9 @@ class RenderEngine extends React.Component{
                 if(gObject.rotate != 0){
                   canvas.context.save();
                   canvas.context.setTransform(//transform using center as origin
-                    1, 
-                    0, 
-                    0, 
+                    1,
+                    0,
+                    0,
                     1,
                     objectLeft, 
                     objectTop); // sets scale and origin

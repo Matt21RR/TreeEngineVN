@@ -1,10 +1,7 @@
 import React  from "react";
 import { WindowsEnvironment } from "./WindowsEnvironment";
-import { Guide } from "../userGuide/Guide";
 import { RenderEngine } from "../engine/renderCore/RenderEngine";
 import { Trigger } from "../engine/engineComponents/Trigger";
-import { TexturesE } from "../engine/tools/TexturesE";
-import { ScriptE } from "../engine/tools/ScriptE";
 import { ObjectsE, TriggersE } from "../engine/tools/SubTools";
 import { EngTools } from "../engine/tools/EngTools";
 import { FileExplorer } from "../engine/tools/FileExplorer";
@@ -68,27 +65,12 @@ class Test extends React.Component{
         content={{
           fileExplorer:{
             title:"File Explorer",
-            content:<FileExplorer/>
-          },
-          gameScript:{
-            title:"Game Script",
-            content:<ScriptE engine={this.engine} toolsRef={this} reRender={()=>{this.forceUpdate(); env.forceUpdate();}} />,
-            minimized:true
-          },
-          textures:{
-            title:"Texturas Dispónibles",
-            content:<TexturesE reRender={()=>{env.forceUpdate();}} />,
-            minimized:true
-          },
-          guide:{
-            title:"Guia del motor",
-            content:<Guide/>,
-            minimized:true
+            content:<FileExplorer/>,
+            minimized:false
           },
           engine:{
             title:"Redengine",
-            content:<RenderEngine setEngine={(engine)=>{this.engine=engine; this.editionKeys(); env.forceUpdate();}}/>,
-            minimized:true
+            content:<RenderEngine setEngine={(engine)=>{this.engine=engine; this.editionKeys(); env.forceUpdate();}}/>
           },
           triggers:{
             title:"Triggers en escena",

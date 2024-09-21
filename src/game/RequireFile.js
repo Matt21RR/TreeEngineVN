@@ -48,7 +48,4 @@ const requiredSounds = {
   aperturaPuerta: require('./gameRes/snd/doorOpen.wav'),
   openning: require('./gameRes/snd/sinnombre32.mp3')
 }
-const requiredReactComponents = {//If you feel something can be done easily with a React Component... why not use it?    ;)
-
-}
 export {requiredTextures,requiredSounds}

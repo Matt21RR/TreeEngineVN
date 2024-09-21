@@ -1,6 +1,6 @@
 import React from 'react';
 import $ from "jquery";
-import { Button1, IconButton, MenuButton } from '../components/buttons';
+import { Button1, IconButton, InputTextArea, MenuButton } from '../components/buttons';
 import Swal from 'sweetalert2';
 import { Loading } from '../components/alerts';
 import byteSize from 'byte-size';
@@ -18,17 +18,20 @@ class Multimedia extends React.Component{
     this.mounted = false;
   }
   componentDidMount(){
-    console.warn("mounted");
+    // console.warn("mounted");
     if(!this.mounted){
       this.mounted = true;
-      const mime = this.props.info.mime.split("/")[0];
+      var mime = this.props.info.mime.split("/")[0];
       const src = this.props.info.src;
-      console.log(mime);
+      mime = src.split(".").at(-1) == "json" ? "text" : mime;
+      // console.log(this.props.info.mime);
       if(mime == "text"){
         fetch(src).then(text=>{return text.text()}).then(res=>{
           const translator = new Chaos();
           translator.kreator(res);
-          $("#"+this.editorId).val(res);
+          this.textContent = res;
+          this.forceUpdate();
+          // $("#"+this.editorId).val(res);
           
         });
       }
@@ -48,7 +51,14 @@ class Multimedia extends React.Component{
     const name = this.props.info.name;
     return(
       <>
-        <textarea id={this.editorId} spellCheck={false} contentEditable={false} className="w-full h-full resize-none outline-none align-top border-none bg-transparent p-2"></textarea>
+        <InputTextArea 
+          height={"h-full"} 
+          // "w-full h-full resize-none outline-none align-top border-none bg-transparent p-2"
+          fatherStyle={"bg-black bg-opacity-70"}
+          defaultValue={this.textContent}
+          id={this.editorId}
+          onControl={{Enter:(e)=>{e.preventDefault(e);this.runScript();}}}
+          />
         <Button1 
           text="Save changes" 
           style="absolute bottom-2 right-2"
@@ -98,7 +108,8 @@ class Multimedia extends React.Component{
   }
   switcher(mime,src){
     if(this.props.show && this.activateSwitch==true){
-      const type = mime.split("/")[0];
+      var type = mime.split("/")[0];
+      type = src.split(".").at(-1) == "json" ? "text" : type;
       switch (type) {
         case "text":
           return (this.text(src));
@@ -402,12 +413,13 @@ class FileExplorer extends React.Component{
           <div 
             className='absolute bg-black bg-opacity-75 border-[1px] p-1' 
             style={{height:"auto",width:"250px",left:this.contextMenuData.x+"px",top:this.contextMenuData.y+"px"}}>
-            <MenuButton 
+            {/* <MenuButton 
               hide={info.type == "dir"}
               text={"Open"}
               action={()=>{
-                this.setSelected(info.index);
-              }}/>
+                
+              }}
+              /> */}
             <MenuButton 
               text={"Rename"} 
               action={()=>{
@@ -478,6 +490,7 @@ class FileExplorer extends React.Component{
       return( 
         <div 
           className='flex flex-row border-2 my-2 mr-3 h-9 cursor-pointer'
+          onClick={()=>{this.setSelected(resInfo.index);}}
           onContextMenu={(e)=>{
             openContextMenu(e);
           }}
