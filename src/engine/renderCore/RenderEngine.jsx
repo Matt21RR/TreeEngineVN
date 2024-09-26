@@ -1,5 +1,5 @@
 import React from "react";
-import $, { cleanData } from "jquery";
+import $ from "jquery";
 import {Howl} from 'howler';
 
 import { Canvas } from "./Canvas";
@@ -37,9 +37,7 @@ class RenderEngine extends React.Component{
     this.engineSpeed = 1;
     this.stopEngine = false; //Stop engine time
 
-
     this.actualSceneId = "";//Guardar esto
-    this.masterScript = {};
 
     this.constructors = {
       graphObject : GraphObject,
@@ -54,9 +52,6 @@ class RenderEngine extends React.Component{
 
     this.codedRoutine = CodedRoutine;
 
-    this.baseScriptsPaths = [];
-
-    this.base = {};//shared resources
     this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
     this.anims = new RenList();
     this.triggers = new RenList();
@@ -80,8 +75,6 @@ class RenderEngine extends React.Component{
     this.dialogNumber = 0;
     this.dialog = [];
     this.narration = "";
-    //Sounds
-    this.playlist = {};//id of the played sounds (if the user want to stop them)
 
     //Rendering-related stuff
     this.camera = {
@@ -92,14 +85,11 @@ class RenderEngine extends React.Component{
       usePerspective:false
     }
     this.prevCamera = structuredClone(this.camera);
-    this.useUniformUnits = false;
 
     this.calculationOrder = []; //for di
-    this.weightedCalculationOrder = {};
 
     this.dimentionsPack = {};
     this.renderingOrderById = [];
-    this.parentTree = {};
 
     //MOUSE
     this.mouseListener = 0;
@@ -108,7 +98,6 @@ class RenderEngine extends React.Component{
     //Debug values
     this.noRenderedItemsCount = 0;
 
-    this.showListedData = false;
     this.showObjectsInfo = false;
     this.drawObjectLimits = true;
     this.showCanvasGrid = false;
@@ -118,15 +107,9 @@ class RenderEngine extends React.Component{
     this.objectsToDebug = [];//id of the object
     this.setMouseOrigin = false;
     window.setUsePerspective = (x) =>{this.camera.usePerspective = x;}
-    window.setCameraPerspectiveAngle =  (x) =>{this.camera.position.angle = x;}
-    window.setDisplayDigitalRepresentationZ = (x) =>{this.camera.maxZ = x;}
     window.setCameraPerspectiveCoords = (x,y) =>{this.camera.position = {y:y,x:x};}
 
-    window.setDrawObjectLimits = (x) => {this.drawObjectLimits = x;}
-    window.setShowObjectsInfo = (x) => {this.showObjectsInfo = x;}
-    window.setShowCanvasGrid = (x) => {this.showCanvasGrid = x;}
     window.terminal = (code) =>{ code(this);}
-    window.getFile = (link,then) =>{$.get(link).then(doc=>{then(doc);}).catch((err)=>{throw new Error(err)})}
     window.engineRef = this;
   }  
   componentDidMount(){
@@ -146,8 +129,6 @@ class RenderEngine extends React.Component{
             gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 1 });
           }, 800);
       }).observe(document.getElementById("display"+this.id))
-       
-      //*lOAD BASE COMPONENTS (the stuff you will use in all scenes)
 
       //*LOAD GAME
 
@@ -269,15 +250,6 @@ class RenderEngine extends React.Component{
     console.error("RenderEngine several crash!!");
     console.warn(error);
     console.log(info);
-  }
-  loadGame(masterScript,fun = null){
-    this.isReady = false;
-    this.forceUpdate();
-
-    this.masterScript = masterScript;
-    if(this.actualSceneId == ""){
-      this.actualSceneId = Object.keys(this.masterScript)[0];
-    }
   }
   loadSound(indexPath){
     const self = this;
@@ -432,7 +404,6 @@ class RenderEngine extends React.Component{
     Object.keys(base).forEach(weight=>{
       arr = arr.concat(base[weight]);
     });
-    this.weightedCalculationOrder = base;
     return arr;
   }
 
