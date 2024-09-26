@@ -261,11 +261,6 @@ class Shader {
         this.#blurAplied = Math.round(graphObject.blur);
         const radius = this.#blurAplied;
         const area = (2 * radius +1) * (2 * radius +1);
-        // this.#radialBlurTest(this.areasCalc(radius),this.rArrayCalc(radius), radius);
-
-        // const targetCanvas = this.copyCanvas(this.#reducedTexture);
-        // StackBlur.canvasRGBA(targetCanvas,0,0,this.#resolution.width,this.#resolution.height,radius);
-        // this.#renderedTree.blur[this.#blurAplied] = targetCanvas;
 
         const blurredData = StackBlur.imageDataRGBA(structuredClone(this.#textureData),0,0,this.#resolution.width,this.#resolution.height,radius);
         this.#blurCanvas.getContext('2d').putImageData(blurredData, 0, 0);
@@ -277,7 +272,6 @@ class Shader {
       }else if(this.#blurAplied != Math.round(graphObject.blur)){
         this.#blurAplied = Math.round(graphObject.blur);
       }
-      //console.log(Math.round(graphObject.blur));
       return this.#renderedTree.blur[this.#blurAplied];
     }
     else{

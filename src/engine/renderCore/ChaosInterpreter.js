@@ -39,9 +39,9 @@ class ChaosInterpreter {
         fetch(this.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
           Promise.all(
             Object.keys(scriptsData).map(scriptId => {
-              const jsonPath = this.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","")
+              const jsonPath = this.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
               return new Promise(resolveScript=>{
-                fetch(jsonPath).then(
+                fetch(jsonPath).then(           
                   scriptData => {return scriptData.text();}).then((res2)=>{
                     self.kreator(res2,false).then(
                     (textScr)=>{
@@ -96,7 +96,6 @@ class ChaosInterpreter {
             res = [];
           })
         }
-        console.log(scenes);
         resolve(scenes);
       })
     });
@@ -116,7 +115,6 @@ class ChaosInterpreter {
       const keyword = keywords[index];
       const parts = line.split(" ").filter(e=>{return e != ""});
       if(parts.length>0){
-        // console.log(parts.length);
         if(parts[0] == keyword){
           return true;
         }else if(this.checkIfIsWord(parts[0]) && parts[1] == "=>"){
@@ -294,7 +292,6 @@ class ChaosInterpreter {
         const runType = parameters[0];
         switch (runType) {
           case "script":
-            console.log(this.scripts);
             res.push(
               "engine.routines.push((engine)=>{",
               " engine.loadScript('"+this.scriptsUrls[value.replaceAll('"',"")]+"')",

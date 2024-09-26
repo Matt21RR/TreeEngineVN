@@ -9,7 +9,6 @@ import { GraphObject } from "../engineComponents/GraphObject";
 import { RenList } from "../engineComponents/RenList";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger";
 
-import { ScriptInterpreter } from "./ScriptInterpreter";
 import { mobileCheck, wrapText } from "../logic/Misc";
 import { Shader } from "./ShadersUnstable";
 import gsap from "gsap";
@@ -52,7 +51,7 @@ class RenderEngine extends React.Component{
     }
     this.graphObject = GraphObject;
     this.animation = Animation;
-    this.scriptInterpreter = ScriptInterpreter;
+
     this.codedRoutine = CodedRoutine;
 
     this.baseScriptsPaths = [];
@@ -178,7 +177,6 @@ class RenderEngine extends React.Component{
     this.loadScript("http://localhost/renderEngineBackend/game/main.txt");
   }
   loadScript(scriptRoute){
-    console.log(scriptRoute);
     this.dataCleaner();
     const h = new Chaos();
     var self = this;
@@ -188,7 +186,6 @@ class RenderEngine extends React.Component{
         var commands = scriptData["gameEntrypoint"];
         commands = commands.join("");
         const commandsF = new Function ("engine",commands);
-        console.log(commandsF);
         commandsF(self);
         self.isReady = true;
         self.forceUpdate();
@@ -239,57 +236,6 @@ class RenderEngine extends React.Component{
     });
     this.consolMessagesArray = [];
   }
-
-  loadFile(path){ //will request a script file and continue the execution when the file have been loaded
-    return new Promise((resolve,reject)=>{
-      const interpretator = new ScriptInterpreter();
-      const merger = (resources)=>{//merge al the different resources to the base var
-        const elements = resources[Object.keys(resources)[0]];
-        Object.keys(elements).forEach(key=>{
-          // console.log(self.base,elements);
-          if(key in this.base){
-            Object.assign(this.base[key],elements[key]);
-          }else{
-            Object.assign(this.base,{[key]:elements[key]});
-          }
-  
-        })
-      };
-      $.get(path).then(scriptFile=>{
-        interpretator.buildFromText(scriptFile,(err)=>{this.consol(err); reject("Error trying to interpretate "+path);})
-          .then(resources=>{
-            console.log(resources);
-            if(Object.keys(resources).length > 0){
-              merger(resources);
-            }else{
-              console.warn(path+" don't have content");
-            }
-            resolve();
-          });
-      });
-    })
-  }
-  getBaseResourcesScripts(){
-    this.base = {};
-    const self = this;
-    //create a self-calling function
-
-    return new Promise(function (resolve, reject) {
-      self.loadFile("http://localhost/renderEngineBackend/game/main.txt")
-      .then(()=>{
-        self.loadFile("http://localhost/renderEngineBackend/game/scripts/loadAll.txt")
-        .then(()=>{
-          self.loadFile("http://localhost/renderEngineBackend/game/scripts/dialogModule.txt")
-          .then(()=>{
-            self.loadFile("http://localhost/renderEngineBackend/game/scripts/appearances.txt")
-            .then(()=>{
-              resolve();
-            });
-          });
-        });
-      }).catch(()=>{self.consol("PLEASE, CREATE THE 'main.txt' FILE IN THE ROOT OF YOUR PROJECT.")})
-    })
-  }
   /**
    * 
    * @param {String} id 
@@ -298,6 +244,7 @@ class RenderEngine extends React.Component{
   getObject(id){
     var graphObject = new GraphObject();
     graphObject = this.graphArray.get(id);
+    //todo: Adapt to autoparse the data
     return graphObject;
   }
   /**
@@ -392,7 +339,6 @@ class RenderEngine extends React.Component{
                 const image = new Image();
                 image.crossOrigin = "Anonymous";
                 image.src = self.projectRoot + "img/" + texturesData[textureName].replace("./","");
-                console.log(texturesData[textureName]);
                 image.addEventListener('load',()=>{
                   const res = new Object({[textureName]:image});
                   self.texturesList.push(new Shader(image,textureName))
@@ -443,44 +389,6 @@ class RenderEngine extends React.Component{
      this.narration = "";
   }
 
-  checkObjectBoundaries(oTopLeftCorner,objectRes,canvasRes){
-    //check for very big images
-    const sDims = {width:objectRes.width/canvasRes.width,height:objectRes.height/canvasRes.height};
-    const x = oTopLeftCorner.x/canvasRes.width;
-    const y  = oTopLeftCorner.y/canvasRes.height;
-    const right = x+sDims.width;
-    const bottom = y+sDims.height;
-    
-    //if top
-    if(y>=0 && y<1){
-      //one of the top corners are inside the field of view
-      if(x>=0 && x<1){
-        return true;
-      }else if(right>0 && right<=1){
-        return true;
-      }
-      //Or both are outside the field Of view
-      else if(x<0 && right>1){
-        return true;
-      }
-    }else if(bottom>0 && bottom<=1){//or bottom
-      //one of the top corners are inside the field of view
-      if(x>=0 && x<1){
-        return true;
-      }else if(right>0 && right<=1){
-        return true;
-      }
-      //Or both are outside the field Of view
-      else if(x<0 && right>1){
-        return true;
-      }
-    }else if(y <= 0 && bottom>=1){//check top <= 0 && bottom=>1
-      if(x<1 && right>0){
-        return true;
-      }
-    }
-    return false;
-  }
   generateCalculationOrder(){
     var ordered = 0;
     var order = [];
@@ -689,10 +597,7 @@ class RenderEngine extends React.Component{
             var objectWidth = this.dimentionsPack[gObject.id].width *multiply;
             var objectHeight = this.dimentionsPack[gObject.id].height *multiply;
 
-            if(
-              !(gObject.opacity == 0) 
-              // && this.checkObjectBoundaries({x:objectLeft,y:objectTop},{width:objectWidth,height:objectHeight},{width:canvas.resolutionWidth,height:canvas.resolutionHeight})
-            ){
+            if(!(gObject.opacity == 0)){
                //*part one: global alpha
               canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
 
@@ -709,9 +614,13 @@ class RenderEngine extends React.Component{
                 if(gObject.text != null){
                   canvas.context.font = (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
 
+                  var textO = gObject.text;
+                  if(typeof textO == "function"){
+                    textO = textO(this);
+                  }
                   texts = wrapText(//TODO: Wrap it until all the text get wraped
                     canvas.context,
-                    gObject.text,
+                    textO,
                     (gObject.margin*objectWidth) + objectLeft - (objectWidth/2),
                     (gObject.margin*objectHeight) + objectTop + (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)) - (objectHeight/2),
                     objectWidth - (gObject.margin*objectWidth)*2,
@@ -1087,7 +996,7 @@ class RenderEngine extends React.Component{
         <div className="absolute w-full h-full"
           id={"triggersTarget"+this.id}
           onMouseDown={(e)=>this.checkTriggers(e,"onHold")}
-          onMouseUp={(e)=>{e.preventDefault();console.log(e.button);this.checkTriggers(e,"onRelease")}}
+          onMouseUp={(e)=>{e.preventDefault();this.checkTriggers(e,"onRelease")}}
           onWheel={(e)=>{this.camera.position.z -=(e.deltaY/1000)}}
           onMouseMove={(e)=>{if(this.mouseListener+(1000/40) < performance.now()){this.mouseListener = performance.now();this.checkTriggers(e,"mouseMove")}}}
         />

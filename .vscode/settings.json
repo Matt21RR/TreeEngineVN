@@ -3,5 +3,23 @@
     "iostream": "cpp",
     "*.tcc": "cpp"
   },
-  "better-comments.highlightPlainText": true
+  "better-comments.highlightPlainText": true,
+  "files.exclude": {
+    "**/.git": true,         // this is a default value
+    "**/.gitignore": true,         // this is a default value
+    "**/package-lock.json": true, 
+    "**/README.md": true, 
+    "**/public": true, 
+    "**/build": true, 
+    "**/.DS_Store": true,    // this is a default value
+
+    "**/node_modules": true, // this excludes all folders 
+                            // named "node_modules" from 
+                            // the explore tree
+
+    // alternative version
+    "node_modules": true    // this excludes the folder 
+                            // only from the root of
+                            // your workspace 
+  }
 }

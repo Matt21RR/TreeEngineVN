@@ -18,21 +18,17 @@ class Multimedia extends React.Component{
     this.mounted = false;
   }
   componentDidMount(){
-    // console.warn("mounted");
     if(!this.mounted){
       this.mounted = true;
       var mime = this.props.info.mime.split("/")[0];
       const src = this.props.info.src;
       mime = src.split(".").at(-1) == "json" ? "text" : mime;
-      // console.log(this.props.info.mime);
       if(mime == "text"){
         fetch(src).then(text=>{return text.text()}).then(res=>{
           const translator = new Chaos();
           translator.kreator(res);
           this.textContent = res;
           this.forceUpdate();
-          // $("#"+this.editorId).val(res);
-          
         });
       }
 

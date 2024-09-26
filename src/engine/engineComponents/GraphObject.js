@@ -1,3 +1,5 @@
+import { RenderEngine } from "../renderCore/RenderEngine"
+
 class GraphObject{
   #enabled //TODO: use I'T
   #info //Convenient var to storage info related to this graphObject: ex. info:{name:Chara Newman, age:22}
@@ -53,6 +55,8 @@ class GraphObject{
   #parent
   
   #accomulatedZ //Engine related var, dont changeit through a gamescript
+
+  #engineReference = new RenderEngine();
 
   #getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
@@ -142,7 +146,7 @@ class GraphObject{
   set type(x) {this.#type = x}
 
   get text() {return this.#text;}
-  set text(x) {this.#text = typeof x == "string"? x : null}
+  set text(x) {this.#text = x}
 
   get center() {return this.#center}
   set center(x) {this.#center = typeof x == "boolean"? x : false}

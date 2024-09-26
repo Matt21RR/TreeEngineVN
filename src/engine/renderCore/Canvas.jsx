@@ -8,6 +8,7 @@ class Canvas extends React.Component{
     super(props);
     this.CELGF = this.props.CELGF != undefined ? this.props.CELGF : (error)=>console.error(error);
     this.id = "canvas"+performance.now();
+    this.loopId = "";
     this.mounted = false;
 
     this.renderEngine = "engine" in this.props ? this.props.engine:{};
@@ -124,11 +125,14 @@ class Canvas extends React.Component{
       //set the every graphic object data
       this.onLoad({context:this.element.current.getContext("2d"),scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
       //call engine
+
       this.engine();
 
     }
   }
-  engine() {
+  // Engine starter
+  engine(loopId) {
+    this.loopId = "loop"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
     if(this.element == null){
       console.log("element reference error")
       this.element = React.createRef();
@@ -256,7 +260,7 @@ class Canvas extends React.Component{
     var then = performance.now();
     var fpsArray = [], fpsAdjustValue = 1.01,promedio = this.fps;
     var drawnFrames = 0, startTimer = 0, now,maxFps = 0;
-    var draw = (newtime) => {
+    var draw = (newtime,lId) => {
       if(!canvasInstances.checker(this.props.id,this.id)){
         // this.CELGF("Multicalling to draw detected");
         // this.CELGF("killing engine recall");
@@ -272,7 +276,9 @@ class Canvas extends React.Component{
         fpsArray = []; fpsAdjustValue = 1;promedio = this.fps;
         drawnFrames = 0; startTimer = 0; maxFps = 0;
       }
-      rAF.modelTwo(draw,this.interval);
+      if(lId == this.loopId){
+        rAF.modelTwo(draw,this.interval,lId);
+      }
       
       now = newtime;
 
@@ -308,7 +314,7 @@ class Canvas extends React.Component{
     try {
       this.engineThreads++;
       console.warn("Re-executing set timeout",this.engineThreads);     
-      draw();
+      draw(0,this.loopId);
     } catch (error) {
       console.log("in line:"+ error.lineNumber);
       console.log(error);
