@@ -31,7 +31,11 @@ class EngTools extends React.Component{
         ></InputList>
         <Button1 text={"Run!!"} action={()=>{
           engine.loadScript(this.scripts[Object.keys(this.scripts)[this.selectedScript]]);
-          this.forceUpdate();
+          const chaos = new Chaos();
+          chaos.listScripts().then(scriptsId=>{
+            this.scripts = scriptsId;
+            this.forceUpdate();
+          })
         }}/>
       </div>
     );

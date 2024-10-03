@@ -70,7 +70,7 @@ class Test extends React.Component{
           },
           engine:{
             title:"Redengine",
-            content:<RenderEngine setEngine={(engine)=>{this.engine=engine; this.editionKeys(); env.forceUpdate();}}/>
+            content:<RenderEngine setEngine={(engine)=>{this.engine=engine; window.terminal = (code) =>{ code(engine);}; this.editionKeys(); env.forceUpdate();}}/>
           },
           triggers:{
             title:"Triggers en escena",

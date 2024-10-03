@@ -109,7 +109,7 @@ class ChaosInterpreter {
     return false;
   }
   checkIfKeywordInLine(line){
-    const keywords = ["set","run","new","wait","continue","jumpto","flag"];
+    const keywords = ["set","run","new","wait","show","continue","jumpto","flag"];
 
     for (let index = 0; index < keywords.length; index++) {
       const keyword = keywords[index];
@@ -479,6 +479,36 @@ class ChaosInterpreter {
         }
         res.push(
           "});",
+        );
+        if(routine){
+          res.push(
+            "});"
+          );
+        }
+        break;
+      case "show":
+        if(routine){
+          res.push(
+            "engine.routines.push((engine)=>{"
+          );
+        }
+        res.push(
+          "engine.graphArray.get('"+value+"').enabled = true;"
+        );
+        if(routine){
+          res.push(
+            "});"
+          );
+        }
+        break;
+      case "hide":
+        if(routine){
+          res.push(
+            "engine.routines.push((engine)=>{"
+          );
+        }
+        res.push(
+          "engine.graphArray.get('"+value+"').enabled = false;"
         );
         if(routine){
           res.push(

@@ -1,21 +1,18 @@
 import React from "react";
-import { Window } from "../engine/tools/SubTools";
 import { BaseButton } from "../engine/components/buttons";
+import { Window } from "./Window";
 
 class WindowsEnvironment extends React.Component{
   constructor(props){
     super(props);
     if(!(this.props)){return;}
-    // this.windowsContent = {};
     this.windowsContent = "content" in this.props ? this.props.content : {};
     this.executionTable = {};
     this.minimizedTable = [];
     this.previewTable = [];
     Object.keys(this.windowsContent).map(windowId=>{Object.assign(this.executionTable, {[windowId]:true})});
     Object.keys(this.windowsContent).map(windowId=>{if("minimized" in this.windowsContent[windowId]){this.minimizedTable.push(windowId);}});
-    // console.log(this.minimizedTable);
     this.renderingOrder = Object.keys(this.windowsContent);
-    // console.log(this.windowsContent,this.executionTable,this.renderingOrder);
   }
   clickWindow(windowId){
     if(this.renderingOrder.indexOf(windowId) == (this.renderingOrder.length-1)){

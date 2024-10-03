@@ -41,7 +41,7 @@ class Window extends React.Component {
             iconStyle={"w-3 h-3 my-auto mx-auto"}
             action={()=>{this.props.minimize(); this.forceUpdate();}}/>
           <div 
-            className='h-full w-[-webkit-fill-available] text-[14px] my-auto cursor-default select-none relative flex'
+            className='h-full grow text-[14px] my-auto cursor-default select-none relative flex'
             id={this.id}
             >
             <span className='ml-3 h-fit my-auto'>

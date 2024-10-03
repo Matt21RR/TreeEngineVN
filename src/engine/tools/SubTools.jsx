@@ -1,8 +1,9 @@
 import React from 'react';
 
-import { MenuButton, Button1, ListCheckedBox } from "../components/buttons";
+import { MenuButton, Button1, ListCheckedBox, InputText, InputList } from "../components/buttons";
 import { GraphObject } from "../engineComponents/GraphObject";
 import { Window } from '../../windows/Window';
+
 class ObjectsE extends React.Component {
   constructor(props){
     super(props);
@@ -12,6 +13,8 @@ class ObjectsE extends React.Component {
     this.mounted = false;
     this.hide = false;
     this.showStates = false;
+    this.keys = 0;
+    this.value = "";
   }
   componentDidMount(){
     if(!this.mounted){
@@ -49,17 +52,40 @@ class ObjectsE extends React.Component {
         ))
     );
   }
-  createObject(){
-    return(
-      <>
-        <Button1 text={"Create GraphObject"} action={()=>{
-
-          this.props.reRender();
-        }}/>
-      </>
-    );
-  }
   editObject(){
+    if(this.selectedObject != ""){
+      const engine = this.props.engine;
+      let info = engine.graphArray.get(this.selectedObject).dump();
+      let keys = Object.keys(info);
+      return(
+        <div className='flex'>
+          <InputList
+            options={keys}
+            action={(e)=>{this.key = keys[e];}}
+            value={0}
+          />
+          <InputText
+            action={(e)=>{
+              this.value = e;
+              console.log(e);
+            }}
+          />
+          <Button1 text={"Set"} action={()=>{
+            const type = typeof engine.graphArray.get(this.selectedObject)[this.key];
+            console.log(type,this.value);
+            if(type == "number"){
+              this.value *= 1;
+            }
+            console.log(type,this.value);
+            // TODO: implement NaN check
+            engine.graphArray.get(this.selectedObject)[this.key] = this.value;
+            this.props.reRender();
+          }}/>
+        </div>
+      );
+    }
+  }
+  listProperties(){
     const engine = this.props.engine;
     if(this.selectedObject != ""){
       try {
@@ -110,7 +136,10 @@ class ObjectsE extends React.Component {
               Edit
             </div>
 
-            <div className="relative h-full w-full overflow-auto text-sm px-2">
+            <div className="relative h-full w-full overflow-hidden text-sm px-2 flex flex-col">
+              <div className='grow overflow-auto'>
+                {this.listProperties()}
+              </div>
               {this.editObject()}
             </div>
           </div>
@@ -291,4 +320,4 @@ class SoundsE extends React.Component {
     );
   }
 }
-export { StatesE, SoundsE, TriggersE, ObjectsE, Window }
+export { StatesE, SoundsE, TriggersE, ObjectsE }

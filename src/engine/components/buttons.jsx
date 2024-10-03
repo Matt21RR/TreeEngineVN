@@ -350,10 +350,7 @@ class InputText extends React.Component{
       <input 
         className={" bg-black my-0.5 px-1 rounded-md text-white text-[12px] " + ("style" in this.props ? this.props.style : "") + ((this.props.hide) ? " hidden":"")} 
         defaultValue={"defaultValue" in this.props ? this.props.defaultValue : ""}
-        onClick={()=>{if("action" in this.props){this.props.action()}}}
-        onChange={(e)=>{if("change" in this.props){this.props.change(e.target.value)}}}
-        onMouseEnter={()=>{if("enter" in this.props){this.props.enter();}}}
-        onMouseLeave={()=>{if("leave" in this.props){this.props.leave();}}}
+        onChange={(e)=>{if("action" in this.props){this.props.action(e.target.value)}}}
       />
     );
   }
@@ -370,6 +367,7 @@ class InputList extends React.Component {
       heightPerOption: (typeof this.props.height == 'string' ? this.props.height : 16),
     }
     this.value = 0;
+    this.boxOptionsId = "boxOptions" + String(window.performance.now()).replaceAll(".","");
     this.inputRef = React.createRef();
     this.optionsBoxRef = React.createRef();
     this.handleClickOutside = this.handleClickOutside.bind(this);
@@ -388,6 +386,10 @@ class InputList extends React.Component {
       boxHeight = optionsBox.scrollHeight;
 
     }
+    //Calcuulate Max
+    var offset = $("#"+this.boxOptionsId).offset();
+    const max = (window.innerHeight -(offset.top-window.scrollY));
+    if(boxHeight>max){boxHeight=max;}
     return boxHeight
   }
   componentWillUnmount() {
@@ -521,33 +523,36 @@ class InputList extends React.Component {
 
     let errorStyle = (this.state.error ? "border-red-600 border-4" : "border-[#0b2140] border-[1px]");
     return (
-      <div className={height + " flex max-w-[200px] m-1"}>
-        <div
-          style={{ zIndex: this.state.zIndex }}
-          className={"select-none relative z-[" + this.state.zIndex + "] focus:outline-none text-black h-fit w-full " + errorStyle + " rounded-md bg-white overflow-x-hidden " + fatherStyle}
-          ref={this.inputRef}
-          tabIndex={0}
-          onFocus={() => { this.hover() }}
-          onBlur={() => { this.unhover() }}
-          onMouseEnter={() => { this.hover() }}
-          onMouseLeave={() => { this.unhover() }}>
+      <div className={height + " flex w-[217px] m-1 relative"}>
+        <div className=" fixed">
           <div
-            className={(height) + "flex w-full px-2 " + (this.value == null ? 'text-gray-500' : '')}
-            onClick={() => { this.hover() }}>
-            <div className="my-auto w-full text-[13px]">
-              <div className="w-full whitespace-nowrap text-ellipsis overflow-hidden">{textValue}</div>
-              
-            </div>
-          </div>
-          <div
-            className=" w-full h-fit relative"
-            ref={this.optionsBoxRef}>
-            <div className="absolute top-0 w-full h-0"/>
+            style={{ zIndex: this.state.zIndex }}
+            className={"select-none relative z-[" + this.state.zIndex + "] focus:outline-none text-black h-fit w-full " + errorStyle + " rounded-md bg-white overflow-x-hidden " + fatherStyle}
+            ref={this.inputRef}
+            tabIndex={0}
+            onFocus={() => { this.hover() }}
+            onBlur={() => { this.unhover() }}
+            onMouseEnter={() => { this.hover() }}
+            onMouseLeave={() => { this.unhover() }}>
             <div
-              className={"w-full h-0 flex flex-col "+("overflow-auto")}>
-              {this.renderOptions(/*height*/)}
+              className={(height) + "flex w-full px-2 " + (this.value == null ? 'text-gray-500' : '')}
+              onClick={() => { this.hover() }}>
+              <div className="my-auto w-full text-[13px]">
+                <div className="w-full whitespace-nowrap text-ellipsis overflow-hidden">{textValue}</div>
+                
+              </div>
             </div>
-            <div className="absolute bottom-0 w-full h-0"/>
+            <div
+              className=" w-full h-fit relative"
+              id={this.boxOptionsId}
+              ref={this.optionsBoxRef}>
+              <div className="absolute top-0 w-full h-0"/>
+              <div
+                className={"w-full h-0 flex flex-col "+("overflow-auto")}>
+                {this.renderOptions(/*height*/)}
+              </div>
+              <div className="absolute bottom-0 w-full h-0"/>
+            </div>
           </div>
         </div>
       </div>

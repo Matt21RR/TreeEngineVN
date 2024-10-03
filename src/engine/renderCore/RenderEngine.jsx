@@ -109,7 +109,6 @@ class RenderEngine extends React.Component{
     window.setUsePerspective = (x) =>{this.camera.usePerspective = x;}
     window.setCameraPerspectiveCoords = (x,y) =>{this.camera.position = {y:y,x:x};}
 
-    window.terminal = (code) =>{ code(this);}
     window.engineRef = this;
   }  
   componentDidMount(){
@@ -167,6 +166,7 @@ class RenderEngine extends React.Component{
         var commands = scriptData["gameEntrypoint"];
         commands = commands.join("");
         const commandsF = new Function ("engine",commands);
+        console.log(commandsF);
         commandsF(self);
         self.isReady = true;
         self.forceUpdate();
@@ -414,7 +414,6 @@ class RenderEngine extends React.Component{
     let res;
     const canvas = this.canvasRef;
     const camera = this.camera;
-    const tangencialConstant = camera.position.angle;//Uses camera angle
 
     const recalculate = (gObject = new GraphObject())=>{
       if(JSON.stringify(this.prevCamera) != JSON.stringify(this.camera)){
@@ -583,7 +582,8 @@ class RenderEngine extends React.Component{
               if(testD>0.003){
                 let texts;
                 if(gObject.text != null){
-                  canvas.context.font = (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
+                  canvas.context.font = (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
+                  // console.warn(canvas.context.font);
 
                   var textO = gObject.text;
                   if(typeof textO == "function"){
@@ -593,7 +593,7 @@ class RenderEngine extends React.Component{
                     canvas.context,
                     textO,
                     (gObject.margin*objectWidth) + objectLeft - (objectWidth/2),
-                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)) - (objectHeight/2),
+                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700)) - (objectHeight/2),
                     objectWidth - (gObject.margin*objectWidth)*2,
                     (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)*.6),
                     gObject.center
