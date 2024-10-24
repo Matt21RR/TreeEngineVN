@@ -6,12 +6,16 @@ import './index.css';
 import "./engine/res/css/fonts.css";
 
 import { Test } from './windows/Test';
+// import {CatBlur} from './Pixi';
+// import { CatBlur } from './CatRender';
+
+
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <Test/>
-    
+    {/* <CatBlur/> */}
   </React.StrictMode>
 );
 

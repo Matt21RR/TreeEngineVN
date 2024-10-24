@@ -215,6 +215,7 @@ class FileExplorer extends React.Component{
     if(this.actualRoute == "./"){
       Swal.fire("Don't upload on root","","error");
     }
+
     const self = this;
     const uploadRequests = [];
     const uploader = ()=>{$.ajax({

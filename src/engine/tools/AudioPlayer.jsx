@@ -15,8 +15,6 @@ class AudioPlayer extends React.Component{
     this.soundReady = false;
     this.src = "src" in this.props ? this.props.src : "http://localhost/renderEngineBackend/game/egoismo.mp3"
     this.id = "progression" + String(window.performance.now()).replaceAll(".","");
-    // type
-    // this.sound;
   }
   timeConverter(sec){
     var toSeconds = (sec % 60);

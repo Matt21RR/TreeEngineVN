@@ -10,7 +10,7 @@ import { RenList } from "../engineComponents/RenList";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger";
 
 import { mobileCheck, wrapText } from "../logic/Misc";
-import { Shader } from "./ShadersUnstable";
+import { Shader } from "./Shaders";
 import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim";
 import { CodedRoutine } from "../engineComponents/CodedRoutine";
@@ -102,7 +102,7 @@ class RenderEngine extends React.Component{
     this.drawObjectLimits = true;
     this.showCanvasGrid = false;
     this.drawTriggers = false;
-    this.showFps = true;
+    this.showFps = this.props != undefined ? (("showFps" in this.props) ? this.props.showFps : true) : true;
 
     this.objectsToDebug = [];//id of the object
     this.setMouseOrigin = false;
@@ -416,6 +416,7 @@ class RenderEngine extends React.Component{
     const camera = this.camera;
 
     const recalculate = (gObject = new GraphObject())=>{
+      return true;
       if(JSON.stringify(this.prevCamera) != JSON.stringify(this.camera)){
         return true;
       }
@@ -445,7 +446,8 @@ class RenderEngine extends React.Component{
           z: gObject.parent == "" ?  - this.camera.position.z : 0
         };
 
-        const addition = !this.camera.usePerspective && !gObject.ignoreParallax && gObject.parent == "" ? 
+        // const addition = !this.camera.usePerspective && !gObject.ignoreParallax && gObject.parent == "" ? 
+        const addition = !this.camera.usePerspective && gObject.parent == "" ? 
           {x:-this.camera.position.x+.5, y:-this.camera.position.y+.5} : {x:0,y:0};
 
         var objectScale = gObject.scale;
@@ -455,7 +457,8 @@ class RenderEngine extends React.Component{
         
         var testD = 0.95;
 
-        if(camera.usePerspective && !gObject.ignoreParallax){
+        // if(camera.usePerspective && !gObject.ignoreParallax){
+        if(camera.usePerspective){
           const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
 
           objectLeft = gObject.x - this.camera.position.x;
@@ -463,6 +466,7 @@ class RenderEngine extends React.Component{
           objectZ = gObject.accomulatedZ - this.camera.position.z;
           const perspectiveDiff = 1-((1/(objectZ))-(1))/((1/camera.maxZ)-(1));
           testD = perspectiveDiff;
+          // console.log(testD);
           const toAddSize = perspectiveDiff * tangencialConstant*(resolution.height)*camera.maxZ;
           const computedPercentageSize = (100 / resolution.height) * (toAddSize);
           const perspectiveScale = computedPercentageSize/100;
@@ -582,7 +586,7 @@ class RenderEngine extends React.Component{
               if(testD>0.003){
                 let texts;
                 if(gObject.text != null){
-                  canvas.context.font = (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700))+"px "+gObject.font;
+                  canvas.context.font = (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700)*testD)+"px "+gObject.font;
                   // console.warn(canvas.context.font);
 
                   var textO = gObject.text;
@@ -593,9 +597,9 @@ class RenderEngine extends React.Component{
                     canvas.context,
                     textO,
                     (gObject.margin*objectWidth) + objectLeft - (objectWidth/2),
-                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700)) - (objectHeight/2),
+                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700)*testD) - (objectHeight/2),
                     objectWidth - (gObject.margin*objectWidth)*2,
-                    (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)*.6),
+                    (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)*testD*.6),
                     gObject.center
                   );
                 }

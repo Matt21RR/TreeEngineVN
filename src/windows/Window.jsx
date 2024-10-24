@@ -231,8 +231,8 @@ class Window extends React.Component {
           if(this.fullSized){
             console.log(this.unfullSizedData);
             var w = document.getElementById("body"+this.id);
-            this.unfullSizedData.width = this.unfullSizedData.width == 0 ? 400 : this.unfullSizedData.width;
-            this.unfullSizedData.height = 300;
+            this.unfullSizedData.width = this.unfullSizedData.width == 0 ? 550 : this.unfullSizedData.width;
+            this.unfullSizedData.height = 450;
 
             const coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",");
 
@@ -248,15 +248,14 @@ class Window extends React.Component {
           //Check if windowTop are outside the browserWindow
           if(e.clientY < 0){
             e.preventDefault();
-            // this.props.minimize(); this.forceUpdate();
           }
         }}
         handle={"#"+this.id}
       >
         <div className={'absolute top-0 left-0 flex flex-col pointer-events-auto '}  
           style={{
-            width: "minRes" in this.props ? this.props.minRes.width+"px" : "400px", 
-            height: "minRes" in this.props ? this.props.minRes.height+"px" : "300px",
+            width: "minRes" in this.props ? this.props.minRes.width+"px" : "600px", 
+            height: "minRes" in this.props ? this.props.minRes.height+"px" : "450px",
             pointerEvents: this.props.minimized ? "none":"auto",
             opacity: this.props.minimized ? (this.props.preview? .5 : 1) : 1, 
             display: this.props.minimized ? (this.props.preview? "inherit" : "none"):"inherit"

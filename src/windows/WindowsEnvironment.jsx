@@ -43,7 +43,7 @@ class WindowsEnvironment extends React.Component{
             preview={this.previewTable.indexOf(contentId) != -1}
             title={windowsContent[contentId].title} 
             onResize={"onResize" in windowsContent[contentId] ? windowsContent[contentId].onResize : ()=>{}}
-            minRes={"minRes" in windowsContent[contentId] ? windowsContent[contentId].minRes : {width:400,height:300} }
+            minRes={"minRes" in windowsContent[contentId] ? windowsContent[contentId].minRes : {width:600,height:450} }
             resizeBlocked={"resizeBlocked" in windowsContent[contentId] ? windowsContent[contentId].resizeBlocked : false }
             clicked={()=>this.clickWindow(contentId)}
             reRender={()=>this.forceUpdate()}

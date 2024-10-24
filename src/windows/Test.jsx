@@ -10,11 +10,10 @@ class Test extends React.Component{
   constructor(props){
     super(props);
     this.engine = new RenderEngine();
-    this.windowsEnvironment = new WindowsEnvironment();
     this.hide = false;
 
     this.ObjectsERef = {};
-
+    this.windowsEnvironment = new WindowsEnvironment(); 
     this.mounted = false;
   }
   editionKeys(){
