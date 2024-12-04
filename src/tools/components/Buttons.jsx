@@ -1,21 +1,21 @@
 import React from "react";
 
-import arrow from "../res/engineRes/arrow.svg";
-import trash from "../res/engineRes/trash.svg";
-import show from "../res/engineRes/eye.svg";
-import file from "../res/engineRes/file.svg";
-import folder from "../res/engineRes/folder.svg";
-import hide from "../res/engineRes/eye-closed.svg";
-import cross from "../res/engineRes/cross.svg";
-import save from "../res/engineRes/save.svg";
-import squares from "../res/engineRes/squares.svg";
-import square from "../res/engineRes/square.svg";
-import squareFull from "../res/engineRes/squareFull.svg";
-import minus from "../res/engineRes/minus.svg";
-import plus from "../res/engineRes/plus.svg";
-import play from "../res/engineRes/play.svg";
-import pause from "../res/engineRes/pause.svg";
-import repeat from "../res/engineRes/repeat.svg";
+import arrow from "./icons/arrow.svg";
+import trash from "./icons/trash.svg";
+import show from "./icons/eye.svg";
+import file from "./icons/file.svg";
+import folder from "./icons/folder.svg";
+import hide from "./icons/eye-closed.svg";
+import cross from "./icons/cross.svg";
+import save from "./icons/save.svg";
+import squares from "./icons/squares.svg";
+import square from "./icons/square.svg";
+import squareFull from "./icons/squareFull.svg";
+import minus from "./icons/minus.svg";
+import plus from "./icons/plus.svg";
+import play from "./icons/play.svg";
+import pause from "./icons/pause.svg";
+import repeat from "./icons/repeat.svg";
 
 import gsap from "gsap";
 import $ from "jquery";
@@ -99,6 +99,19 @@ class Button1 extends React.Component{
     );
   }
 }
+class Button2 extends React.Component{
+  render(){
+    return(
+      <div 
+        className={" cursor-pointer p-1 bg-white w-fit h-fit text-[12px] " + ("style" in this.props ? this.props.style : "m-1") + ((this.props.hide) ? " hidden":"")} 
+        onClick={()=>{this.props.action()}}
+        onMouseEnter={()=>{if("enter" in this.props){this.props.enter();}}}
+        onMouseLeave={()=>{if("leave" in this.props){this.props.leave();}}}>
+        {this.props.text}
+      </div>
+    );
+  }
+}
 class IconButton extends React.Component{
   constructor(props){
     super(props);
@@ -148,7 +161,6 @@ class InputTextArea extends React.Component {
       inputMinHeight: 0,
       error: ((typeof this.props.action) == "undefined") || (typeof this.props.value == "undefined") || !(typeof this.props.action == "function"),
     }
-    this.value=0;
     this.inputBoxRef = React.createRef();
     this.inputRef = React.createRef();
     this.id = "id" in this.props ? this.props.id : ("inputTextArea" + String(window.performance.now()).replaceAll(".",""));
@@ -344,10 +356,16 @@ class InputTextArea extends React.Component {
     );
   }
 }
+
 class InputText extends React.Component{
+  constructor(props){
+    super(props);
+    this.id = "id" in this.props ? this.props.id : ("inputTextArea" + String(window.performance.now()).replaceAll(".",""));
+  }
   render(){
     return(
       <input 
+        id={this.id}
         className={" bg-black my-0.5 px-1 rounded-md text-white text-[12px] " + ("style" in this.props ? this.props.style : "") + ((this.props.hide) ? " hidden":"")} 
         defaultValue={"defaultValue" in this.props ? this.props.defaultValue : ""}
         onChange={(e)=>{if("action" in this.props){this.props.action(e.target.value)}}}
@@ -366,7 +384,8 @@ class InputList extends React.Component {
       error: ((typeof this.props.action) == "undefined") || (typeof this.props.value == "undefined") || (typeof this.props.options == "undefined"),
       heightPerOption: (typeof this.props.height == 'string' ? this.props.height : 16),
     }
-    this.value = 0;
+    this.selected = "selected" in this.props ? this.props.selected : 0;
+    this.readOnly = "readOnly" in this.props;
     this.boxOptionsId = "boxOptions" + String(window.performance.now()).replaceAll(".","");
     this.inputRef = React.createRef();
     this.optionsBoxRef = React.createRef();
@@ -420,17 +439,19 @@ class InputList extends React.Component {
     }
   }
   animateHover() {
+    if(this.readOnly){return;}
     const optionsBox = this.optionsBoxRef.current.childNodes[1];
     gsap.to(optionsBox, 0.4, { height: this.calculateHeight() });
 
     const inputRef = this.inputRef.current;
-    gsap.to(inputRef, { borderColor: 'rgb(0, 115, 170)' });
+    gsap.to(inputRef, { borderColor: 'rgb(0, 115, 170)',zIndex:50 });
   }
   animateUnHover() {
+    if(this.readOnly){return;}
     const optionsBox = this.optionsBoxRef.current.childNodes[1];
     gsap.to(optionsBox, 0.4, { height: '0' });
     let inputRef = this.inputRef.current;
-    gsap.to(inputRef, { borderColor: '#000' });
+    gsap.to(inputRef, { borderColor: '#000',zIndex:0 });
   }
   hover() {
     this.animateHover();
@@ -444,17 +465,19 @@ class InputList extends React.Component {
     e.preventDefault();
   }
   action(value,option) {
-    if (!this.state.error && (typeof this.props.action == "function")) {
+    if (!this.state.error && ("action" in this.props)) {
       this.props.action(value);
-      this.value = value;
+      this.selected = value;
       this.forceUpdate();
+    }else{
+      window.alert("Compurebe que existan las propiedades action, value, y options para esta implementación del componente");
     }
   }
   calcScrollAutoDisplace(){
     let heightPerOption = this.state.heightPerOption;
     let optionsBoxHeight = this.calculateHeight();
     let optionsBox = this.optionsBoxRef.current.childNodes[1];
-    let actualOptionInYAxis = (this.value+1)*heightPerOption;
+    let actualOptionInYAxis = (this.selected+1)*heightPerOption;
 
     if(actualOptionInYAxis > (optionsBox.scrollTop+optionsBoxHeight)){
       optionsBox.scrollTop = actualOptionInYAxis-optionsBoxHeight;
@@ -464,47 +487,26 @@ class InputList extends React.Component {
   }
   renderOptions(/*customHeight*/) {
     let options = this.props.options;
-    let startFrom = this.props.start;
-    let selected = this.value;
+    let selected = this.selected;
     let customHeight = "h-[28px] ";
-    // console.log(customHeight);
     if (options) {
       if (options.length > 0) {
-        if (startFrom) {
-          return (
-            options.map(
-              (option, index) => (
-                <div
-                  className={(selected == index + startFrom ? "text-white " : "") + (index == 0 ? "" : "") + " py-[2px] text-[13px] px-2 cursor-pointer flex min-" + (customHeight.replace(/ /g, ""))}
-                  style={{ backgroundColor: (selected == index + startFrom ? "rgb(10, 67, 145)" : "") }}
-                  key={index}
-                  value={index}
-                  onClick={() => { this.action(index + startFrom, option) }}>
-                  <div className="my-auto w-fit h-fit text-[13px]">
-                    {option}
-                  </div>
+        return (
+          options.map(
+            (option, index) => (
+              <div
+                className={(selected == index ? "text-white " : "") + (index == 0 ? "" : "") + " py-[2px] text-[13px] px-2 cursor-pointer flex min-" + (customHeight.replace(/ /g, ""))}
+                style={{ backgroundColor: (selected == index ? "rgb(10, 67, 145)" : "") }}
+                key={index}
+                value={index}
+                onClick={() => { this.action(index, option) }}>
+                <div className="my-auto w-fit h-fit">
+                  {option}
                 </div>
-              )
+              </div>
             )
-          );
-        } else { 
-          return (
-            options.map(
-              (option, index) => (
-                <div
-                  className={(selected == index ? "text-white " : "") + (index == 0 ? "" : "") + " py-[2px] text-[13px] px-2 cursor-pointer flex min-" + (customHeight.replace(/ /g, ""))}
-                  style={{ backgroundColor: (selected == index ? "rgb(10, 67, 145)" : "") }}
-                  key={index}
-                  value={index}
-                  onClick={() => { this.action(index, option) }}>
-                  <div className="my-auto w-fit h-fit">
-                    {option}
-                  </div>
-                </div>
-              )
-            )
-          );
-        }
+          )
+        );
       }
       else {
         return ("NOOPTIONS");
@@ -516,18 +518,17 @@ class InputList extends React.Component {
   }
   render() {
     let placeholder = (typeof this.props.placeholder == 'string' ? this.props.placeholder : 'Seleccionar');
-    let textValue = this.value != null ? this.props.options[this.value] : placeholder;
+    let textValue = this.selected != null ? this.props.options[this.selected] : placeholder;
     let height = "h-[28px] ";
-
+    let contStyle ="contStyle" in this.props ? this.props.contStyle : " w-[217px]"
     let fatherStyle = typeof this.props.fatherStyle == 'string' ? ' ' + this.props.fatherStyle + ' ' : '';
-
-    let errorStyle = (this.state.error ? "border-red-600 border-4" : "border-[#0b2140] border-[1px]");
+    let eStyle = "eStyle" in this.props ? this.props.eStyle : " fixed "
     return (
-      <div className={height + " flex w-[217px] m-1 relative"}>
-        <div className=" fixed">
+      <div className={contStyle + " h-[28px] flex m-1 relative"}>
+        <div className={"  "+ eStyle}>
           <div
             style={{ zIndex: this.state.zIndex }}
-            className={"select-none relative z-[" + this.state.zIndex + "] focus:outline-none text-black h-fit w-full " + errorStyle + " rounded-md bg-white overflow-x-hidden " + fatherStyle}
+            className={"select-none relative z-[" + this.state.zIndex + "] focus:outline-none text-black h-fit w-full border-[#0b2140] border-[1px] rounded-md bg-white overflow-x-hidden " + fatherStyle}
             ref={this.inputRef}
             tabIndex={0}
             onFocus={() => { this.hover() }}
@@ -535,7 +536,7 @@ class InputList extends React.Component {
             onMouseEnter={() => { this.hover() }}
             onMouseLeave={() => { this.unhover() }}>
             <div
-              className={(height) + "flex w-full px-2 " + (this.value == null ? 'text-gray-500' : '')}
+              className={(height) + "flex w-full px-2 " + (this.selected == null ? 'text-gray-500' : '')}
               onClick={() => { this.hover() }}>
               <div className="my-auto w-full text-[13px]">
                 <div className="w-full whitespace-nowrap text-ellipsis overflow-hidden">{textValue}</div>
@@ -555,6 +556,191 @@ class InputList extends React.Component {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+}
+class MenuListButton extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      animate: false,
+      showAnimationDone: false,
+      activateHideAnimation: false,
+      zIndex: (10),
+      error: ((typeof this.props.action) == "undefined") || (typeof this.props.title == "undefined") || (typeof this.props.options == "undefined"),
+      heightPerOption: (typeof this.props.height == 'string' ? this.props.height : 16),
+    }
+    this.boxOptionsId = "boxOptions" + String(window.performance.now()).replaceAll(".","");
+    this.inputRef = React.createRef();
+    this.buttonRef = React.createRef();
+    this.optionsBoxRef = React.createRef();
+    this.handleClickOutside = this.handleClickOutside.bind(this);
+    this.preventDefault = this.preventDefault.bind(this);
+  }
+  calculateHeight() {
+    let boxHeight;
+
+    const optionsBox = this.optionsBoxRef.current.childNodes[1];
+    const customMaxHeight = (this.props.optionsBoxHeight ? this.props.optionsBoxHeight : 0);
+
+    if (customMaxHeight > 0 && customMaxHeight < optionsBox.scrollHeight) {
+      boxHeight = customMaxHeight;
+
+    } else {
+      boxHeight = optionsBox.scrollHeight;
+
+    }
+    //Calcuulate Max
+    var offset = $("#"+this.boxOptionsId).offset();
+    const max = (window.innerHeight -(offset.top-window.scrollY));
+    if(boxHeight>max){boxHeight=max;}
+    return boxHeight
+  }
+  componentWillUnmount() {
+    document.removeEventListener("mousedown", this.handleClickOutside);
+  }
+  componentDidUpdate() {
+    if (this.state.animate && !this.state.showAnimationDone && !this.state.activateHideAnimation) {
+      this.animateHover();
+      this.setState({ showAnimationDone: true });
+    }
+    if (this.state.showAnimationDone && this.state.activateHideAnimation) {
+      this.setState(
+        {
+          animate: false,
+          showAnimationDone: false,
+          activateHideAnimation: false,
+          optionsBoxHeight: 0
+        },
+        () => {
+          this.animateUnHover();
+        }
+      );
+    }
+  }
+  handleClickOutside(e) {
+    if (this.inputRef && !this.inputRef.current.contains(e.target)) {
+      this.unhover();
+    }
+  }
+  animateHover() {
+    let buttonRef = this.buttonRef.current;
+    gsap.to(buttonRef,0.3,{borderColor:"rgb(59 130 246)",color:"rgb(59 130 246)"});
+    let inputRef = this.optionsBoxRef.current;
+    gsap.to(inputRef,0, { opacity: 1});
+    const optionsBox = this.optionsBoxRef.current.childNodes[1];
+    gsap.to(optionsBox, 0.4, { height: this.calculateHeight() });
+  }
+  animateUnHover() {
+    let buttonRef = this.buttonRef.current;
+    gsap.to(buttonRef,0.3,{borderColor:"transparent",color:"black"});
+    const optionsBox = this.optionsBoxRef.current.childNodes[1];
+    gsap.to(optionsBox, 0.4, { height: '0', onComplete:()=>{
+      let inputRef = this.optionsBoxRef.current;
+      gsap.to(inputRef,0, { opacity: 0});
+    } });
+  }
+  hover() {
+    this.animateHover();
+    document.addEventListener("mousedown", this.handleClickOutside);
+  }
+  unhover() {
+    this.animateUnHover();
+    document.removeEventListener("mousedown", this.handleClickOutside);
+  }
+  preventDefault(e) {
+    e.preventDefault();
+  }
+  action(value,option) {
+    if (!this.state.error && (typeof this.props.action == "function")) {
+      this.props.action(value);
+      this.unhover();
+      this.forceUpdate();
+    }
+  }
+  renderOptions(/*customHeight*/) {
+    let options = this.props.options;
+    let selected = -1;
+    let customHeight = "h-[28px] ";
+
+    if (options) {
+      if (options.length > 0) {
+        return (
+          options.map(
+            (option, index) => (
+              (option != "" ?
+                <div
+                  className={"hover:text-blue-500 py-[4px] text-[13px] px-2 cursor-pointer flex min-" + (customHeight.replace(/ /g, ""))}
+                  style={{ backgroundColor: (selected == index ? "rgb(10, 67, 145)" : "") }}
+                  key={index}
+                  value={index}
+                  onClick={() => { this.action(index, option) }}>
+                  <div className="my-auto w-fit h-fit whitespace-nowrap">
+                    {option}
+                  </div>
+                </div>
+              :
+              <></>)
+            )
+          )
+        );
+      }
+      else {
+        return ("");
+      }
+    }
+    else {
+      return ("");
+    }
+  }
+  render() {
+    if(this.props.hide){
+      return(<></>);
+    }
+    let textValue = "title" in this.props ? this.props.title : "NOTITLE";
+    let nooptions = this.props.options.length == 0;
+
+    let fatherStyle = typeof this.props.fatherStyle == 'string' ? ' ' + this.props.fatherStyle + ' ' : '';
+
+    return (
+      <div className={"h-auto flex w-auto relative"}>
+        {/* <div className=" fixed"> */}
+          <div
+            style={{ zIndex: this.state.zIndex }}
+            className={"select-none z-[" + this.state.zIndex + "] focus:outline-none text-black h-fit w-full  overflow-x-hidden " + fatherStyle}
+            ref={this.inputRef}
+            tabIndex={0}
+            >
+            <div
+              ref={this.buttonRef}
+              className={"text-black h-auto flex w-fit px-2 border-b-[2px] border-transparent hover:border-black"}>
+              <div className="my-auto w-fit text-[13px] h-fit">
+                <div className="w-fit mx-auto">
+                  <Button2 style="whitespace-nowrap" text={textValue} action={()=>{
+                    if(nooptions){
+                      this.props.action();
+                    }else{
+                      this.hover();
+                    }
+                  }}/>
+                </div>
+              </div>
+            </div>
+            <div
+              className=" w-fit h-fit absolute bg-white opacity-0 border-[1px] translateTC left-0 top-[120%]"
+
+              id={this.boxOptionsId}
+              ref={this.optionsBoxRef}>
+              <div className="absolute top-0 w-full h-0"/>
+              <div
+                className={"w-full h-0 flex flex-col overflow-hidden"}>
+                {this.renderOptions(/*height*/)}
+              </div>
+              <div className="absolute bottom-0 w-full h-0"/>
+            </div>
+          </div>
+        {/* </div> */}
       </div>
     );
   }

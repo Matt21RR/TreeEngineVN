@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { MenuButton } from "../components/buttons";
+import { MenuButton } from "./components/Buttons";
 import { requiredTextures } from '../../game/RequireFile';
 
 class TexturesE extends React.Component {

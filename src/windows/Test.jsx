@@ -1,10 +1,11 @@
 import React  from "react";
 import { WindowsEnvironment } from "./WindowsEnvironment";
 import { RenderEngine } from "../engine/renderCore/RenderEngine";
-import { Trigger } from "../engine/engineComponents/Trigger";
-import { ObjectsE, TriggersE } from "../engine/tools/SubTools";
-import { EngTools } from "../engine/tools/EngTools";
-import { FileExplorer } from "../engine/tools/FileExplorer";
+import { KeyboardTrigger, Trigger } from "../engine/engineComponents/Trigger";
+import { ObjectsE, TriggersE } from "../tools/SubTools";
+import { EngTools } from "../tools/EngTools";
+import { FileExplorer } from "../tools/FileExplorer";
+import { EditorKeys } from "../tools/EditorKeys";
 
 class Test extends React.Component{
   constructor(props){
@@ -19,7 +20,7 @@ class Test extends React.Component{
   editionKeys(){
     const engine = this.engine;
     const kTDef = {};//Key triggers definition
-    kTDef.KeyR = {
+    kTDef.KeyP = {
       onPress:()=>{
         this.editing = !this.editing;
         console.log("Perspectiva: "+this.editing);
@@ -30,7 +31,13 @@ class Test extends React.Component{
         }
       }
     };
-
+    kTDef.KeyR = {
+      onPress:()=>{
+        engine.camera.position.x = 0.5;
+        engine.camera.position.y = 0.5;
+        engine.camera.position.z = 0;
+      }
+    }
     kTDef.KeyW = {
       onHold:()=>{engine.camera.position.z += .1;}
     }
@@ -46,13 +53,15 @@ class Test extends React.Component{
     kTDef.Space={
       onHold:()=>{engine.camera.position.y -= .1;}
     }
-    kTDef.ShiftLeft={
+    kTDef.ShiftRight={
       onHold:()=>{engine.camera.position.y += .1;}
     }
 
     Object.keys(kTDef).forEach(keyDef => {
-      kTDef[keyDef].id = keyDef;
-      this.engine.keyboardTriggers.push(new Trigger(kTDef[keyDef]));
+      kTDef[keyDef].keys = keyDef;
+      console.log(kTDef[keyDef]);
+      this.engine.keyboardTriggers.push(new KeyboardTrigger(kTDef[keyDef]));
+      console.log(this.engine);
     });
     this.forceUpdate();
   }
@@ -85,6 +94,11 @@ class Test extends React.Component{
             title:"Herramientas del motor",
             content:<EngTools engine={this.engine} reRender={()=>{env.forceUpdate()}}/>,
             minimized:true
+          },
+          editorKeys:{
+            title:"Shorcuts",
+            content:<EditorKeys/>,
+            minimized:false
           }
         }}
       

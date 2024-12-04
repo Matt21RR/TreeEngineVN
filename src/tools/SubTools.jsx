@@ -1,8 +1,8 @@
 import React from 'react';
 
-import { MenuButton, Button1, ListCheckedBox, InputText, InputList } from "../components/buttons";
-import { GraphObject } from "../engineComponents/GraphObject";
-import { Window } from '../../windows/Window';
+import { MenuButton, Button1, ListCheckedBox, InputText, InputList } from "./components/Buttons";
+import { GraphObject } from "../engine/engineComponents/GraphObject";
+import { Window } from '../windows/Window';
 
 class ObjectsE extends React.Component {
   constructor(props){

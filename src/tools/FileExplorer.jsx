@@ -1,11 +1,11 @@
 import React from 'react';
 import $ from "jquery";
-import { Button1, IconButton, InputTextArea, MenuButton } from '../components/buttons';
+import { Button1, IconButton, InputTextArea, MenuButton } from './components/Buttons';
 import Swal from 'sweetalert2';
-import { Loading } from '../components/alerts';
+import { Loading } from './components/alerts';
 import byteSize from 'byte-size';
 import { AudioPlayer } from './AudioPlayer';
-import { Chaos } from '../renderCore/ChaosInterpreter';
+import { Chaos } from '../engine/renderCore/ChaosInterpreter';
 
 
 class Multimedia extends React.Component{
@@ -24,7 +24,7 @@ class Multimedia extends React.Component{
       const src = this.props.info.src;
       mime = src.split(".").at(-1) == "json" ? "text" : mime;
       if(mime == "text"){
-        fetch(src).then(text=>{return text.text()}).then(res=>{
+        fetch(src, {cache: "no-store"}).then(text=>{return text.text()}).then(res=>{
           const translator = new Chaos();
           translator.kreator(res);
           this.textContent = res;

@@ -1,7 +1,7 @@
 import React from "react";
-import { Button1, IconButton, InputList } from "../components/buttons";
+import { Button1, IconButton, InputList } from "./components/Buttons";
 import Swal from "sweetalert2";
-import { Chaos } from "../renderCore/ChaosInterpreter";
+import { Chaos } from "../engine/renderCore/ChaosInterpreter";
 class EngTools extends React.Component{
   constructor(props){
     super(props);
@@ -85,7 +85,7 @@ class EngTools extends React.Component{
     const engine = this.props.engine;
     return(<>
       <Button1 text="2DGrid" action={()=>{
-        engine.showCanvasGrid = !engine.showCanvasGrid;
+        engine.showBounds = !engine.showBounds;
         this.forceUpdate();
       }}/>
       <Button1 text={"Perspective: "+engine.camera.usePerspective} action={()=>{

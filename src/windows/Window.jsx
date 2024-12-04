@@ -1,7 +1,7 @@
 import React from 'react';
 import $ from "jquery";
 import Draggable from 'react-draggable';
-import { IconButton } from "../engine/components/buttons";
+import { IconButton } from "../tools/components/Buttons";
 import gsap from 'gsap';
 
 
@@ -264,7 +264,7 @@ class Window extends React.Component {
           <div className='flex flex-row w-full h-full'>
             <div className='relative w-full h-full min-w-full max-h-full border-[1px] border-gray-700 flex flex-col'>
               {this.renderWindowTop()}
-              <div className='relative w-full h-full bg-[rgba(0,0,0,0.80)] flex flex-col overflow-y-auto'>
+              <div className='relative w-full h-full bg-[rgba(0,0,0,0.80)] flex flex-col overflow-y-auto text-base'>
                 {"content" in  this.props ? this.props.content() : <div className='text-white'>Content</div>}
               </div>
             </div>

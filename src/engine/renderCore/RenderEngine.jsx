@@ -16,19 +16,22 @@ import { TextureAnim } from "../engineComponents/TextureAnim";
 import { CodedRoutine } from "../engineComponents/CodedRoutine";
 import { Chaos } from "./ChaosInterpreter";
 
+/**
+ * RenderEngine - By Matt1RR\n
+ * clientSideResources (as flag) = The engine won't look for a server to get the game resources
+ */
 class RenderEngine extends React.Component{
   constructor(props){
     super(props);
     this.id = "rengine" + String(window.performance.now()).replaceAll(".","");
-    this.isReady = false;
-    this.state = {
-      consol: [],//only used by script interpreter errors
-    }
     this.projectRoot = "";
-    this.aspectRatio = "16:9";
+    if(this.props){
+      this.isReady = "clientSideResources" in this.props ? true : false;
+      this.aspectRatio = "aspectRatio" in this.props ? this.props.aspectRatio : "16:9";
+      this.showFps = "showFps" in this.props ? true : false;
+    }
     this.engineDisplayRes = {width:0,height:0};
     this.resizeTimeout = 0;
-    this.consolMessagesArray = []
     this.isMobile = mobileCheck();
     this.mounted = false; //internal check
     this.canvasRef = {}; //Reference to the canvas used to render the scene
@@ -100,9 +103,8 @@ class RenderEngine extends React.Component{
 
     this.showObjectsInfo = false;
     this.drawObjectLimits = true;
-    this.showCanvasGrid = false;
+    this.showBounds = false;
     this.drawTriggers = false;
-    this.showFps = this.props != undefined ? (("showFps" in this.props) ? this.props.showFps : true) : true;
 
     this.objectsToDebug = [];//id of the object
     this.setMouseOrigin = false;
@@ -120,35 +122,55 @@ class RenderEngine extends React.Component{
       }, 200);
 
       new ResizeObserver(() => {
-        gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 0 });
+        if(!("avoidResizeBlackout") in this.props)
+          gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 0 });
         clearTimeout(this.resizeTimeout);
         this.resizeTimeout = setTimeout(
           () => {
             this.aspectRatioCalc();
+            if(!("avoidResizeBlackout") in this.props)
             gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 1 });
           }, 800);
-      }).observe(document.getElementById("display"+this.id))
+      })
+      .observe(document.getElementById("display"+this.id));
 
       //*LOAD GAME
-
-      this.entryPoint();
+      if(!("clientSideResources" in this.props)){
+        this.entryPoint();
+      }else{
+        if("setEngine" in  this.props ){
+          this.props.setEngine(this);
+        }
+      }
       
       //*TECLADO
       const self = this;
       document.body.addEventListener("keydown",function(e){
-        if(self.pressedKeys.indexOf(e.code) == -1){
-          self.pressedKeys.push(e.code);
+        const keyCode = e.code;
+        if(self.pressedKeys.indexOf(keyCode) == -1){
+          self.pressedKeys.push(keyCode);
           const mix = self.pressedKeys.join(" ");
           if(self.keyboardTriggers.exist(mix)){
             self.keyboardTriggers.get(mix).check(self,"onPress");
           }
+          if(self.pressedKeys.length > 1){//Si hay mas de una tecla oprimiendose, comprobar la ultima tecla
+            if(self.keyboardTriggers.exist(keyCode)){
+              self.keyboardTriggers.get(keyCode).check(self,"onPress");
+            }
+          }
         }
       });  
       document.body.addEventListener("keyup", function(e){
+        const keyCode = e.code;
         const mix = self.pressedKeys.join(" ");
-        self.pressedKeys.splice(self.pressedKeys.indexOf(e.code),1);
+        self.pressedKeys.splice(self.pressedKeys.indexOf(keyCode),1);
         if(self.keyboardTriggers.exist(mix)){
           self.keyboardTriggers.get(mix).check(self,"onRelease");
+        }
+        if(self.pressedKeys.length > 0){//Si habia mas de una tecla oprimiendose, comprobar la tecla que se soltó
+          if(self.keyboardTriggers.exist(keyCode)){
+            self.keyboardTriggers.get(keyCode).check(self,"onRelease");
+          }
         }
       });
     }
@@ -166,7 +188,6 @@ class RenderEngine extends React.Component{
         var commands = scriptData["gameEntrypoint"];
         commands = commands.join("");
         const commandsF = new Function ("engine",commands);
-        console.log(commandsF);
         commandsF(self);
         self.isReady = true;
         self.forceUpdate();
@@ -176,12 +197,12 @@ class RenderEngine extends React.Component{
       })
     })
   }
-  aspectRatioCalc(op = this.aspectRatio) {
+  aspectRatioCalc(aspectRatio = this.aspectRatio) {
     const w = document.getElementById("display"+this.id);
 
-    if (op != "unset") {
-      let newWidth = Math.floor((w.offsetHeight / (op.split(":")[1] * 1)) * (op.split(":")[0] * 1));
-      let newHeight = Math.floor((w.offsetWidth / (op.split(":")[0] * 1)) * (op.split(":")[1] * 1));
+    if (aspectRatio != "undefined") {
+      let newWidth = Math.floor((w.offsetHeight / (aspectRatio.split(":")[1] * 1)) * (aspectRatio.split(":")[0] * 1));
+      let newHeight = Math.floor((w.offsetWidth / (aspectRatio.split(":")[0] * 1)) * (aspectRatio.split(":")[1] * 1));
       if (newWidth <= w.offsetWidth) {
         newHeight = w.offsetHeight;
       } else {
@@ -194,28 +215,12 @@ class RenderEngine extends React.Component{
         } 
       );
       this.engineDisplayRes = {width:newWidth,height:newHeight};
-      this.forceUpdate();  
     } else {
-      document.getElementById("engineDisplay"+this.id).style.width = "";
-      document.getElementById("engineDisplay"+this.is).style.height = "";
+      this.engineDisplayRes = {width:w.offsetWidth,height:w.offsetHeight};
+      document.getElementById("engineDisplay"+this.id).style.width = w.offsetWidth+"px";
+      document.getElementById("engineDisplay"+this.id).style.height = w.offsetHeight+"px";
     }
-  }
-  /**
-   * Used to show info over the render engineDisplay (canvas)
-   * @param {string} text 
-   * @param {string} color, default white
-   */
-  consol(text,color="white") {
-    this.consolMessagesArray.push({text:text,color:color});
-    this.setState({
-      consol: (this.consolMessagesArray),
-    })
-  }
-  cleanConsol(){
-    this.setState({
-      consol: [],
-    });
-    this.consolMessagesArray = [];
+    this.forceUpdate();  
   }
   /**
    * 
@@ -240,7 +245,9 @@ class RenderEngine extends React.Component{
     }
     const res = this.texturesList.get(id);
     if(res == undefined){
-      console.log(this.textureAnims);
+      console.error(id +" Texture or TextureAnim wasn't found")
+      console.table(this.texturesList.objects);
+      console.table(this.textureAnims.objects);
       debugger;
     }
     return res;
@@ -294,8 +301,21 @@ class RenderEngine extends React.Component{
         })
     })
   }
-  loadTexture(indexPath){
+  loadTexture(indexPath, textureId=""){
     const self = this;
+    if("clientSideResources" in this.props){
+      return new Promise(function (resolve, reject) {
+        const image = new Image();
+        image.crossOrigin = "Anonymous";
+        image.src = indexPath;
+        image.addEventListener('load',()=>{
+          // const res = new Object({[textureId]:image});
+          self.texturesList.push(new Shader(image,textureId))
+          resolve();
+        });
+      });
+    }
+
     return new Promise(function (resolve, reject) {
       if(indexPath.indexOf(".")==0){
         indexPath = indexPath.substring(1);
@@ -343,7 +363,6 @@ class RenderEngine extends React.Component{
        origin:{x:.5,y:.5},//position of the virtual engineDisplay
        position:{x:.5,y:.5,z:0,angle:0},//position od the camera in the space.... angle? who knows (0_-)
        usePerspective:false, //or use3D
-       useTHREE3d:false
      }
      this.dimentionsPack = {};
  
@@ -361,6 +380,9 @@ class RenderEngine extends React.Component{
      this.narration = "";
   }
 
+  /**
+   * Genera el orden de renderización de los elementos en pantalla tomando en cuenta el valor z
+   */
   generateCalculationOrder(){
     var ordered = 0;
     var order = [];
@@ -415,102 +437,93 @@ class RenderEngine extends React.Component{
     const canvas = this.canvasRef;
     const camera = this.camera;
 
-    const recalculate = (gObject = new GraphObject())=>{
-      return true;
-      if(JSON.stringify(this.prevCamera) != JSON.stringify(this.camera)){
-        return true;
-      }
-      if (!(gObject.id in this.dimentionsPack)){
-        return true;
-      }else{
-        //console.log("recalculation: "+ gObject.id+ " "+ gObject.pendingRenderingRecalculation);
-        const rack = gObject.pendingRenderingRecalculation;
-        gObject.pendingRenderingRecalculation = false;
-        return rack;
-      }
-    }
     const arrayiseTree = this.arrayiseTree();
     for (let index = 0; index < this.graphArray.length; index++) {
       const gObject = this.getObject(arrayiseTree[index]);
 
-      if(recalculate(gObject)){ //TODO: add check for camera or window modifications
-        const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
-        const resolution = {
-          height:canvas.resolutionHeight,
-          width:canvas.resolutionWidth
-        };
+      const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
+      const resolution = {
+        height:canvas.resolutionHeight,
+        width:canvas.resolutionWidth
+      };
 
-        const origin = {
-          x: gObject.parent == "" ? 0 : this.dimentionsPack[gObject.parent].x, //-this.dimentionsPack[gObject.parent].width/2,
-          y: gObject.parent == "" ? 0 : this.dimentionsPack[gObject.parent].y, //-this.dimentionsPack[gObject.parent].height/2,
-          z: gObject.parent == "" ?  - this.camera.position.z : 0
-        };
+      const origin = {
+        x: gObject.parent == "" ? 0 : this.dimentionsPack[gObject.parent].base.x,
+        y: gObject.parent == "" ? 0 : this.dimentionsPack[gObject.parent].base.y
+      };
 
-        // const addition = !this.camera.usePerspective && !gObject.ignoreParallax && gObject.parent == "" ? 
-        const addition = !this.camera.usePerspective && gObject.parent == "" ? 
-          {x:-this.camera.position.x+.5, y:-this.camera.position.y+.5} : {x:0,y:0};
-
-        var objectScale = gObject.scale;
-        var objectLeft = (gObject.x + addition.x + (this.camera.origin.x-0.5))*resolution.height + origin.x;
-        var objectTop = (gObject.y + addition.y + (this.camera.origin.y-0.5))*resolution.height + origin.y;
-        var objectZ = gObject.accomulatedZ + this.camera.position.z;
-        
-        var testD = 0.95;
-
-        // if(camera.usePerspective && !gObject.ignoreParallax){
-        if(camera.usePerspective){
-          const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
-
-          objectLeft = gObject.x - this.camera.position.x;
-          objectTop = gObject.y - this.camera.position.y;
-          objectZ = gObject.accomulatedZ - this.camera.position.z;
-          const perspectiveDiff = 1-((1/(objectZ))-(1))/((1/camera.maxZ)-(1));
-          testD = perspectiveDiff;
-          // console.log(testD);
-          const toAddSize = perspectiveDiff * tangencialConstant*(resolution.height)*camera.maxZ;
-          const computedPercentageSize = (100 / resolution.height) * (toAddSize);
-          const perspectiveScale = computedPercentageSize/100;
-          objectScale *= computedPercentageSize/100;
-  
-          //*recalculate gObject coords
-          var perspectiveLayer = {
-            width:resolution.height*perspectiveScale,
-            height:resolution.height*perspectiveScale
-          }
-          //it will calc were the image must to be, inside the perspectiveLayer
-          objectLeft *= perspectiveLayer.width;
-          objectTop *= perspectiveLayer.height;
-          //now add the origin of the perspectiveLayer
-          objectLeft += -(perspectiveLayer.width-resolution.height)*camera.origin.x;
-          objectTop += -(perspectiveLayer.height-resolution.height)*camera.origin.y;
-          //If is a child object add the parent origin
-          // objectLeft += origin.x;
-          // objectTop += origin.y;
-        }
-  
-        //By default values for the textboxes
-        var objectWidth = resolution.width*objectScale*gObject.widthScale;
-        var objectHeight = resolution.height*objectScale*gObject.heightScale;
-  
-        if(gObject.textureName!=null){
-          if(gObject.useEngineUnits){
-            objectWidth = texRef.texture.naturalWidth*objectScale*gObject.widthScale*(resolution.height/768);
-            objectHeight = texRef.texture.naturalHeight*objectScale*gObject.heightScale*(resolution.height/768);
-          }else{
-            objectHeight = (texRef.texture.naturalHeight/texRef.texture.naturalWidth)*resolution.width*objectScale*gObject.heightScale;
-          }
-        }
-        res = {
-          id: gObject.id,
-          x : objectLeft,
-          y : objectTop,
-          z : objectZ,
-          sizeInDisplay : testD,
-          width : objectWidth,
-          height : objectHeight
-        }
-        Object.assign(this.dimentionsPack,{[gObject.id]:res});
+      // const addition = !this.camera.usePerspective && !gObject.ignoreParallax && gObject.parent == "" ? 
+      let addition;
+      if (!camera.usePerspective && gObject.ignoreParallax){
+        addition = {x:-camera.position.x+.5, y:-camera.position.y+.5};
+      }else{
+        addition = {x:0,y:0};
       }
+
+      var objectScale = gObject.scale;
+      var objectLeft = (gObject.x + origin.x + addition.x)*resolution.height + (camera.origin.x-0.5)*resolution.width;
+      var objectTop = (gObject.y + origin.y + addition.y + (camera.origin.y-0.5))*resolution.height;
+      var objectZ = gObject.accomulatedZ + camera.position.z;
+      
+      var testD = 0.99;
+
+      // if(camera.usePerspective && !gObject.ignoreParallax){
+      if(camera.usePerspective && !gObject.ignoreParallax){
+        if(typeof gObject.text == "function"){
+          console.log(gObject.text, gObject.ignoreParallax);
+        }
+        const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
+
+        objectLeft = gObject.x + origin.x - this.camera.position.x+0.5;
+        objectTop = gObject.y + origin.y - this.camera.position.y+0.5;
+        objectZ = gObject.accomulatedZ - this.camera.position.z+0.56;
+        const perspectiveDiff = 1-((1/(objectZ))-(1))/((1/camera.maxZ)-(1));
+        const toAddSize = perspectiveDiff * tangencialConstant*(resolution.height)*camera.maxZ;
+        const computedPercentageSize = (100 / resolution.height) * (toAddSize);
+        const perspectiveScale = computedPercentageSize/100;
+        objectScale *= computedPercentageSize/100;
+        testD = perspectiveScale;
+
+        //*recalculate gObject coords
+        var perspectiveLayer = {
+          width:resolution.height*perspectiveScale,
+          height:resolution.height*perspectiveScale
+        }
+        //it will calc were the image must to be, inside the perspectiveLayer
+        objectLeft *= perspectiveLayer.width;
+        objectTop *= perspectiveLayer.height;
+        //now add the origin of the perspectiveLayer
+        objectLeft += -(perspectiveLayer.width-resolution.height)*camera.origin.x;
+        objectTop += -(perspectiveLayer.height-resolution.height)*camera.origin.y;
+      }
+
+      //By default values for the textboxes
+      var objectWidth = resolution.width*objectScale*gObject.widthScale;
+      var objectHeight = resolution.height*objectScale*gObject.heightScale;
+
+      if(gObject.textureName!=null){
+        if(gObject.useEngineUnits){
+          objectWidth = texRef.texture.naturalWidth*objectScale*gObject.widthScale*(resolution.height/768);
+          objectHeight = texRef.texture.naturalHeight*objectScale*gObject.heightScale*(resolution.height/768);
+        }else{
+          objectHeight = (texRef.texture.naturalHeight/texRef.texture.naturalWidth)*resolution.width*objectScale*gObject.heightScale;
+        }
+      }
+      res = {
+        id: gObject.id,
+        x : objectLeft,
+        y : objectTop,
+        z : objectZ,
+        base:{
+          x:origin.x + gObject.x,
+          y:origin.y + gObject.y,
+          //z:gObject.z//*accomulated z
+        },
+        sizeInDisplay : testD,
+        width : objectWidth,
+        height : objectHeight
+      }
+      Object.assign(this.dimentionsPack,{[gObject.id]:res});
     }
     //*Build rendering order
     var zRefs = {};
@@ -537,21 +550,25 @@ class RenderEngine extends React.Component{
   }
   renderScene(){
     if(this.isReady){
+      console.log(this.showFps)
       return(
         <Canvas 
-        CELGF={(error)=>this.consol(error)} 
+        CELGF={(er)=>{console.error(er)}} 
         displayResolution={this.engineDisplayRes} 
         id={"renderCanvas"} 
         fps={24} 
         scale={1} 
         showFps={this.showFps}
+        // debugMessage={[
+        //   ()=>{return "x: "+this.camera.position.x},
+        //   ()=>{return "y: "+this.camera.position.y},
+        //   ()=>{return "z: "+this.camera.position.z},
+        //   ()=>{return "usePerspective: "+this.camera.usePerspective},
+        // ]}
         engine={this}
         renderGraphics={(canvas)=>{
           this.canvasRef = canvas;
           canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
-
-          const clientUnitaryHeightPercentageConstant = 100 / canvas.resolutionHeight;
-          const tangencialConstant = this.camera.position.angle;//Uses camera angle
 
           this.noRenderedItemsCount = 0;
 
@@ -560,16 +577,14 @@ class RenderEngine extends React.Component{
             const gObject = this.getObject(availableIdsToRender[index]);
             const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
 
-            const multiply = (!this.camera.usePerspective && !gObject.ignoreParallax) ? this.camera.position.z+1 : 1;
-
-            var objectLeft = this.dimentionsPack[gObject.id].x *multiply;
-            var objectTop = this.dimentionsPack[gObject.id].y *multiply;
-            var objectZ = this.dimentionsPack[gObject.id].z *multiply;
+            var objectLeft = this.dimentionsPack[gObject.id].x;
+            var objectTop = this.dimentionsPack[gObject.id].y;
+            var objectZ = this.dimentionsPack[gObject.id].z;
             
             var testD = this.dimentionsPack[gObject.id].sizeInDisplay;
 
-            var objectWidth = this.dimentionsPack[gObject.id].width *multiply;
-            var objectHeight = this.dimentionsPack[gObject.id].height *multiply;
+            var objectWidth = this.dimentionsPack[gObject.id].width;
+            var objectHeight = this.dimentionsPack[gObject.id].height;
 
             if(!(gObject.opacity == 0)){
                //*part one: global alpha
@@ -593,6 +608,10 @@ class RenderEngine extends React.Component{
                   if(typeof textO == "function"){
                     textO = textO(this);
                   }
+                  if(typeof textO != "string"){
+                    textO = textO.toString();
+                  }
+                  console.warn(textO, typeof textO);
                   texts = wrapText(//TODO: Wrap it until all the text get wraped
                     canvas.context,
                     textO,
@@ -752,67 +771,75 @@ class RenderEngine extends React.Component{
           }
           // console.warn("Objects excluded: ",this.noRenderedItemsCount);
           //*part seven: draw canvas grid
-          if(this.showCanvasGrid){
-            if(this.drawPerspectiveLayersLimits && this.camera.usePerspective){}else{
-              const base = {
-                x: -this.camera.position.x,
-                y: -this.camera.position.y,
-                z: -this.camera.position.z
-              }
-              const grid = {
-                x: base.x,
-                y: base.y,
-                z: base.z
-              }
-
-              const perspectiveDiff = 1-((1/(grid.z-(this.camera.position.z)))-(1))/((1/this.camera.maxZ)-(1));
-              testD = perspectiveDiff;
-              const toAddSize = perspectiveDiff * tangencialConstant*(canvas.resolutionHeight)*this.camera.maxZ;
-              const computedPercentageSize = clientUnitaryHeightPercentageConstant * (toAddSize);
-              const perspectiveScale = computedPercentageSize/100;
-
-              //*recalculate gobject coords
-              var perspectiveLayer = {
-                width:canvas.resolutionHeight,
-                height:canvas.resolutionHeight
-              }
-                //it will calc were the image must to be, inside the perspectiveLayer
-              grid.x *= perspectiveLayer.width;
-              grid.y *= perspectiveLayer.height;
-              //now add the origin of the perspectiveLayer
-              grid.x += -(perspectiveLayer.width-canvas.resolutionHeight)*this.camera.origin.x;
-              grid.y += -(perspectiveLayer.height-canvas.resolutionHeight)*this.camera.origin.y;
-
-              const height = canvas.resolutionHeight;
-
-              canvas.context.beginPath();
-              canvas.context.lineWidth = 1;
-              canvas.context.strokeStyle = "green";
-              //create grid
-              const length = 2
-              for (let line = 0; line < length; line +=.1) {
-                //vertical
-                canvas.context.moveTo(
-                  (height*line) + grid.x,
-                  0 + grid.y
-                );
-                canvas.context.lineTo(
-                  (height*line) + grid.x,
-                  (height*length) + grid.y
-                );
-                //horizontal
-                canvas.context.moveTo(
-                  0 + grid.x,
-                  (height*line) + grid.y
-                );
-                canvas.context.lineTo(
-                  (height*length) + grid.x,
-                  (height*line) + grid.y
-                );
-              }
-              canvas.context.closePath();
-              canvas.context.stroke();
+          if(this.showBounds){
+            var grid = {
+              x: -this.camera.position.x+0.5,
+              y: -this.camera.position.y+0.5,
+              z: (this.camera.usePerspective ? -this.camera.position.z : 0)+0.56
             }
+            const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
+            const perspectiveDiff = 1-((1/(grid.z))-(1))/((1/this.camera.maxZ)-(1));
+            const toAddSize = perspectiveDiff * tangencialConstant*(canvas.resolutionHeight)*this.camera.maxZ;
+            const computedPercentageSize = (100 / canvas.resolutionHeight) * (toAddSize);
+            const perspectiveScale = computedPercentageSize/100;
+
+            //*recalculate gobject coords
+            var perspectiveLayer = {
+              width:canvas.resolutionHeight*perspectiveScale,
+              height:canvas.resolutionHeight*perspectiveScale
+            }
+              //it will calc were the image must to be, inside the perspectiveLayer
+            grid.x *= perspectiveLayer.width;
+            grid.y *= perspectiveLayer.height;
+            //now add the origin of the perspectiveLayer
+            grid.x += -(perspectiveLayer.width-canvas.resolutionHeight)*this.camera.origin.x;
+            grid.y += -(perspectiveLayer.height-canvas.resolutionHeight)*this.camera.origin.y;
+
+            const height = perspectiveLayer.height;
+            const width = height*(canvas.resolutionWidth/canvas.resolutionHeight);
+
+            canvas.context.beginPath();
+            canvas.context.lineWidth = 5*perspectiveScale;
+            canvas.context.strokeStyle = "green";
+
+            canvas.context.moveTo(
+              grid.x,
+              grid.y
+            );
+            canvas.context.lineTo(
+              width + grid.x,
+              grid.y
+            );
+            canvas.context.lineTo(
+              width + grid.x,
+              height + grid.y
+            );
+            canvas.context.lineTo(
+              grid.x,
+              height + grid.y
+            );
+            canvas.context.lineTo(
+              grid.x,
+              grid.y
+            );
+            canvas.context.closePath();
+            canvas.context.stroke();
+
+            canvas.context.beginPath();
+            canvas.context.strokeStyle = "blue";
+            canvas.context.lineWidth = 1*perspectiveScale;
+            canvas.context.moveTo(
+              height+grid.x,
+              grid.y
+            );
+            canvas.context.lineTo(
+              height+grid.x,
+              height+grid.y
+            );
+
+            canvas.context.closePath();
+            canvas.context.stroke();
+            
           }
         }} 
         onLoad={(canvas)=>{
@@ -972,7 +999,6 @@ class RenderEngine extends React.Component{
           id={"triggersTarget"+this.id}
           onMouseDown={(e)=>this.checkTriggers(e,"onHold")}
           onMouseUp={(e)=>{e.preventDefault();this.checkTriggers(e,"onRelease")}}
-          onWheel={(e)=>{this.camera.position.z -=(e.deltaY/1000)}}
           onMouseMove={(e)=>{if(this.mouseListener+(1000/40) < performance.now()){this.mouseListener = performance.now();this.checkTriggers(e,"mouseMove")}}}
         />
       );
@@ -988,27 +1014,6 @@ class RenderEngine extends React.Component{
       );
     }
   }
-  consolMap() {
-    if (!this.state.consol.length == 0) {
-      return (
-        this.state.consol.map((text) => (
-            <div className={"text-["+text.color+"]"}>{text.text}</div>
-        ))
-      )
-    } else {
-      return (null);
-    }
-  }
-  consolRend(){
-    if (!this.state.consol.length == 0) {
-      return(
-        <div className="absolute h-full w-full">
-          <div id="consol" className="bottom-0 absolute text-white w-full font-['Lucida_Console'] text-xs">
-            {this.consolMap()}
-          </div>
-        </div>
-      )}
-  }
   render(){
     return(
       <div className="relative w-full h-full mx-auto my-auto" id={'display'+this.id}>
@@ -1016,7 +1021,6 @@ class RenderEngine extends React.Component{
           <div className="relative w-full h-full mx-auto my-auto" id={'engineDisplay'+this.id}>
             <div className="absolute w-full h-full">
               {this.engineDisplay()}
-              {this.consolRend()}
               {this.triggersTarget()}
             </div>
           </div>

@@ -111,7 +111,8 @@ class GraphObject{
     //z
     this.#z = "z" in graphInfo ? parseFloat(graphInfo.z) : 0;
     //ignoreParallax forces the object to ignore the camera parallax movement
-    this.#ignoreParallax = "z" in graphInfo ? ("ignoreParallax" in graphInfo? graphInfo.ignoreParallax:false) : true;
+    this.#ignoreParallax = "z" in graphInfo ? true : false;
+    this.#ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this.#ignoreParallax
     //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
     //Todo: force the engine to use this when it's a text object.
     this.#widthScale = "widthScale" in graphInfo ? graphInfo.widthScale: 1;
@@ -370,6 +371,7 @@ class GraphObject{
   }
 
   get rotate() {return (this.#rotate*180)/Math.PI;}
+  set rotateRad(x) {this.#rotate = x}
   get rotateRad() {return this.#rotate;}
   set rotate(x) {this.#rotate = parseFloat(x)*Math.PI/180;}
 

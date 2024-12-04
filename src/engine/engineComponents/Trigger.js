@@ -66,7 +66,7 @@ class Trigger{
 }
 
 class KeyboardTrigger{
-  #keys
+  #keys = "";
   #enabled
 
   #onPress

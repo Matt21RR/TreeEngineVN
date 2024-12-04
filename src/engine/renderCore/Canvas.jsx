@@ -256,6 +256,28 @@ class Canvas extends React.Component{
         context.globalAlpha = actualGlobalAlpha;
         context.globalCompositeOperation = "source-over";
       }
+      if("debugMessage" in this.props){
+        var debug = this.props.debugMessage
+        if(typeof debug == "string" || typeof debug == "function"){
+          debug = [debug]
+        }
+        context.globalCompositeOperation = "darker";
+        context.filter = 'none';
+        context.globalAlpha = 1;
+        context.beginPath();
+        context.fillStyle = "orange";
+        context.font = (12*this.scale)+"px Terminal";
+        debug.forEach((t,i)=>{
+          if(typeof t == "function"){
+            t = t()
+          }
+          context.fillText(t, 5, 15*(i+1)*this.scale);
+        })
+        context.closePath();
+        context.fill();
+        context.globalAlpha = actualGlobalAlpha;
+        context.globalCompositeOperation = "source-over";
+      }
     }
     var then = performance.now();
     var fpsArray = [], fpsAdjustValue = 1.01,promedio = this.fps;

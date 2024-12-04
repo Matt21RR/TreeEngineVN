@@ -1,7 +1,7 @@
 import React from 'react';
 import {Howl} from 'howler';
 import $ from "jquery";
-import { IconButton } from '../components/buttons';
+import { IconButton } from './components/Buttons';
 
 class AudioPlayer extends React.Component{
   constructor(props){

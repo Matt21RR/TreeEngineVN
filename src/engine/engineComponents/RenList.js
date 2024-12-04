@@ -14,13 +14,19 @@ class RenList{
     return this.objects.length;
   }
   push(graphObject = new Object()){
-    if("id" in graphObject){
-      if(this.exist(graphObject.id)){
-        console.warn("Element with "+ graphObject.id + " id already exists");
-        return;
-      }
+try {
+  if("id" in graphObject){
+    if(this.exist(graphObject.id)){
+      console.warn("Element with "+ graphObject.id + " id already exists");
+      return;
     }
-    this.objects.push(graphObject);
+  }
+  this.objects.push(graphObject);
+} catch (error) {
+  console.log(graphObject);
+  debugger;
+}
+
   }
   remove( objectId = new String()){
     const graphIds = this.objects.map(e=>e.id);

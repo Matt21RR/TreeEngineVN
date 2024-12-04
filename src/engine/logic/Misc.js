@@ -60,4 +60,7 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight,center = false) {
   
   return lineArray;
 }
-export {mobileCheck,wrapText}
+function random(max,min=0){
+    return (Math.random() * (max - min + 1)) + min;
+}
+export {mobileCheck,wrapText,random}
