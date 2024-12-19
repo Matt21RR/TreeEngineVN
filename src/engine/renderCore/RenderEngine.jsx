@@ -15,6 +15,7 @@ import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim";
 import { CodedRoutine } from "../engineComponents/CodedRoutine";
 import { Chaos } from "./ChaosInterpreter";
+import { generateCalculationOrder } from "./RenderingOrder";
 
 /**
  * RenderEngine - By Matt1RR\n
@@ -101,7 +102,6 @@ class RenderEngine extends React.Component{
     //Debug values
     this.noRenderedItemsCount = 0;
 
-    this.showObjectsInfo = false;
     this.drawObjectLimits = true;
     this.showBounds = false;
     this.drawTriggers = false;
@@ -253,6 +253,21 @@ class RenderEngine extends React.Component{
     return res;
   }
 
+  /**
+   * 
+   * @param {*} text 
+   * @returns {string}
+   */
+  getStr(text){
+    if(typeof text == "function"){
+      text = text(this);
+    }
+    if(typeof text != "string"){
+      text = text.toString();
+    }
+    return text;
+  }
+
   componentDidCatch(error,info){
     console.error("RenderEngine several crash!!");
     console.warn(error);
@@ -380,39 +395,11 @@ class RenderEngine extends React.Component{
      this.narration = "";
   }
 
-  /**
-   * Genera el orden de renderización de los elementos en pantalla tomando en cuenta el valor z
-   */
-  generateCalculationOrder(){
-    var ordered = 0;
-    var order = [];
-    var dictionary = [];
-    while (ordered < this.graphArray.length) {
-      this.graphArray.ids().forEach(id=>{
-        if(dictionary.indexOf(id) == -1){
-          const gObject = this.getObject(id);
-          const parent = gObject.parent;
-          if(parent == ""){
-            order.push({id:id,weight:0,z:gObject.z});
-            gObject.accomulatedZ = gObject.z;
-            dictionary.push(id);
-            ordered++;
-          }
-          if(dictionary.indexOf(parent) != -1){
-            if(this.getObject(parent).pendingRenderingRecalculation){
-              this.graphArray.get(id).pendingRenderingRecalculation = true;
-            }
-            order.push({id:id,weight:order[dictionary.indexOf(parent)].weight +1});
-            gObject.accomulatedZ = gObject.z + this.getObject(parent).accomulatedZ;
-            dictionary.push(id);
-            ordered++;
-          }
-
-        }
-      });
-    }
-    this.calculationOrder = order;
+  play(songId){
+    this.soundsList.get(songId).sound.play();
   }
+
+
   arrayiseTree(){
     const calculationOrder = this.calculationOrder;
     var base ={};
@@ -427,10 +414,6 @@ class RenderEngine extends React.Component{
       arr = arr.concat(base[weight]);
     });
     return arr;
-  }
-
-  play(songId){
-    this.soundsList.get(songId).sound.play();
   }
   generateObjectsDisplayDimentions(){
     let res;
@@ -453,11 +436,9 @@ class RenderEngine extends React.Component{
       };
 
       // const addition = !this.camera.usePerspective && !gObject.ignoreParallax && gObject.parent == "" ? 
-      let addition;
+      let addition = {x:0,y:0};
       if (!camera.usePerspective && gObject.ignoreParallax){
         addition = {x:-camera.position.x+.5, y:-camera.position.y+.5};
-      }else{
-        addition = {x:0,y:0};
       }
 
       var objectScale = gObject.scale;
@@ -469,19 +450,17 @@ class RenderEngine extends React.Component{
 
       // if(camera.usePerspective && !gObject.ignoreParallax){
       if(camera.usePerspective && !gObject.ignoreParallax){
-        if(typeof gObject.text == "function"){
-          console.log(gObject.text, gObject.ignoreParallax);
-        }
         const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
 
         objectLeft = gObject.x + origin.x - this.camera.position.x+0.5;
         objectTop = gObject.y + origin.y - this.camera.position.y+0.5;
         objectZ = gObject.accomulatedZ - this.camera.position.z+0.56;
+
         const perspectiveDiff = 1-((1/(objectZ))-(1))/((1/camera.maxZ)-(1));
         const toAddSize = perspectiveDiff * tangencialConstant*(resolution.height)*camera.maxZ;
         const computedPercentageSize = (100 / resolution.height) * (toAddSize);
         const perspectiveScale = computedPercentageSize/100;
-        objectScale *= computedPercentageSize/100;
+        objectScale *= perspectiveScale;
         testD = perspectiveScale;
 
         //*recalculate gObject coords
@@ -501,7 +480,7 @@ class RenderEngine extends React.Component{
       var objectWidth = resolution.width*objectScale*gObject.widthScale;
       var objectHeight = resolution.height*objectScale*gObject.heightScale;
 
-      if(gObject.textureName!=null){
+      if(texRef != null){
         if(gObject.useEngineUnits){
           objectWidth = texRef.texture.naturalWidth*objectScale*gObject.widthScale*(resolution.height/768);
           objectHeight = texRef.texture.naturalHeight*objectScale*gObject.heightScale*(resolution.height/768);
@@ -550,7 +529,6 @@ class RenderEngine extends React.Component{
   }
   renderScene(){
     if(this.isReady){
-      console.log(this.showFps)
       return(
         <Canvas 
         CELGF={(er)=>{console.error(er)}} 
@@ -576,6 +554,7 @@ class RenderEngine extends React.Component{
           for (let index = 0; index < this.graphArray.length; index++) {
             const gObject = this.getObject(availableIdsToRender[index]);
             const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
+            const strRef = gObject.text == null ? null : this.getStr(gObject.text);
 
             var objectLeft = this.dimentionsPack[gObject.id].x;
             var objectTop = this.dimentionsPack[gObject.id].y;
@@ -600,21 +579,12 @@ class RenderEngine extends React.Component{
               //with testD > 0.003 we ensure the very far of|behind the camera elements won't be rendered
               if(testD>0.003){
                 let texts;
-                if(gObject.text != null){
+                if(strRef != null){
                   canvas.context.font = (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700)*testD)+"px "+gObject.font;
                   // console.warn(canvas.context.font);
-
-                  var textO = gObject.text;
-                  if(typeof textO == "function"){
-                    textO = textO(this);
-                  }
-                  if(typeof textO != "string"){
-                    textO = textO.toString();
-                  }
-                  console.warn(textO, typeof textO);
                   texts = wrapText(//TODO: Wrap it until all the text get wraped
                     canvas.context,
-                    textO,
+                    strRef,
                     (gObject.margin*objectWidth) + objectLeft - (objectWidth/2),
                     (gObject.margin*objectHeight) + objectTop + (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700)*testD) - (objectHeight/2),
                     objectWidth - (gObject.margin*objectWidth)*2,
@@ -634,7 +604,7 @@ class RenderEngine extends React.Component{
                     objectTop); // sets scale and origin
                   canvas.context.rotate(gObject.rotateRad);
 
-                  if(gObject.text != null){
+                  if(strRef != null){
                     if(gObject.boxColor != "transparent"){
                       canvas.context.fillStyle = gObject.boxColor;
                       canvas.context.fillRect(
@@ -653,7 +623,7 @@ class RenderEngine extends React.Component{
                       );
                     });
                   }
-                  if(gObject.textureName!=null){
+                  if(texRef != null){
                     canvas.context.drawImage(
                       texRef.getTexture(gObject),
                       -(objectWidth)/2,
@@ -666,7 +636,7 @@ class RenderEngine extends React.Component{
                   canvas.context.restore();
                 }else{
                 //*part three: draw image
-                  if(gObject.text != null){
+                  if(strRef != null){
                     if(gObject.boxColor != "transparent"){
                       canvas.context.fillStyle = gObject.boxColor;
                       canvas.context.fillRect(
@@ -674,7 +644,7 @@ class RenderEngine extends React.Component{
                         objectTop-(objectHeight/2),
                         objectWidth,
                         objectHeight
-                        );
+                      );
                     }
                     canvas.context.fillStyle = gObject.color;
                     texts.forEach((text) => {
@@ -685,13 +655,14 @@ class RenderEngine extends React.Component{
                       );
                     });
                   }
-                  if(gObject.textureName!=null){
+                  if(texRef != null){
                     canvas.context.drawImage(
                       texRef.getTexture(gObject),
                       objectLeft-(objectWidth/2),
                       objectTop-(objectHeight/2),
                       objectWidth,
-                      objectHeight);
+                      objectHeight
+                    );
                   }
                 }
               }else{
@@ -736,37 +707,31 @@ class RenderEngine extends React.Component{
                   objectHeight);
                 canvas.context.globalCompositeOperation = "source-over";
               }
-              if(this.showObjectsInfo){
-                Object.keys(gObject.dump()).forEach((element,index) => {
-                  canvas.context.fillText(
-                    element +" : "+gObject[element],
-                    objectLeft,
-                    (objectTop) +index*15 +15);
-                });
-              }
             }
             //* DRAW TRIGGERS
-            if(this.drawTriggers && this.triggers.objects.filter(e=>{return e.enabled}).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
-              canvas.context.strokeStyle = "blue";
-              canvas.context.fillStyle = "blue";
-              canvas.context.globalAlpha = .3;
-              canvas.context.lineWidth = 3;
-              canvas.context.setLineDash([4, 4]);
+            if(this.drawTriggers){
+              if(this.triggers.objects.filter(e=>{return e.enabled}).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
+                canvas.context.strokeStyle = "blue";
+                canvas.context.fillStyle = "blue";
+                canvas.context.globalAlpha = .3;
+                canvas.context.lineWidth = 3;
+                canvas.context.setLineDash([4, 4]);
+                  
+                canvas.context.fillRect(
+                  objectLeft-(objectWidth/2),
+                  objectTop-(objectHeight/2),
+                  objectWidth*canvas.scale,
+                  objectHeight*canvas.scale);
+                canvas.context.globalAlpha = 1;
+                canvas.context.strokeRect(
+                  objectLeft-(objectWidth/2),
+                  objectTop-(objectHeight/2),
+                  objectWidth*canvas.scale,
+                  objectHeight*canvas.scale);
                 
-              canvas.context.fillRect(
-                objectLeft-(objectWidth/2),
-                objectTop-(objectHeight/2),
-                objectWidth*canvas.scale,
-                objectHeight*canvas.scale);
-              canvas.context.globalAlpha = 1;
-              canvas.context.strokeRect(
-                objectLeft-(objectWidth/2),
-                objectTop-(objectHeight/2),
-                objectWidth*canvas.scale,
-                objectHeight*canvas.scale);
-              
-              canvas.context.setLineDash([]);
-              canvas.context.fillStyle = "";
+                canvas.context.setLineDash([]);
+                canvas.context.fillStyle = "";
+              }
             }
           }
           // console.warn("Objects excluded: ",this.noRenderedItemsCount);
@@ -891,7 +856,7 @@ class RenderEngine extends React.Component{
           this.codedRoutines.objects.forEach(element => {
             element.run(this);
           });
-          this.generateCalculationOrder();
+          this.calculationOrder = generateCalculationOrder(this.graphArray);
           this.generateObjectsDisplayDimentions();
         }}
         />

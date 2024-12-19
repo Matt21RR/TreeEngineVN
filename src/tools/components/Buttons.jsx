@@ -519,6 +519,9 @@ class InputList extends React.Component {
   render() {
     let placeholder = (typeof this.props.placeholder == 'string' ? this.props.placeholder : 'Seleccionar');
     let textValue = this.selected != null ? this.props.options[this.selected] : placeholder;
+    if(this.selected == -1){
+      textValue = "";
+    }
     let height = "h-[28px] ";
     let contStyle ="contStyle" in this.props ? this.props.contStyle : " w-[217px]"
     let fatherStyle = typeof this.props.fatherStyle == 'string' ? ' ' + this.props.fatherStyle + ' ' : '';

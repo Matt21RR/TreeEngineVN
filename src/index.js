@@ -43,8 +43,8 @@ const runEditor = (engine = new RenderEngine)=>{
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    {/* <Test/> */}
-    <div className='absolute h-full w-full'>
+    <Test/>
+    {/* <div className='absolute h-full w-full'>
       <RenderEngine 
         aspectRatio="undefined"
         avoidResizeBlackout
@@ -60,19 +60,9 @@ root.render(
             Girar: K, L
             <br>
             Disparar: Espacio
-            `).then(()=>{game(engine);})
-          // runEditor(engine);
-          // engine.loadTexture("https://cataas.com/cat","cat")
-          //   .then(()=>{
-          //     engine.graphArray.push(new engine.graphObject({
-          //       texture:"cat",
-          //       enabled:true,
-          //       x:0.5,
-          //       y:0.5
-          //     }));
-          //   });          
+            `).then(()=>{game(engine);})      
         }}/>
-    </div>
+    </div> */}
   </React.StrictMode>
 );
 

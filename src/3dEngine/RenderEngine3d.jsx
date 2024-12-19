@@ -9,7 +9,7 @@ import { GraphObject } from "../engineComponents/GraphObject";
 import { RenList } from "../engineComponents/RenList";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger";
 
-import { mobileCheck, wrapText } from "../logic/Misc";
+import { mobileCheck} from "../logic/Misc";
 import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim";
 import { CodedRoutine } from "../engineComponents/CodedRoutine";
@@ -27,7 +27,6 @@ class RenderEngine3d extends React.Component{
     if(this.props){
       this.isReady = "clientSideResources" in this.props ? true : false;
       this.aspectRatio = "aspectRatio" in this.props ? this.props.aspectRatio : "16:9";
-      this.showFps = "showFps" in this.props ? true : false;
     }
     this.engineDisplayRes = {width:0,height:0};
     this.resizeTimeout = 0;
@@ -42,9 +41,7 @@ class RenderEngine3d extends React.Component{
     this.actualSceneId = "";//Guardar esto
 
     this.constructors = {
-      graphObject : GraphObject,
       animation : Animation,
-      textureAnim : TextureAnim,
       trigger: Trigger,
       keyboardTrigger : KeyboardTrigger,
       codedRoutine : CodedRoutine,
@@ -54,13 +51,7 @@ class RenderEngine3d extends React.Component{
 
     this.codedRoutine = CodedRoutine;
 
-    this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
     this.anims = new RenList();
-    this.triggers = new RenList();
-    this.gameVars = {};//Y guardar esto tambien
-    this.texturesList = new RenList();
-    this.textureAnims = new RenList();//gifs-like
-    this.soundsList = new RenList();
 
     this.keyboardTriggers = new RenList();
     this.pressedKeys = [];
@@ -70,47 +61,15 @@ class RenderEngine3d extends React.Component{
     this.flags = new Object();
     this.routineNumber = -1;
     this.continue = true;
-    //Dialogs
-    this.voiceFrom = "";
-    this.paragraphNumber = 0;
-    this.paragraph = "";
-    this.dialogNumber = 0;
-    this.dialog = [];
-    this.narration = "";
 
     //Rendering-related stuff
     this.camera = {
       id:"engineCamera",
-      maxZ:10000,
       origin:{x:.5,y:.5},
-      position:{x:.5,y:.5,z:0,angle:0},
-      usePerspective:false
+      position:{x:.5,y:.5,z:0},
     }
-    this.prevCamera = structuredClone(this.camera);
 
-    this.calculationOrder = []; //for di
-
-    this.dimentionsPack = {};
-    this.renderingOrderById = [];
-
-    //MOUSE
-    this.mouseListener = 0;
-    this.mouse = {x:0,y:0,origin:null};
-
-    //Debug values
-    this.noRenderedItemsCount = 0;
-
-    this.showObjectsInfo = false;
-    this.drawObjectLimits = true;
-    this.showBounds = false;
-    this.drawTriggers = false;
-
-    this.objectsToDebug = [];//id of the object
-    this.setMouseOrigin = false;
-    window.setUsePerspective = (x) =>{this.camera.usePerspective = x;}
-    window.setCameraPerspectiveCoords = (x,y) =>{this.camera.position = {y:y,x:x};}
-
-    window.engineRef = this;
+    window.engine3dRef = this;
   }  
   componentDidMount(){
     if (!this.mounted) {
@@ -196,78 +155,10 @@ class RenderEngine3d extends React.Component{
       })
     })
   }
-  aspectRatioCalc(aspectRatio = this.aspectRatio) {
-    const w = document.getElementById("display"+this.id);
-
-    if (aspectRatio != "undefined") {
-      let newWidth = Math.floor((w.offsetHeight / (aspectRatio.split(":")[1] * 1)) * (aspectRatio.split(":")[0] * 1));
-      let newHeight = Math.floor((w.offsetWidth / (aspectRatio.split(":")[0] * 1)) * (aspectRatio.split(":")[1] * 1));
-      if (newWidth <= w.offsetWidth) {
-        newHeight = w.offsetHeight;
-      } else {
-        newWidth = w.offsetWidth;
-      }
-      gsap.to(document.getElementById("engineDisplay"+this.id), 0, 
-        { 
-          width : newWidth + "px", 
-          height : newHeight + "px"
-        } 
-      );
-      this.engineDisplayRes = {width:newWidth,height:newHeight};
-    } else {
-      this.engineDisplayRes = {width:w.offsetWidth,height:w.offsetHeight};
-      document.getElementById("engineDisplay"+this.id).style.width = w.offsetWidth+"px";
-      document.getElementById("engineDisplay"+this.id).style.height = w.offsetHeight+"px";
-    }
-    this.forceUpdate();  
-  }
   componentDidCatch(error,info){
     console.error("RenderEngine3d several crash!!");
     console.warn(error);
     console.log(info);
-  }
-  loadSound(indexPath){
-    const self = this;
-    return new Promise(function (resolve, reject) {
-      if(indexPath.indexOf(".")==0){
-        indexPath = indexPath.substring(1);
-      }
-      fetch(indexPath)
-        .then(res =>{return res.json()})
-        .then(soundsList=>{
-          if(Object.keys(soundsList).length > 0){
-            Promise.all(Object.keys(soundsList).map(sndName=>
-              new Promise(resolveFile=>{
-                fetch(self.projectRoot + "snd/" + soundsList[sndName].replace("./","")).then(res=>res.blob()).then( blob =>{
-                  var reader = new FileReader() ;
-                  reader.onload = function(){ 
-                    resolveFile({Base64:this.result,ext:soundsList[sndName].split('.').at(-1),id:sndName}) 
-                  };
-                  reader.readAsDataURL(blob) ;
-                });
-              })
-            )).then(sounds => {
-              sounds.forEach(snd => {
-                var sound = new Howl({
-                  src: [snd.Base64],
-                  format: snd.ext
-                });
-                self.soundsList.push({sound:sound,id:snd.id})
-              });
-              resolve();
-            }).catch(reason =>{
-              console.error("===============================");
-              console.error("Error during sounds load phase:");
-              console.error(reason);
-              console.error("===============================");
-            });
-          }else{
-            console.warn("No sounds in this file: "+indexPath);
-            if(typeof fun == "function")
-                resolve();
-          }
-        })
-    })
   }
   dataCleaner(){
      //reset values
@@ -298,9 +189,6 @@ class RenderEngine3d extends React.Component{
      this.dialogNumber = 0;
      this.dialog = [];
      this.narration = "";
-  }
-  play(songId){
-    this.soundsList.get(songId).sound.play();
   }
   renderScene(){
     if(this.isReady){
@@ -438,9 +326,6 @@ class RenderEngine3d extends React.Component{
                     console.log("Error on trigger execution:",error,this.triggers.get(triggerId))
                   }
                 });
-              }
-              if(this.setMouseOrigin){
-                this.mouse.origin = targetGraphObjectId;
               }
               break;
             }
