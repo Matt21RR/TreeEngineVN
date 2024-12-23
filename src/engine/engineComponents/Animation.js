@@ -30,28 +30,28 @@ class Animation{
   #timeline
 
   constructor(aInfo = new Object()){
-    this.#id = "id" in aInfo ? aInfo.id : "undefined";
-    this.#relatedTo = "relatedTo" in aInfo ? aInfo.relatedTo:null; //the gO related to the animation
-    this.#ease = "ease" in aInfo ? aInfo.ease : "linear";
-    this.#done = "done" in aInfo ? aInfo.done : false;
+    this.#id = aInfo.id || "undefined";
+    this.#relatedTo = aInfo.relatedTo || null; //the gO related to the animation
+    this.#ease = aInfo.ease || "linear";
+    this.#done = aInfo.done || false;
     this.#loops = "loops" in aInfo ? aInfo.loops*(aInfo.loopback?2:1) : 1;//by default 1 loop
     this.#reverse = "reverse" in aInfo ? 1 : 0;//if the animation are played in reverse
     this.#reversing = "reverse" in aInfo ? 1 : 0;//control Var
     this.#looped = 1;
-    this.#infinite = "infinite" in aInfo ? aInfo.infinite : false;//infinite looping
+    this.#infinite = aInfo.infinite || false;//infinite looping
     this.#loopback = "loopback" in aInfo ? 1 : 0;//repeat the animation in reverse after end
-    this.#duration = "duration" in aInfo ? aInfo.duration : 0;
+    this.#duration = aInfo.duration || 0;
     this.#elapsed = 0;
     this.#tElapsed = 0;//total time elapsed
-    this.#enabled = "enabled" in aInfo ? aInfo.enabled : false;
+    this.#enabled = aInfo.enabled || false;
     this.#pendingTimersFix = false;
     this.#startedAt = NaN;
     this.#dStartedAt = NaN;
-    this.#delay = "delay" in aInfo ? aInfo.delay : NaN;
-    this.#to = "to" in aInfo ? aInfo.to : {};
-    this.#onComplete = "onComplete" in aInfo ? aInfo.onComplete : null;
+    this.#delay = aInfo.delay || NaN;
+    this.#to = aInfo.to || {};
+    this.#onComplete = aInfo.onComplete || null;
     
-    this.#keyframes = "keyframes" in aInfo ? aInfo.keyframes : {};
+    this.#keyframes = aInfo.keyframes || {};
     this.#keyFrameNumber =  -1;
     this.#timeline = [];//controla los tiempos de cada frame de forma independiente
   }

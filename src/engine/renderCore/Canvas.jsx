@@ -6,19 +6,19 @@ import { canvasInstances } from "../logic/canvasInstaces";
 class Canvas extends React.Component{
   constructor(props){
     super(props);
-    this.CELGF = this.props.CELGF != undefined ? this.props.CELGF : (error)=>console.error(error);
+    console.log(props);
+    this.CELGF = props.CELGF || ((error)=>console.error(error));
     this.id = "canvas"+performance.now();
     this.loopId = "";
     this.mounted = false;
 
-    this.renderEngine = "engine" in this.props ? this.props.engine:{};
+    this.renderEngine = props.engine || {};
 
     this.windowHasFocus = true;
 
-    this.static = this.props.static ? this.props.static : false;
-    this.fps = this.props.fps ? (this.props.fps > 0 ? this.props.fps : 24) : 24;//suggesed max fps = 24
+    this.fps = props.fps ? (props.fps > 0 ? props.fps : 24) : 24;//suggesed max fps = 24
     this.fpsBackup = this.fps;
-    this.scale = this.props.scale ? this.props.scale : 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
+    this.scale = props.scale || 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
 
     this.interval = Math.round(1000 / this.fps);
 
@@ -28,20 +28,20 @@ class Canvas extends React.Component{
     this.element = React.createRef();
 
     this.stopEngine = false;
-    this.resizeTimeout = 0; 
     this.engineThreads = 0;
     this.engineKilled = false;
 
-    this.onLoad = this.props.onLoad ? this.props.onLoad : (canvas)=>{}//Do something after the canvas params have been set
-    this.onResize = this.props.onResize ? this.props.onResize : (canvas)=>{}//Do something after the canvas have been resized
-    this.animateGraphics = this.props.animateGraphics ? this.props.animateGraphics : (canvas)=>{}
-    this.renderGraphics = this.props.renderGraphics ;
+    this.onLoad = props.onLoad || ((canvas)=>{})//Do something after the canvas params have been set
+    this.onResize = props.onResize || ((canvas)=>{})//Do something after the canvas have been resized
+    this.animateGraphics = props.animateGraphics || ((canvas)=>{})
+    this.renderGraphics = props.renderGraphics ;
 
-    this.afterEffects = this.props.afterEffects ? this.props.afterEffects : (canvas)=>{}
+    this.afterEffects = props.afterEffects || ((canvas)=>{})
     
 
     //*Debug
-    this.showFps = this.props.showFps;
+    this.showFps = props.showFps || false;
+    console.log(this.showFps,this.renderGraphics)
     this.animatingElapsed = 0;
 
     this.setFps = (x) => { 
@@ -52,8 +52,6 @@ class Canvas extends React.Component{
       this.interval = Math.floor(1000 / x); 
       if (!this.stopEngine) 
         this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")}); 
-
-      // console.log("setted to: "+x)
     }
     window.setScale = (x) => { this.scale = x;
       const canvas = this.element.current;
@@ -83,13 +81,13 @@ class Canvas extends React.Component{
     if (!this.mounted) { 
       this.mounted = true;
       //check if a CELGF was provided
-      if(this.props.CELGF == undefined){
+      if(!this.props.CELGF){
         console.warn("a CELGF - Critical Error Log Graphic Interface, wasn't provided");
         console.warn("fallbacking to console output")
       }
 
       //Check if a hardcoded id was asigned
-      if(this.props.id == undefined){
+      if(!this.props.id){
         this.CELGF("Critical error");
         this.CELGF("hardcoded id wasn't provided");
         return;
@@ -256,7 +254,7 @@ class Canvas extends React.Component{
         context.globalAlpha = actualGlobalAlpha;
         context.globalCompositeOperation = "source-over";
       }
-      if("debugMessage" in this.props){
+      if(this.props.debugMessage){
         var debug = this.props.debugMessage
         if(typeof debug == "string" || typeof debug == "function"){
           debug = [debug]

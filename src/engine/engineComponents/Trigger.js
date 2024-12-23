@@ -13,16 +13,18 @@ class Trigger{
   constructor(tInfo){
     if(!("id" in tInfo))
       throw new Error("Trying to create a Trigger without id");
+    if(!("relatedTo" in tInfo))
+      throw new Error("Trying to create a Trigger without the graphObject id that will be related to");
 
     this.#id = tInfo.id;
-    this.#relatedTo = "relatedTo" in tInfo ? tInfo.relatedTo : "Keyboard";
-    this.#enabled = "enabled" in tInfo ? tInfo.enabled : true;
+    this.#relatedTo =   tInfo.relatedTo;
+    this.#enabled =     tInfo.enabled || true;
     //if superposition is true the engine will ignore the graphObjects that are over the graphobject related to the trigger
     //superposition: tInfo.superposition != undefined ? tInfo.superposition : false,
-    this.#onHold = "onHold" in tInfo ? tInfo.onHold : null;
-    this.#onRelease = "onRelease" in tInfo ? tInfo.onRelease : null;
-    this.#onEnter = "onEnter" in tInfo ? tInfo.onEnter : null;
-    this.#onLeave = "onLeave" in tInfo ? tInfo.onLeave : null;
+    this.#onHold =      tInfo.onHold || null;
+    this.#onRelease =   tInfo.onRelease || null;
+    this.#onEnter =     tInfo.onEnter || null;
+    this.#onLeave =     tInfo.onLeave || null;
   }
 
   get id(){return this.#id}
@@ -75,10 +77,10 @@ class KeyboardTrigger{
 
   constructor(tInfo){
     this.#keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
-    this.#enabled = "enabled" in tInfo ? tInfo.enabled : true;
-    this.#onPress = "onPress" in tInfo ? tInfo.onPress : null;
-    this.#onHold = "onHold" in tInfo ? tInfo.onHold : null;
-    this.#onRelease = "onRelease" in tInfo ? tInfo.onRelease : null;
+    this.#enabled =     tInfo.enabled || true;
+    this.#onPress =     tInfo.onPress || null;
+    this.#onHold =      tInfo.onHold || null;
+    this.#onRelease =   tInfo.onRelease || null;
   }
 
   get id(){return this.#keys.join(" ")}

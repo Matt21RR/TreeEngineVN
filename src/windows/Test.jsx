@@ -59,9 +59,8 @@ class Test extends React.Component{
 
     Object.keys(kTDef).forEach(keyDef => {
       kTDef[keyDef].keys = keyDef;
-      console.log(kTDef[keyDef]);
+      // console.log(kTDef[keyDef]);
       this.engine.keyboardTriggers.push(new KeyboardTrigger(kTDef[keyDef]));
-      console.log(this.engine);
     });
     this.forceUpdate();
   }
@@ -78,7 +77,7 @@ class Test extends React.Component{
           },
           engine:{
             title:"Redengine",
-            content:<RenderEngine setEngine={(engine)=>{this.engine=engine; window.terminal = (code) =>{ code(engine); }; this.editionKeys(); env.forceUpdate();}}/>
+            content:<RenderEngine showFps setEngine={(engine)=>{this.engine=engine; window.terminal = (code) =>{ code(engine); }; this.editionKeys(); env.forceUpdate();}}/>
           },
           triggers:{
             title:"Triggers en escena",

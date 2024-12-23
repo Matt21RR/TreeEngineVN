@@ -18,18 +18,23 @@ import { Chaos } from "./ChaosInterpreter";
 import { generateCalculationOrder } from "./RenderingOrder";
 
 /**
- * RenderEngine - By Matt1RR\n
- * clientSideResources (as flag) = The engine won't look for a server to get the game resources
+ * aaaaa
+ * 
+ * @class RenderEngine
+ * @param {boolean} [props.repeat=false] clientSideResources (as flag) = The engine won't look for a server to get the game resources
+ * @param {string} props.aspectRatio - Set aspect ratio (default 16:9)
+ * 
  */
 class RenderEngine extends React.Component{
   constructor(props){
     super(props);
     this.id = "rengine" + String(window.performance.now()).replaceAll(".","");
     this.projectRoot = "";
-    if(this.props){
-      this.isReady = "clientSideResources" in this.props ? true : false;
-      this.aspectRatio = "aspectRatio" in this.props ? this.props.aspectRatio : "16:9";
-      this.showFps = "showFps" in this.props ? true : false;
+    if(props){
+      this.isReady = props.clientSideResources || false;
+      this.aspectRatio = props.aspectRatio || "16:9";
+      this.showFps = props.showFps || false;
+      this.developmentDeviceHeight = props.developmentDeviceHeight || window.screen.height;
     }
     this.engineDisplayRes = {width:0,height:0};
     this.resizeTimeout = 0;
@@ -482,8 +487,8 @@ class RenderEngine extends React.Component{
 
       if(texRef != null){
         if(gObject.useEngineUnits){
-          objectWidth = texRef.texture.naturalWidth*objectScale*gObject.widthScale*(resolution.height/768);
-          objectHeight = texRef.texture.naturalHeight*objectScale*gObject.heightScale*(resolution.height/768);
+          objectWidth = texRef.texture.naturalWidth*objectScale*gObject.widthScale*(resolution.height/this.developmentDeviceHeight);
+          objectHeight = texRef.texture.naturalHeight*objectScale*gObject.heightScale*(resolution.height/this.developmentDeviceHeight);
         }else{
           objectHeight = (texRef.texture.naturalHeight/texRef.texture.naturalWidth)*resolution.width*objectScale*gObject.heightScale;
         }
