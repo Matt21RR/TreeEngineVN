@@ -55,7 +55,7 @@ class WindowsEnvironment extends React.Component{
   }
   renderTaskBar(){
     return(
-      <div className="absolute top-0 left-0 h-full min-w-[3rem] bg-[#2f2f2fba] flex flex-col">
+      <div className="relative h-full min-w-[3rem] bg-[#2f2f2fba] flex flex-col">
         {this.minimizedTable.map(contentId=>{return (
           <BaseButton
             action={()=>{this.minimizedTable.splice(this.minimizedTable.indexOf(contentId),1);this.forceUpdate();}}
@@ -70,9 +70,14 @@ class WindowsEnvironment extends React.Component{
   }
   render(){
     return(
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden bg-black">
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+        <div className="absolute top-0 left-0 h-full w-full bg-[#2f2f2fba] flex">
+          {this.renderTaskBar()}
+          <div className="grow h-full">
+            {this.props.mainContent}
+          </div>
+        </div>
         {this.renderWindows()}
-        {this.renderTaskBar()}
       </div>
     );
   }

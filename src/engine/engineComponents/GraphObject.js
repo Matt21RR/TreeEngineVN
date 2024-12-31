@@ -1,8 +1,8 @@
+import { lambdaConverter } from "../logic/Misc"
 import { RenderEngine } from "../renderCore/RenderEngine"
 
 class GraphObject{
   #enabled //TODO: use I'T
-  #info //Convenient var to storage info related to this graphObject: ex. info:{name:Chara Newman, age:22}
 
   #text
   #center
@@ -12,7 +12,6 @@ class GraphObject{
   #boxColor
   #margin
 
-  #texture //unused
   #textureName
 
   #id
@@ -41,8 +40,6 @@ class GraphObject{
   #heightScale
   #rotate
 
-
-
   #ignoreParallax
 
   #states = new States(this);
@@ -50,26 +47,61 @@ class GraphObject{
 
   #useEngineUnits
 
-  #type
-
   #parent
   
   #accomulatedZ //Engine related var, dont changeit through a gamescript
 
-  #engineReference = new RenderEngine();
-
   #getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
-    const propertyNames = Object.keys(propertyDescriptors);
+    const propertyNames = Object.keys(this.dataType);
     const atributesNames = propertyNames.filter(key =>{return "get" in propertyDescriptors[key]});
     return atributesNames;
   }
 
-  constructor(graphInfo = new Object()){
-    this.#enabled =         graphInfo.enabled || false;//exclude from calculation and renderin
-    this.#info =            graphInfo.info || {};
+  dataType = {
+    id: "string",
+    enabled : "boolean",
 
-    this.#type =            graphInfo.type || "default";
+    text : ["function","string","null"],
+    center : "boolean",
+    color : "string",
+    font : "string",
+    fontSize : "number",
+    boxColor : "string",
+    margin : "number",
+
+    texture: ["string","null"],
+
+    brightness : "number",
+    contrast : "number",
+    grayscale : "number",
+    hueRotate : "number",
+    invert : "number",
+    saturate : "number",
+    sepia : "number",
+
+    blur : "number",
+    aberration : "number",
+    aberrationType : "string",
+
+    opacity : "number",
+
+    parent : "string",
+
+    ignoreParallax : "boolean",
+    useEngineUnits : "boolean",
+    x : "number",
+    y : "number",
+    z : "number",
+    scale : "number",
+    widthScale : "number",
+    heightScale : "number",
+    rotate : "number",
+  }
+
+  constructor(graphInfo = new Object()){
+    this.#id =              graphInfo.id || "error";
+    this.#enabled =         graphInfo.enabled || false;//exclude from calculation and renderin
 
     this.#text =            "text" in graphInfo ? graphInfo.text : null;
     this.#center =          graphInfo.center || false;
@@ -79,10 +111,8 @@ class GraphObject{
     this.#boxColor =        graphInfo.boxColor || "transparent";
     this.#margin =          graphInfo.margin || 0;
 
-    this.#texture =         graphInfo.texture || null;
     this.#textureName =     graphInfo.texture || null;
     //Properties of the graph
-    this.#id =              graphInfo.id || "error";
     this.#brightness =      graphInfo.brightness || 1;
     this.#contrast =        graphInfo.contrast || 1;
     this.#grayscale =       graphInfo.grayscale || 0;
@@ -130,24 +160,10 @@ class GraphObject{
     this.#pendingRenderingRecalculation = true;
   }
 
-  get info() {return this.#info}
-  set info(x) {this.#info = x}
-  getInfo(key){if(key in this.#info){return this.#info[key];} throw new Error(key+" not exist in info from "+this.#id)}
-  setInfo(key, value){
-    if(key in this.#info){
-      this.#info[key] = value;
-      return;
-    }else{
-      Object.assign(this.#info,{[key]:value});
-      console.warn(key+" not exist in info from "+this.#id+", adding...");
-    }
-  }
-
-  get type(){return this.#type}
-  set type(x) {this.#type = x}
-
   get text() {return this.#text;}
-  set text(x) {this.#text = x}
+  set text(x) {
+    this.#text = lambdaConverter(x);
+  }
 
   get center() {return this.#center}
   set center(x) {this.#center = typeof x == "boolean"? x : false}
@@ -186,15 +202,15 @@ class GraphObject{
   set margin(x) {this.#margin = parseFloat(x);}
     
     
-  get texture() { return this.#texture; }
+  get texture() { return this.#textureName; }
   set texture(x) { 
-    this.#texture = x != undefined ? x : null;
+    this.#textureName = x != undefined ? x : null;
     this.#pendingRenderingRecalculation = true;
   }
     
   get textureName() {return this.#textureName;}
   set textureName(x) {
-    this.#textureName = x;
+    this.#textureName = x != undefined ? x : null;
     this.#pendingRenderingRecalculation = true;
   }
     

@@ -17,6 +17,8 @@ import { CodedRoutine } from "../engineComponents/CodedRoutine";
 import { Chaos } from "./ChaosInterpreter";
 import { generateCalculationOrder } from "./RenderingOrder";
 
+import noImageTexture from "./no-image.png"
+
 /**
  * aaaaa
  * 
@@ -117,6 +119,16 @@ class RenderEngine extends React.Component{
     window.setCameraPerspectiveCoords = (x,y) =>{this.camera.position = {y:y,x:x};}
 
     window.engineRef = this;
+
+    //*Texture Fallback
+    const fallbackImage = new Image();
+    fallbackImage.crossOrigin = "Anonymous";
+    fallbackImage.src = noImageTexture;
+    fallbackImage.addEventListener('load',()=>{
+      // const res = new Object({[textureId]:image});
+      this.noImageTexture = new Shader(fallbackImage,"engineNoImageTexture");
+    });
+
   }  
   componentDidMount(){
     if (!this.mounted) {
@@ -248,14 +260,15 @@ class RenderEngine extends React.Component{
     if(this.textureAnims.exist(id)){
       id = this.textureAnims.get(id).getTexture(this.engineTime);
     }
-    const res = this.texturesList.get(id);
-    if(res == undefined){
+    try {
+      const res = this.texturesList.get(id);
+      return res;
+    } catch (error) {
       console.error(id +" Texture or TextureAnim wasn't found")
       console.table(this.texturesList.objects);
       console.table(this.textureAnims.objects);
-      debugger;
+      return this.noImageTexture;
     }
-    return res;
   }
 
   /**
@@ -264,13 +277,20 @@ class RenderEngine extends React.Component{
    * @returns {string}
    */
   getStr(text){
-    if(typeof text == "function"){
-      text = text(this);
+    try {
+      if(typeof text == "function"){
+        text = text(this);
+      }
+      if(typeof text != "string"){
+        text = text.toString();
+      }
+      return text; 
+    } catch (error) {
+      console.warn("UNREADABLE STUFF DETECTED!!!!");
+      console.log(text);
+      console.error(error);
+      return "UNREADABLE STUFF";
     }
-    if(typeof text != "string"){
-      text = text.toString();
-    }
-    return text;
   }
 
   componentDidCatch(error,info){

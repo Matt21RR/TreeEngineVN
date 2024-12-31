@@ -60,7 +60,47 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight,center = false) {
   
   return lineArray;
 }
+
+/**
+ * Detects if a string represents a lambda function of the form "(param) => { body }"
+ * or "(param) => { body }", extracts the parameter name, and converts it to a callable function.
+ * specific for RenderEngine, accepts lambda functions with zero or one parameters
+ * @param {string|null} str - The string to check and convert.
+ * @returns {string|function|null} - An object with the function and parameter name if valid; otherwise, null.
+ */
+function lambdaConverter(str) {
+  if(str == null){return null;}
+  // Regex to match lambda functions with a single parameter and a block body
+  const lambdaPattern = /^\s*(\(?\s*([^()\s]*)\s*\)?)\s*=>\s*\{[\s\S]*\}\s*$/;
+  const match = str.match(lambdaPattern);
+
+  if (!match) {
+      console.warn("Not a valid lambda function");
+      return str; // Not a valid lambda function, return the string expresion
+  }
+
+  try {
+      console.log(match);
+      const parameter = match[2] || null; // Extract parameter name or null if no parameter
+      if (parameter && parameter.includes(",")) {
+          // Break if more than one parameter
+          console.warn("Lambda function must have at most one parameter, "+((parameter.match(/,/g) || []).length+1)+" given")
+          return str;
+      }
+
+      // Use the Function constructor to create the function
+      let func;  
+      func = new Function('engine',`return ${str};`)();
+      if (typeof func === "function") {
+          return func;
+      }
+  } catch (error) {
+      console.error("Error creating function:", error);
+  }
+  return str; // Invalid or unsafe string
+}
+
 function random(max,min=0){
     return (Math.random() * (max - min + 1)) + min;
 }
-export {mobileCheck,wrapText,random}
+export {mobileCheck,wrapText,random,lambdaConverter}

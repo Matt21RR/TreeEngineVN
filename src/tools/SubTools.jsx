@@ -1,9 +1,78 @@
 import React from 'react';
 
-import { MenuButton, Button1, ListCheckedBox, InputText, InputList } from "./components/Buttons";
+import { MenuButton, Button1, ListCheckedBox, InputText, InputCheck } from "./components/Buttons";
 import { GraphObject } from "../engine/engineComponents/GraphObject";
 import { Window } from '../windows/Window';
+import Swal from 'sweetalert2';
 
+
+class Property extends React.Component{
+  constructor(props){
+    super(props);
+    this.inputRef = {}
+    this.checkNullRef = {}
+    this.checkFunctionRef = {}
+
+    this.isNull = this.props.defaultValue==null;
+  }
+  render(){
+    const object = this.props.object;
+    const type = this.props.type;
+    const key = this.props.keyd;
+    const defaultValue = this.props.defaultValue;
+    
+    const change = (e)=>{
+      if(type.includes("number")){
+        if(isNaN(e)){
+          return;
+        }
+        e *= 1;
+      }
+      object[key] = e;
+      this.forceUpdate();
+    }
+    
+    return(
+        <div className='flex'>
+          <div className='w-48'>{key}</div>
+          {type == "boolean"?
+            <InputCheck
+              defaultValue={defaultValue}
+              action={(e)=>{
+                change(e);
+              }}
+              label={""}
+            />
+            :
+            <InputText 
+            type={type=="number"? "number" : "text"}
+            defaultValue={defaultValue}
+            action={(e)=>{
+              change(e);
+              this.isNull = false;
+              this.checkNullRef.checked = false;
+              this.checkNullRef.forceUpdate();
+            }}
+            selfSet={(e)=>{this.inputRef = e}}
+            />
+          }
+          {type.includes("null") ? 
+            <InputCheck 
+              label="isNull" 
+              checked={defaultValue==null}
+              selfSet={(e)=>{this.checkNullRef = e}}
+              action={(e)=>{
+                if(e){
+                  this.isNull = true;
+                  this.inputRef.val("");
+                  change(null);
+                }
+              }}/>
+          : <></>}
+        </div>
+    );
+  }
+}
 class ObjectsE extends React.Component {
   constructor(props){
     super(props);
@@ -32,6 +101,7 @@ class ObjectsE extends React.Component {
       objects.map((graphObject)=>(
 
         <Button1 text={graphObject.id} 
+          color={graphObject.enabled ? undefined : "bg-orange-400"}
           action={()=>{
             this.selectedObject = graphObject.id;
             engine.objectsToDebug = [graphObject.id];
@@ -52,70 +122,29 @@ class ObjectsE extends React.Component {
         ))
     );
   }
-  editObject(){
+  listProperties(){
     if(this.selectedObject != ""){
       const engine = this.props.engine;
-      let info = engine.graphArray.get(this.selectedObject).dump();
-      let keys = Object.keys(info);
-      return(
-        <div className='flex'>
-          <InputList
-            options={keys}
-            action={(e)=>{this.key = keys[e];}}
-            value={0}
-          />
-          <InputText
-            action={(e)=>{
-              this.value = e;
-              console.log(e);
-            }}
-          />
-          <Button1 text={"Set"} action={()=>{
-            const type = typeof engine.graphArray.get(this.selectedObject)[this.key];
-            console.log(type,this.value);
-            if(type == "number"){
-              this.value *= 1;
-            }
-            console.log(type,this.value);
-            // TODO: implement NaN check
-            engine.graphArray.get(this.selectedObject)[this.key] = this.value;
-            this.props.reRender();
-          }}/>
-        </div>
-      );
-    }
-  }
-  listProperties(){
-    const engine = this.props.engine;
-    if(this.selectedObject != ""){
+      let types;
       try {
-        const objInfo = (engine.graphArray.get(this.selectedObject).dump());
-        return(
-          Object.keys(objInfo).map(key=>(
-            <div>
-              {key+" : "+objInfo[key]}
-            </div>
-            ))
-        );
+        types = engine.graphArray.get(this.selectedObject).dataType;  
       } catch (error) {
-        return(<></>);
+        this.selectedObject = "";
+        return;
       }
-
-    }
-  }
-  states(){
-    const engine = this.props.engine;
-
-    if(this.selectedObject != "" && this.showStates){
-      const states = engine.graphArray.get(this.selectedObject).states;
-      if(states != undefined){
-        return(
-          <StatesE 
-            states={states}
-            exit={()=>{this.showStates = false;this.forceUpdate();}}
-            engine={engine}/>
-        )
-      }
+      const obj = engine.graphArray.get(this.selectedObject);
+      const objInfo = obj.dump();
+      
+      return(
+        Object.keys(objInfo).map(key=>(
+            <Property
+              object={obj}
+              keyd={key}
+              type={types[key]}
+              defaultValue={objInfo[key]}
+            />
+          ))
+      );
     }
   }
   render(){
@@ -126,6 +155,26 @@ class ObjectsE extends React.Component {
             <div>
               Objects List
             </div>
+            <Button1 
+              text="create"
+              action={()=>{
+                Swal.fire({
+                  text: "GraphObject id: ",
+                  showDenyButton: false,
+                  showConfirmButton: true,
+                  confirmButtonColor:"green",
+                  showCancelButton: true,
+                  confirmButtonText: "Crear",
+                  cancelButtonText: "Cancelar",
+                  input:"text"
+                }).then((result) => {
+                  if (result.isConfirmed && result.value != "") {
+                    eng.graphArray.push(new GraphObject({id:result.value, enabled:true}));
+                  }
+                });
+
+              }}
+              />
             <MenuButton text="Unselect" action={()=>{eng.objectsToDebug = [];this.selectedObject=""; this.forceUpdate();}}/>
             <div className="relative w-full overflow-auto">
               {this.objectsList()}
@@ -140,69 +189,10 @@ class ObjectsE extends React.Component {
               <div className='grow overflow-auto'>
                 {this.listProperties()}
               </div>
-              {this.editObject()}
             </div>
           </div>
-          {this.states()}
         </div>
       )
-  }
-}
-class StatesE extends React.Component {
-  constructor(props) {super(props);}
-  list() {
-    const engine = this.props.engine;
-    let statesObject = this.props.states;
-    var states = [];
-    Object.keys(statesObject).forEach(key => {
-      states.push({
-        id:key,
-        beforeChange:statesObject[key].beforeChange,
-        data:statesObject[key].data,
-        afterChange:statesObject[key].afterChange})
-    });
-    return (
-      states.map((state) => (
-        <div className={'border-4 flex flex-col relative my-1 h-auto'}>
-            {"id: " + state.id}
-            <ListCheckedBox list={[
-              {text:"beforeChange", check:typeof state.beforeChange == "function", actionName:"Test",action:()=>{state.beforeChange(engine)}},
-              {text:"data", check:true},
-              {text:"afterChange", check:typeof state.afterChange == "function", actionName:"Test",action:()=>{state.afterChange(engine)}},
-            ]} />
-
-        </div>
-      )
-      )
-    );
-  }
-  renderContent() {
-    return (
-      <div className='w-full h-full pt-5 pb-16'>
-
-        <div className='relative h-full text-white overflow-auto'>
-          <div className='relative h-full w-full px-8 text-white'>
-            {this.list()}
-          </div>
-        </div>
-        <div className='absolute bottom-0 h-8 w-full flex flex-col '>
-          <div className='relative w-fit my-auto mx-auto text-white text-sm'>
-            The states are
-          </div>
-        </div>
-      </div>
-
-    );
-  }
-  render() {
-    return (
-      <Window
-        content={()=>this.renderContent()}
-        clicked={()=>this.props.clicked()}
-        title={"Object States"}
-        exit={()=>this.props.exit()}
-      />
-    );
   }
 }
 class TriggersE extends React.Component {
@@ -320,4 +310,4 @@ class SoundsE extends React.Component {
     );
   }
 }
-export { StatesE, SoundsE, TriggersE, ObjectsE }
+export { SoundsE, TriggersE, ObjectsE }

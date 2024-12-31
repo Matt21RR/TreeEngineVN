@@ -6,7 +6,6 @@ import { canvasInstances } from "../logic/canvasInstaces";
 class Canvas extends React.Component{
   constructor(props){
     super(props);
-    console.log(props);
     this.CELGF = props.CELGF || ((error)=>console.error(error));
     this.id = "canvas"+performance.now();
     this.loopId = "";
@@ -41,7 +40,6 @@ class Canvas extends React.Component{
 
     //*Debug
     this.showFps = props.showFps || false;
-    console.log(this.showFps,this.renderGraphics)
     this.animatingElapsed = 0;
 
     this.setFps = (x) => { 
@@ -228,9 +226,8 @@ class Canvas extends React.Component{
         context.beginPath();
         context.fillStyle = "orange";
         context.font = (12*this.scale)+"px Terminal";
-        context.fillText("Redengine v0.0.0", 5, 15*this.scale);
-        context.fillText("Fps: "+fps.promedio, 5, 30*this.scale);
-        context.fillText("Interval: "+fps.elapsed.toFixed(4), 5, 45*this.scale);
+        context.fillText("Fps: "+fps.promedio, 5, 15*this.scale);
+        context.fillText("Interval: "+fps.elapsed.toFixed(4), 5, 30*this.scale);
         var mOrigin = this.renderEngine.mouse.origin;
         if(mOrigin != null){
           if(!(mOrigin in this.renderEngine.dimentionsPack)){
@@ -243,12 +240,12 @@ class Canvas extends React.Component{
           x : mOrigin == null ? this.renderEngine.mouse.x : this.renderEngine.mouse.x - this.renderEngine.dimentionsPack[mOrigin].x/this.resolutionHeight,
           y : mOrigin == null ? this.renderEngine.mouse.y : this.renderEngine.mouse.y - (this.renderEngine.dimentionsPack[mOrigin].y/this.resolutionHeight),
         };
-        context.fillText("Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2)+" ,origin:"+mOrigin, 5, 60*this.scale);
-        context.fillText("Res: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 75*this.scale);
-        context.fillText("scale: "+this.scale+" : "+(Math.floor(window.devicePixelRatio*100)/100), 5, 90*this.scale);
-        context.fillText("Keys: "+this.renderEngine.pressedKeys.join(" "),5,105*this.scale);
-        context.fillText("GPU: "+(renderingEndAt-renderingStartAt).toFixed(2) + "ms" ,5,120*this.scale);
-        context.fillText("CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,5,135*this.scale);
+        context.fillText("Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2)+" ,origin:"+mOrigin, 5, 45*this.scale);
+        context.fillText("Res: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 60*this.scale);
+        context.fillText("scale: "+this.scale+" : "+(Math.floor(window.devicePixelRatio*100)/100), 5, 75*this.scale);
+        context.fillText("Keys: "+this.renderEngine.pressedKeys.join(" "),5,90*this.scale);
+        context.fillText("GPU: "+(renderingEndAt-renderingStartAt).toFixed(2) + "ms" ,5,105*this.scale);
+        context.fillText("CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,5,120*this.scale);
         context.closePath();
         context.fill();
         context.globalAlpha = actualGlobalAlpha;

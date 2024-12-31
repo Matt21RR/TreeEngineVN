@@ -90,7 +90,7 @@ class Button1 extends React.Component{
   render(){
     return(
       <div 
-        className={" cursor-pointer p-1 rounded-md bg-teal-500 text-white w-fit h-fit text-[12px] " + ("style" in this.props ? this.props.style : "m-1") + ((this.props.hide) ? " hidden":"")} 
+        className={" cursor-pointer p-1 rounded-md "+(this.props.color || "bg-teal-500")+" text-white w-fit h-fit text-[12px] " + ("style" in this.props ? this.props.style : "m-1") + ((this.props.hide) ? " hidden":"")} 
         onClick={()=>{this.props.action()}}
         onMouseEnter={()=>{if("enter" in this.props){this.props.enter();}}}
         onMouseLeave={()=>{if("leave" in this.props){this.props.leave();}}}>
@@ -360,12 +360,24 @@ class InputTextArea extends React.Component {
 class InputText extends React.Component{
   constructor(props){
     super(props);
-    this.id = "id" in this.props ? this.props.id : ("inputTextArea" + String(window.performance.now()).replaceAll(".",""));
+    this.id = this.props.id || ("inputTextArea" + String(window.performance.now()).replaceAll(".",""));
+    this.mounted = false
+  }
+  componentDidMount(){
+    if(!this.mounted){
+      this.mounted = true;
+      //SelfSet
+      if("selfSet" in this.props){
+        this.props.selfSet($("#"+this.id));
+      }
+    }
   }
   render(){
     return(
       <input 
         id={this.id}
+        type={this.props.type || "text"}
+        step={0.1}
         className={" bg-black my-0.5 px-1 rounded-md text-white text-[12px] " + ("style" in this.props ? this.props.style : "") + ((this.props.hide) ? " hidden":"")} 
         defaultValue={"defaultValue" in this.props ? this.props.defaultValue : ""}
         onChange={(e)=>{if("action" in this.props){this.props.action(e.target.value)}}}
@@ -373,6 +385,33 @@ class InputText extends React.Component{
     );
   }
 }
+class InputCheck extends React.Component{
+  constructor(props){
+    super(props);
+    this.id = "id" in this.props ? this.props.id : ("inputCheck" + String(window.performance.now()).replaceAll(".",""));
+    this.checked = this.props.checked || false;
+
+    //SelfSet
+    if("selfSet" in this.props){
+      this.props.selfSet(this);
+    }
+  }
+  render(){
+    return(
+      <div 
+        onClick={()=>{
+          this.checked = !this.checked;
+          this.forceUpdate();
+          if("action" in this.props){this.props.action(this.checked)}
+        }}
+        className="flex mx-3">
+        <div className={"border-[1px] mr-1 h-[0.8rem] w-[0.8rem] my-auto border-white "+(this.checked ? "bg-green-700": "")}/>
+        <span className="ml-1 my-auto">{"label" in this.props? this.props.label : "NOLABEL"}</span>
+      </div>
+    );
+  }
+}
+
 class InputList extends React.Component {
   constructor(props) {
     super(props);
@@ -748,4 +787,4 @@ class MenuListButton extends React.Component {
     );
   }
 }
-export {Button1, BaseButton, MenuButton, PauseButton, IconButton, ListCheckedBox, InputTextArea, InputText, InputList}
+export {Button1, BaseButton, MenuButton, PauseButton, IconButton, ListCheckedBox, InputTextArea, InputText, InputCheck, InputList}

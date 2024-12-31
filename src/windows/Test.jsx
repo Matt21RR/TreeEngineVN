@@ -6,6 +6,7 @@ import { ObjectsE, TriggersE } from "../tools/SubTools";
 import { EngTools } from "../tools/EngTools";
 import { FileExplorer } from "../tools/FileExplorer";
 import { EditorKeys } from "../tools/EditorKeys";
+import { TexturesE } from "../tools/TexturesE";
 
 class Test extends React.Component{
   constructor(props){
@@ -69,15 +70,14 @@ class Test extends React.Component{
     return(<>
       <WindowsEnvironment 
         setEnvironment={(env)=>{this.windowsEnvironment = env;}}
+        mainContent={
+          <RenderEngine showFps setEngine={(engine)=>{this.engine=engine; window.terminal = (code) =>{ code(engine); }; this.editionKeys(); env.forceUpdate();}}/>
+        }
         content={{
           fileExplorer:{
             title:"File Explorer",
             content:<FileExplorer/>,
             minimized:false
-          },
-          engine:{
-            title:"Redengine",
-            content:<RenderEngine showFps setEngine={(engine)=>{this.engine=engine; window.terminal = (code) =>{ code(engine); }; this.editionKeys(); env.forceUpdate();}}/>
           },
           triggers:{
             title:"Triggers en escena",
@@ -98,7 +98,12 @@ class Test extends React.Component{
             title:"Shorcuts",
             content:<EditorKeys/>,
             minimized:false
-          }
+          },
+          textures:{
+            title:"Texturas",
+            content:<TexturesE/>,
+            minimized:false
+          },
         }}
       
       />
