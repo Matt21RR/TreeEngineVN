@@ -9,7 +9,7 @@ import { GraphObject } from "../engineComponents/GraphObject";
 import { RenList } from "../engineComponents/RenList";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger";
 
-import { mobileCheck, wrapText } from "../logic/Misc";
+import { lambdaConverter, mobileCheck, wrapText } from "../logic/Misc";
 import { Shader } from "./Shaders";
 import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim";
@@ -120,6 +120,7 @@ class RenderEngine extends React.Component{
 
     window.engineRef = this;
 
+    this.lambdaConverter = lambdaConverter;
     //*Texture Fallback
     const fallbackImage = new Image();
     fallbackImage.crossOrigin = "Anonymous";

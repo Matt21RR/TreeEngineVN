@@ -333,7 +333,7 @@ class ChaosInterpreter {
             "engine.voiceFrom = 'nobody';",
             "engine.narration = "+value+";",
 
-            "engine.paragraph += engine.narration[0];",
+            "engine.paragraph += engine.getStr(engine.lambdaConverter(engine.narration[0]));",
             "engine.graphArray.get('narrationBox').text = '';",
             "engine.graphArray.get('narrationBox').enabled = true;",
 

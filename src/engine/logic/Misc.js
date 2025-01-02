@@ -70,12 +70,17 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight,center = false) {
  */
 function lambdaConverter(str) {
   if(str == null){return null;}
+  if(typeof str == "function"){return str;}
   // Regex to match lambda functions with a single parameter and a block body
   const lambdaPattern = /^\s*(\(?\s*([^()\s]*)\s*\)?)\s*=>\s*\{[\s\S]*\}\s*$/;
-  const match = str.match(lambdaPattern);
+  let match
+  try {
+    match = str.match(lambdaPattern);
+  } catch (error) {
+    console.error(str, typeof str,error);
+  }
 
   if (!match) {
-      console.warn("Not a valid lambda function");
       return str; // Not a valid lambda function, return the string expresion
   }
 
