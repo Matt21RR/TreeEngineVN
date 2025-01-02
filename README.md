@@ -6,7 +6,7 @@ The engine have two modes: the backend mode, and the frontend mode. Simplifying,
 
 The frontend mode is used for general prupose game development
 
-The backend mode is intended for specific visual novel development (include some development tools)(requires use of a backend server).
+The backend mode is intended for specific visual novel development (include some development tools)(requires use of a backend server that will be included with a game example soon).
 
 ## Why this project exists
 
@@ -17,5 +17,3 @@ Since it's written in javascript, you can see the results of changes in your gam
 ## Aspect to improve
 
 The engine code is not very well documented (or commented, whatever). 
-
-Sometimes a very rare bug appears. Basically, if you tab out of the engine window and, after a long time, tab back into the window (without clicking inside it), the engine seems to call the draw function twice. This is fixed by simply clicking inside the window, but that's not a decent fix.
