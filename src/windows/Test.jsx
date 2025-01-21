@@ -71,7 +71,11 @@ class Test extends React.Component{
       <WindowsEnvironment 
         setEnvironment={(env)=>{this.windowsEnvironment = env;}}
         mainContent={
-          <RenderEngine showFps setEngine={(engine)=>{this.engine=engine; window.terminal = (code) =>{ code(engine); }; this.editionKeys(); env.forceUpdate();}}/>
+          <RenderEngine
+            showFps
+            developmentDeviceHeight={1080}
+            cyclesPerSecond={60}
+            setEngine={(engine)=>{this.engine=engine; window.terminal = (code) =>{ code(engine); }; this.editionKeys(); env.forceUpdate();}}/>
         }
         content={{
           fileExplorer:{

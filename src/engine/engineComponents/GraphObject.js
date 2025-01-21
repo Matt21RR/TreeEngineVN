@@ -152,12 +152,24 @@ class GraphObject{
 
     this.#states = "states" in graphInfo ? new States(this,graphInfo.states) : {};
 
-    this.#useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits : ("parent" in graphInfo ? false :true); //for scale
+    this.#useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits : ("parent" in graphInfo ? false : true); //for scale
+  
+    // Initialize a proxy to intercept property sets
+    return new Proxy(this, {
+      set: (target, property, value) => {
+        if (target[property] !== value) {
+          console.log(`${property} value changed in ${target.id}`);
+          target.pendingRenderingRecalculation = true;
+        }
+        target[property] = value; // Set the property
+        return true; // Indicate success
+      }
+    });
   }
+
   get enabled() {return this.#enabled}
   set enabled(x) {
     this.#enabled = x;
-    this.#pendingRenderingRecalculation = true;
   }
 
   get text() {return this.#text;}
@@ -205,13 +217,11 @@ class GraphObject{
   get texture() { return this.#textureName; }
   set texture(x) { 
     this.#textureName = x != undefined ? x : null;
-    this.#pendingRenderingRecalculation = true;
   }
     
   get textureName() {return this.#textureName;}
   set textureName(x) {
     this.#textureName = x != undefined ? x : null;
-    this.#pendingRenderingRecalculation = true;
   }
     
     
@@ -371,19 +381,16 @@ class GraphObject{
   get y() {return this.#y;}
   set y(x) {
     this.#y = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);
-    this.#pendingRenderingRecalculation = true;
   }
 
   get x() {return this.#x;}
   set x(x) {
     this.#x = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);
-    this.#pendingRenderingRecalculation = true;
   }
 
   get scale() {return this.#scale;}
   set scale(x) {
     this.#scale = !isNaN(x)? (x >= 0 ? x : 1 ) : 1
-    this.#pendingRenderingRecalculation = true;
   }
 
   get rotate() {return (this.#rotate*180)/Math.PI;}
@@ -394,25 +401,21 @@ class GraphObject{
   get z() {return this.#z;}
   set z(x) {
     this.#z = parseFloat(x);
-    this.#pendingRenderingRecalculation = true;
   }
 
   get ignoreParallax() {return this.#ignoreParallax;}
   set ignoreParallax(x) {
     this.#ignoreParallax = x;
-    this.#pendingRenderingRecalculation = true;
   }
 
   get widthScale() {return this.#widthScale;}
   set widthScale(x) {
     this.#widthScale = parseFloat(x);
-    this.#pendingRenderingRecalculation = true;
   }
 
   get heightScale() {return this.#heightScale;}
   set heightScale(x) {
     this.#heightScale = parseFloat(x);
-    this.#pendingRenderingRecalculation = true;
   }
 
   get states(){return this.#states.states}

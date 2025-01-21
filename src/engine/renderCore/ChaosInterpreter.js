@@ -6,7 +6,7 @@ class ChaosInterpreter {
     this.textures = {};
     this.scripts = {};
     this.scriptsUrls = {};
-    this.projectRoot = "http://localhost/renderEngineBackend/game/";
+    this.projectRoot = window.backendRoute + "/renderEngineBackend/game/";
     this.listScripts();
   }
   getSound(){
@@ -24,7 +24,7 @@ class ChaosInterpreter {
         Object.keys(scriptsData).forEach((scriptId)=>{
           scriptsData[scriptId] = this.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
         })
-        Object.assign(scriptsData,{"gameEntrypoint":"http://localhost/renderEngineBackend/game/main.txt"})
+        Object.assign(scriptsData,{"gameEntrypoint":window.backendRoute + "/renderEngineBackend/game/main.txt"})
         this.scriptsUrls = scriptsData
         resolve(scriptsData);
       });

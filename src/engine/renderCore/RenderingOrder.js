@@ -22,12 +22,11 @@ function generateCalculationOrder(graphArray = new RenList()){
           if(graphArray.get(parent).pendingRenderingRecalculation){
             graphArray.get(id).pendingRenderingRecalculation = true;
           }
-          order.push({id:id,weight:order[dictionary.indexOf(parent)].weight +1});
+          order.push({id,weight:order[dictionary.indexOf(parent)].weight +1});
           gObject.accomulatedZ = gObject.z + graphArray.get(parent).accomulatedZ;
           dictionary.push(id);
           ordered++;
         }
-
       }
     });
   }

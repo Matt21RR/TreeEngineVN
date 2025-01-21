@@ -389,7 +389,7 @@ class InputCheck extends React.Component{
   constructor(props){
     super(props);
     this.id = "id" in this.props ? this.props.id : ("inputCheck" + String(window.performance.now()).replaceAll(".",""));
-    this.checked = this.props.checked || false;
+    this.checked = "checked"in this.props ? this.props.checked : false;
 
     //SelfSet
     if("selfSet" in this.props){

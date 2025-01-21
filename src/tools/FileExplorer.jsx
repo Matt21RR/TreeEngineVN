@@ -37,7 +37,7 @@ class Multimedia extends React.Component{
   updateTextContent(content){
     const route = this.props.info.route;
     console.warn(route);
-    $.post("http://localhost/renderEngineBackend/index.php", {route: route, action: "update", content: content})
+    $.post(window.backendRoute + "/renderEngineBackend/index.php", {route: route, action: "update", content: content})
     .then((response) => {
       Swal.fire("Guardado", "", "success");
       return JSON.parse(response);
@@ -197,7 +197,7 @@ class FileExplorer extends React.Component{
     }
   }
   getHierarchy(){
-    $.post("http://localhost/renderEngineBackend/index.php", {action: "getHierarchy"})
+    $.post(window.backendRoute + "/renderEngineBackend/index.php", {action: "getHierarchy"})
     .then((response) => {
       return JSON.parse(response);})
     .then(res =>{
@@ -279,13 +279,13 @@ class FileExplorer extends React.Component{
     var spl = route.split("/");
     spl.pop();
     const newRoute = spl.join("/") + "/" + newName;
-    $.post("http://localhost/renderEngineBackend/index.php", {action: "rename", oldRoute:route, newRoute:newRoute})
+    $.post(window.backendRoute + "/renderEngineBackend/index.php", {action: "rename", oldRoute:route, newRoute:newRoute})
     .then(() => {
       this.getHierarchy();
     });
   }
   delete(dir,type){
-    $.post("http://localhost/renderEngineBackend/index.php", {action: "delete", dir:dir, type:type})
+    $.post(window.backendRoute + "/renderEngineBackend/index.php", {action: "delete", dir:dir, type:type})
     .then((res) => {
       console.log(res);
       if(!res){
@@ -295,7 +295,7 @@ class FileExplorer extends React.Component{
     });
   }
   createFile(dir,filename){
-    $.post("http://localhost/renderEngineBackend/index.php", {action: "createFile", dir:dir, filename:filename})
+    $.post(window.backendRoute + "/renderEngineBackend/index.php", {action: "createFile", dir:dir, filename:filename})
     .then((res) => {
       if(!res){
         Swal.fire("Error","Check input data","error");
@@ -304,7 +304,7 @@ class FileExplorer extends React.Component{
     });
   }
   createDir(dir,folderName){
-    $.post("http://localhost/renderEngineBackend/index.php", {action: "createDir", dir:dir, folderName:folderName})
+    $.post(window.backendRoute + "/renderEngineBackend/index.php", {action: "createDir", dir:dir, folderName:folderName})
     .then((res) => {
       if(!res){
         Swal.fire("Error","Check input data","error");
@@ -390,7 +390,7 @@ class FileExplorer extends React.Component{
           <MenuButton 
             text={"Deep indexate dir"}
             action={()=>{
-              $.post("http://localhost/RenderEngineBackend/index.php",{action:"indexate",dir:this.actualRoute}).then(()=>{Swal.fire("Dir indexated!!","","success")});
+              $.post(window.backendRoute + "/RenderEngineBackend/index.php",{action:"indexate",dir:this.actualRoute}).then(()=>{Swal.fire("Dir indexated!!","","success")});
             }}/>
         </div>
       )
@@ -398,7 +398,7 @@ class FileExplorer extends React.Component{
   }
   setSelected(index){
     const info = this.actualContent[index];
-    const src = info.route.replace("./","http://localhost/renderEngineBackend/");
+    const src = info.route.replace("./",window.backendRoute + "/renderEngineBackend/");
     this.selected = {name:info.name,route:info.route,mime:info.mime,src:src,show:true,index:this.fileIndexReverse[index],actualContentLength:this.fileIndexList.length};
     this.forceUpdate();
   }

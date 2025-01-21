@@ -41,7 +41,7 @@ class Property extends React.Component{
               action={(e)=>{
                 change(e);
               }}
-              label={""}
+              label={defaultValue}
             />
             :
             <InputText 

@@ -6,7 +6,7 @@ class TexturesE extends React.Component {
   constructor(props) {
     super(props);
     this.textures = []
-    this.configRoute = "http://localhost/renderEngineBackend/game/img/textures.json";
+    this.configRoute = window.backendRoute + "/renderEngineBackend/game/img/textures.json";
     this.mounted = false;
   }
   componentDidMount(){
@@ -27,7 +27,7 @@ class TexturesE extends React.Component {
         <div className={'border-4 flex flex-row w-[98%] relative my-1'}>
           <div className={'m-1 h-[7.75rem] w-56 '}
             style={{
-              backgroundImage: ("url('" + this.textures[textureId].replace("./","http://localhost/renderEngineBackend/game/img/") + "')"),
+              backgroundImage: ("url('" + this.textures[textureId].replace("./",window.backendRoute + "/renderEngineBackend/game/img/") + "')"),
               backgroundSize: "contain",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "center"

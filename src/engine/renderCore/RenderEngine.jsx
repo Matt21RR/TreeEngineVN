@@ -4,7 +4,7 @@ import {Howl} from 'howler';
 
 import { Canvas } from "./Canvas";
 
-import { Animation } from "../engineComponents/Animation";
+import { Animation } from "../engineComponents/Animation"
 import { GraphObject } from "../engineComponents/GraphObject";
 import { RenList } from "../engineComponents/RenList";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger";
@@ -36,7 +36,8 @@ class RenderEngine extends React.Component{
       this.isReady = props.clientSideResources || false;
       this.aspectRatio = props.aspectRatio || "16:9";
       this.showFps = props.showFps || false;
-      this.developmentDeviceHeight = props.developmentDeviceHeight || window.screen.height;
+      this.cyclesPerSecond = props.cyclesPerSecond || 24;
+      this.developmentDeviceHeight = props.developmentDeviceHeight || window.screen.height*window.devicePixelRatio;
     }
     this.engineDisplayRes = {width:0,height:0};
     this.resizeTimeout = 0;
@@ -126,7 +127,6 @@ class RenderEngine extends React.Component{
     fallbackImage.crossOrigin = "Anonymous";
     fallbackImage.src = noImageTexture;
     fallbackImage.addEventListener('load',()=>{
-      // const res = new Object({[textureId]:image});
       this.noImageTexture = new Shader(fallbackImage,"engineNoImageTexture");
     });
 
@@ -194,7 +194,7 @@ class RenderEngine extends React.Component{
     }
   }
   entryPoint(){
-    this.loadScript("http://localhost/renderEngineBackend/game/main.txt");
+    this.loadScript(window.backendRoute + "/renderEngineBackend/game/main.txt");
   }
   loadScript(scriptRoute){
     this.dataCleaner();
@@ -265,9 +265,9 @@ class RenderEngine extends React.Component{
       const res = this.texturesList.get(id);
       return res;
     } catch (error) {
-      console.error(id +" Texture or TextureAnim wasn't found")
-      console.table(this.texturesList.objects);
-      console.table(this.textureAnims.objects);
+      // console.error(id +" Texture or TextureAnim wasn't found")
+      // console.table(this.texturesList.objects); 
+      // console.table(this.textureAnims.objects);
       return this.noImageTexture;
     }
   }
@@ -449,6 +449,9 @@ class RenderEngine extends React.Component{
     const arrayiseTree = this.arrayiseTree();
     for (let index = 0; index < this.graphArray.length; index++) {
       const gObject = this.getObject(arrayiseTree[index]);
+      if(!gObject.pendingRenderingRecalculation){
+        continue;
+      }
 
       const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
       const resolution = {
@@ -543,8 +546,7 @@ class RenderEngine extends React.Component{
           zRefs[z].push(id);
         }
     });
-    zetas.sort((a, b) => a - b).reverse();
-    zetas.forEach(zIndex => {
+    zetas.sort((a, b) => a - b).reverse().forEach(zIndex => {
       zRefs[zIndex.toString()].forEach(id => {
         renderingOrderById.push(id);
       });
@@ -559,8 +561,8 @@ class RenderEngine extends React.Component{
         <Canvas 
         CELGF={(er)=>{console.error(er)}} 
         displayResolution={this.engineDisplayRes} 
-        id={"renderCanvas"} 
-        fps={24} 
+        id={"renderCanvas" +Math.floor(window.performance.now()*10000000).toString()} 
+        fps={this.cyclesPerSecond} 
         scale={1} 
         showFps={this.showFps}
         // debugMessage={[
@@ -571,6 +573,9 @@ class RenderEngine extends React.Component{
         // ]}
         engine={this}
         renderGraphics={(canvas)=>{
+          this.calculationOrder = generateCalculationOrder(this.graphArray);
+          this.generateObjectsDisplayDimentions();
+
           this.canvasRef = canvas;
           canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
 
@@ -614,7 +619,7 @@ class RenderEngine extends React.Component{
                     (gObject.margin*objectWidth) + objectLeft - (objectWidth/2),
                     (gObject.margin*objectHeight) + objectTop + (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700)*testD) - (objectHeight/2),
                     objectWidth - (gObject.margin*objectWidth)*2,
-                    (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)*testD*.6),
+                    (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)*testD*window.devicePixelRatio*.6),
                     gObject.center
                   );
                 }
@@ -851,8 +856,7 @@ class RenderEngine extends React.Component{
 
           this.graphArray.objects.forEach(e=>{e.pendingRenderingRecalculation = true;})
         }}
-        events={(canvas)=>{
-          
+        events={(fps)=>{
           const mix = this.pressedKeys.join(" ");
           if(this.keyboardTriggers.exist(mix) && (this.pressedKeys.length>1)){
             this.keyboardTriggers.get(mix).check(this,"onHold");
@@ -863,11 +867,17 @@ class RenderEngine extends React.Component{
             }
           });
           
-          this.engineTime += (canvas.fps.elapsed * (this.stopEngine ? 0 : this.engineSpeed));
+          this.engineTime += (fps.elapsed * (this.stopEngine ? 0 : this.engineSpeed));
           for (let index = 0; index < this.anims.objects.length; index++) {
             const anim = this.anims.objects[index];
             if(anim.relatedTo != null){
-              anim.updateState(this.engineTime,(relatedTo)=>{return relatedTo!="engineCamera"?this.getObject(relatedTo):this.camera},this);
+              anim.updateState(
+                this.engineTime,
+                (relatedTo)=>{
+                  return relatedTo != "engineCamera" ?
+                    this.getObject(relatedTo):
+                    this.camera},
+                    this);
             }
           }  
         }}
@@ -882,8 +892,8 @@ class RenderEngine extends React.Component{
           this.codedRoutines.objects.forEach(element => {
             element.run(this);
           });
-          this.calculationOrder = generateCalculationOrder(this.graphArray);
-          this.generateObjectsDisplayDimentions();
+
+          
         }}
         />
       );
@@ -980,6 +990,7 @@ class RenderEngine extends React.Component{
     if(this.isMobile){
       return (
         <div className="absolute w-full h-full"
+        id={"triggersTarget"+this.id}
           onTouchStart={(e)=>this.checkTriggers(e,"onHold")}
           onTouchEnd={(e)=>this.checkTriggers(e,"onRelease")}
         />
