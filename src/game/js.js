@@ -13,7 +13,7 @@ const game = (engine = new RenderEngine) => {
     //Añadir el directorio de enemigos
     engine.gameVars = {enemyDirectory:[]};
 
-    const graphPlayer =  new GraphObject({id:"player",texture:"arrow",enabled:true})
+    const graphPlayer =  new GraphObject({id:"player",texture:"arrow",grayscale:1,enabled:true})
     engine.graphArray.push(graphPlayer);
     const player = new Player(graphPlayer);
 
@@ -186,7 +186,7 @@ const game = (engine = new RenderEngine) => {
       }
       const enemyId = "enemy"+performance.now()+Math.random();
       engine.gameVars.enemyDirectory.push(enemyId);
-      const graphEnemy =  new GraphObject({id:enemyId,x:player.x+x,y:player.y+y,texture:"arrow",grayscale:1,scale:1.5,enabled:true});
+      const graphEnemy =  new GraphObject({id:enemyId,x:player.x+x,y:player.y+y,texture:"arrow",scale:1.5,enabled:true});
 
       engine.graphArray.push(graphEnemy);
     }

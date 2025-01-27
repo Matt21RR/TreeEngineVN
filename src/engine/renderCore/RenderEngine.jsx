@@ -939,6 +939,7 @@ class RenderEngine extends React.Component{
     const objectsWithTriggersList = this.triggers.relatedToReversedList();
     const triggersIdList = this.triggers.objects.filter(e=>{return e.enabled}).map(e=>{return e.id});
 
+    //*Check the assigned triggers
     for (let index = 0; index < availableIdsToRender.length; index++) {
       const gO = this.dimentionsPack[availableIdsToRender[index]];
 
@@ -970,7 +971,11 @@ class RenderEngine extends React.Component{
         }
       }
     }
-    if(action == "mouseMove"){
+    //*check the unassigned triggers
+    for (const triggerId of this.triggers.relatedToNullList()){
+      this.triggers.get(triggerId).check(mouse,action);
+    }
+    if(action == "onMouseMove"){
       //onLeave part, activar el onLeave en todos aquellos triggers que no se activaron previamente
       let unexecutedTriggers;
 
@@ -982,7 +987,9 @@ class RenderEngine extends React.Component{
       
       unexecutedTriggers.forEach(triggerId => {
         const trigger = this.triggers.get(triggerId);
-        trigger.check(this,"onLeave");
+        if(trigger.relatedTo != null){
+          trigger.check(this,"onLeave");
+        }
       });
     }
   }
@@ -990,22 +997,37 @@ class RenderEngine extends React.Component{
     if(this.isMobile){
       return (
         <div className="absolute w-full h-full"
-        id={"triggersTarget"+this.id}
+          id={"triggersTarget"+this.id}
           onTouchStart={(e)=>this.checkTriggers(e,"onHold")}
           onTouchEnd={(e)=>this.checkTriggers(e,"onRelease")}
+          onTouchMove={
+            (e)=>{
+              if(this.mouseListener+(1000/40) < performance.now()){
+                this.mouseListener = performance.now();
+                this.checkTriggers(e,"onMouseMove");
+              }
+            }
+          }
         />
       );
     }else{
       return (
         <div className="absolute w-full h-full"
           id={"triggersTarget"+this.id}
+          onWheel={(e)=>{this.checkTriggers(e,"onWheel")}}
           onMouseDown={(e)=>this.checkTriggers(e,"onHold")}
           onMouseUp={(e)=>{e.preventDefault();this.checkTriggers(e,"onRelease")}}
-          onMouseMove={(e)=>{if(this.mouseListener+(1000/40) < performance.now()){this.mouseListener = performance.now();this.checkTriggers(e,"mouseMove")}}}
+          onMouseMove={
+            (e)=>{
+              if(this.mouseListener+(1000/40) < performance.now()){
+                this.mouseListener = performance.now();
+                this.checkTriggers(e,"onMouseMove");
+              }
+            }
+          }
         />
       );
     }
-    
   }
   engineDisplay(){
     if(Object.keys(this.engineDisplayRes).length >0){

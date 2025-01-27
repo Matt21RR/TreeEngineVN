@@ -113,8 +113,8 @@ class GraphObject{
 
     this.#textureName =     graphInfo.texture || null;
     //Properties of the graph
-    this.#brightness =      graphInfo.brightness || 1;
-    this.#contrast =        graphInfo.contrast || 1;
+    this.#brightness =      "brightness" in graphInfo ? graphInfo.brightness : 1;
+    this.#contrast =        "contrast" in graphInfo ? graphInfo.contrast : 1;
     this.#grayscale =       graphInfo.grayscale || 0;
     this.#hueRotate =       "hueRotate" in graphInfo ? parseFloat(graphInfo.hueRotate): 0;//deg
     //***SHADERS
@@ -125,11 +125,11 @@ class GraphObject{
     // _dither:graphInfo.dither != undefined ? graphInfo.dither : 1,
     //***END SHADERS
     this.#invert =          graphInfo.invert || 0;
-    this.#saturate =        graphInfo.saturate || 1;
+    this.#saturate =        "saturate" in graphInfo ? graphInfo.saturate : 1;
     this.#sepia =           graphInfo.sepia || 0;
     this.#filterString = "";
 
-    this.#opacity =         graphInfo.opacity || 1;
+    this.#opacity =         "opacity" in graphInfo ? graphInfo.opacity : 1;
 
     this.#parent =          graphInfo.parent || "";
 
@@ -138,7 +138,7 @@ class GraphObject{
     this.#z =               graphInfo.z || 0;
     //multipliers of canvasResolution
     //Resets the width and height scales
-    this.#scale =           graphInfo.scale || 1;
+    this.#scale =           "scale" in graphInfo ? graphInfo.scale : 1;
     //imageRotation
     this.#rotate =          "rotate" in graphInfo ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0;
 
@@ -147,8 +147,8 @@ class GraphObject{
     this.#ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this.#ignoreParallax
     //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
     //Todo: force the engine to use this when it's a text object.
-    this.#widthScale =     graphInfo.widthScale || 1;
-    this.#heightScale =    graphInfo.heightScale || 1;
+    this.#widthScale =     "widthScale" in graphInfo ? graphInfo.widthScale : 1;
+    this.#heightScale =    "heightScale" in graphInfo ? graphInfo.heightScale : 1;
 
     this.#states = "states" in graphInfo ? new States(this,graphInfo.states) : {};
 
@@ -158,7 +158,7 @@ class GraphObject{
     return new Proxy(this, {
       set: (target, property, value) => {
         if (target[property] !== value) {
-          console.log(`${property} value changed in ${target.id}`);
+          console.log(`${property} value changed in ${target.id} to ${value}`);
           target.pendingRenderingRecalculation = true;
         }
         target[property] = value; // Set the property

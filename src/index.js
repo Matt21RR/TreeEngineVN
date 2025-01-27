@@ -8,8 +8,6 @@ import "./engine/res/css/fonts.css";
 import { Test } from './windows/Test';
 import { RenderEngine } from './engine/renderCore/RenderEngine';
 
-import studio from '@theatre/studio'
-import * as core from '@theatre/core';
 import { game } from './game/js';
 import Swal from 'sweetalert2';
 
@@ -18,13 +16,14 @@ window.backendRoute = "http://192.168.101.76"
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <>
-    <Test/>
-    {/* <div className='absolute h-full w-full'>
+    {/* <Test/> */}
+    <div className='absolute h-full w-full'>
       <RenderEngine 
         aspectRatio="undefined"
         avoidResizeBlackout
         clientSideResources 
         showFps
+        cyclesPerSecond={60}
         setEngine={(engine = new RenderEngine)=>{
 
           Swal.fire("Controles",`
@@ -37,7 +36,7 @@ root.render(
             Disparar: Espacio
             `).then(()=>{game(engine);})      
         }}/>
-    </div> */}
+    </div>
   </>
 );
 

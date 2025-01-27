@@ -2,22 +2,26 @@ import { RenderEngine } from "../renderCore/RenderEngine";
 
 class Trigger{
   #id
-  #relatedTo
+  #relatedTo = null
   #enabled
 
   #onHold
   #onRelease
   #onEnter
   #onLeave
+  #onWheel
+  #onMouseMove
 
   constructor(tInfo){
     if(!("id" in tInfo))
       throw new Error("Trying to create a Trigger without id");
-    if(!("relatedTo" in tInfo))
-      throw new Error("Trying to create a Trigger without the graphObject id that will be related to");
+    if(!tInfo.relatedToBypass){
+      if(!("relatedTo" in tInfo))
+        throw new Error("Trying to create a Trigger without the graphObject id that will be related to");
+    }
 
     this.#id = tInfo.id;
-    this.#relatedTo =   tInfo.relatedTo;
+    this.#relatedTo =   tInfo.relatedTo = null;
     this.#enabled =     tInfo.enabled || true;
     //if superposition is true the engine will ignore the graphObjects that are over the graphobject related to the trigger
     //superposition: tInfo.superposition != undefined ? tInfo.superposition : false,
@@ -25,6 +29,8 @@ class Trigger{
     this.#onRelease =   tInfo.onRelease || null;
     this.#onEnter =     tInfo.onEnter || null;
     this.#onLeave =     tInfo.onLeave || null;
+    this.#onWheel =     tInfo.onWheel || null;
+    this.#onMouseMove = tInfo.onMouseMove || null;
   }
 
   get id(){return this.#id}
@@ -47,7 +53,14 @@ class Trigger{
   get onLeave() {return this.#onLeave;}
   set onLeave(x) {this.#onLeave = x;}
 
+  get onWheel() {return this.#onWheel;}
+  set onWheel(x) {this.#onWheel = x;}
+
+  get onMouseMove() {return this.#onMouseMove;}
+  set onMouseMove(x) {this.#onMouseMove = x;}
+
   check(engineRef = new RenderEngine(),action = new String()){
+    console.log(action);
     if(action == "mouseMove")//check onEnter
       action = "onEnter";
     if(this[action] == null || !this.enabled){

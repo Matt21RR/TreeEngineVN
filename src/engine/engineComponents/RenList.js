@@ -77,6 +77,19 @@ try {
     });
     return list;
   }
+  /**
+   * 
+   * @returns {Array} List of objects that are not related to any other object
+   */
+  relatedToNullList(){
+    var list = [];
+    this.objects.forEach(element => {
+      if(element.relatedTo == null){
+        list.push(element.id);
+      }
+    });
+    return list;
+  }
   enable(objectId = new String(),bool = new Boolean()){
     if(objectId in this.enabled){
       this.enabled[objectId] = bool;
