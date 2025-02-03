@@ -3,30 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@pixi/react": "^7.1.2",
-    "@radix-ui/react-label": "^2.1.0",
-    "@radix-ui/react-slider": "^1.2.1",
-    "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@theatre/core": "^0.5.1",
-    "@theatre/studio": "^0.5.1",
+    "@testing-library/react": "13.4.0",
     "byte-size": "^9.0.0",
     "ease-component": "^1.0.0",
-    "highlight-within-textarea": "^2.0.5",
-    "highlight.js": "^11.9.0",
     "howler": "^2.2.4",
     "jquery": "^3.7.1",
-    "localforage": "^1.10.0",
-    "lodash": "^4.17.21",
-    "lucide-react": "^0.453.0",
-    "pixi.js": "^7.4.2",
-    "react": "^18.3.1",
+    "react": "18.3.1",
     "react-app-polyfill": "^3.0.0",
-    "react-dom": "^18.3.1",
+    "react-dom": "18.3.1",
     "react-draggable": "^4.4.6",
     "react-scripts": "5.0.1",
-    "stackblur-canvas": "^2.7.0",
     "sweetalert2": "^11.10.8"
   },
   "scripts": {
@@ -56,7 +42,6 @@
   },
   "devDependencies": {
     "gsap": "^3.11.4",
-    "tailwind": "^4.0.0",
-    "tailwindcss": "^3.2.7"
+    "tailwindcss": "3.2.7"
   }
 }

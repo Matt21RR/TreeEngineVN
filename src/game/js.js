@@ -81,6 +81,7 @@ const game = (engine = new RenderEngine) => {
         if(bullet.displacement()){
           engine.codedRoutines.remove(newBulletId);
           engine.graphArray.remove(newBulletId);
+          return;
         }
 
         const enemyDirectory = engine.gameVars.enemyDirectory;
@@ -149,6 +150,7 @@ const game = (engine = new RenderEngine) => {
           }
           enemy.x += displacementConstant*Math.cos(angle);
         }else if(player.vivo){
+          return;
           setTimeout(()=>{
             Swal.fire("Has muerto","Volver a intentarlo?","question").then(v=>{
               if(v.isConfirmed){

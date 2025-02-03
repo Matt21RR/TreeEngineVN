@@ -6,26 +6,26 @@ class Canvas extends React.Component{
   constructor(props){
     super(props);
     this.CELGF = props.CELGF || ((error)=>console.error(error));
-    this.id = this.props.id;
+    this.id = "canvas"+performance.now();
     this.loopId = "loop"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
     window.loopId = structuredClone(this.loopId);
     this.mounted = false;
 
-    this.halfCycle = false;
-
     this.renderEngine = props.engine || {};
-    
- 
+
     this.windowHasFocus = true;
 
     this.fps = props.fps ? (props.fps > 0 ? props.fps : 24) : 24;//suggesed max fps = 24
+    this.fpsCounter = 0;
     this.scale = props.scale || 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
+
+    this.interval = Math.round(1000 / this.fps);
 
     this.resolutionHeight = Math.floor(window.innerHeight * this.scale *window.devicePixelRatio);
     this.resolutionWidth = Math.floor(window.innerWidth * this.scale *window.devicePixelRatio); 
 
     this.element = React.createRef();
-
+  
     this.stopEngine = false;
     this.engineThreads = 0;
     this.engineKilled = false;
@@ -41,15 +41,18 @@ class Canvas extends React.Component{
     //*Debug
     this.showFps = props.showFps || false;
     this.animatingElapsed = 0;
+    this.renderingElapsed = 0;
 
     this.setFps = (x) => { 
       const canvas = this.element.current;
       if(canvas == null){return;}
       this.fps = x; 
       this.stopEngine = (x == 0) && !this.stopEngine; 
+      this.interval = Math.floor(1000 / x); 
       if (!this.stopEngine) 
         this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")}); 
     }
+    window.setFps = this.setFps;
     window.setScale = (x) => { this.scale = x;
       const canvas = this.element.current;
       canvas.getContext("2d").scale(x,x);
@@ -108,12 +111,10 @@ class Canvas extends React.Component{
       //set the every graphic object data
       this.onLoad({context:this.element.current.getContext("2d"),scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
       //call engine
+
       this.engine(this.loopId);
 
-    }  
-  } 
-  componentWillUnmount(){
-    window.loopId = "";
+    }
   }
   // Engine starter
   engine(loopId) {
@@ -147,7 +148,7 @@ class Canvas extends React.Component{
       //*ANIMATE
       try {
         const animateStartAt = performance.now();
-        this.props.animateGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps.maxFps});
+        this.props.animateGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps.maxCps});
         this.animatingElapsed = performance.now()-animateStartAt;
       } catch (error) {//!KILL ENGINE
         context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
@@ -177,11 +178,13 @@ class Canvas extends React.Component{
       }
       //*RENDER
       try {
-        this.halfCycle = !this.halfCycle;
-        if(this.halfCycle && this.windowHasFocus){
+        // this.halfCycle = !this.halfCycle;
+        // if(this.halfCycle && this.windowHasFocus){
+        if(this.windowHasFocus){
           renderer(fps);
+          this.fpsCounter++;
         }
-      } catch (error) {//!KILL ENGINE
+      }catch (error) {//!KILL ENGINE
         context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
         context.filter = 'none';
         context.globalAlpha = 1;
@@ -212,7 +215,7 @@ class Canvas extends React.Component{
       this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
       const actualGlobalAlpha = context.globalAlpha;
 
-      const renderingEndAt = performance.now();
+      this.renderingElapsed = performance.now()-renderingStartAt;
       if(this.showFps){
         context.globalCompositeOperation = "darker";
         context.filter = 'none';
@@ -220,7 +223,7 @@ class Canvas extends React.Component{
         context.beginPath();
         context.fillStyle = "orange";
         context.font = (12*this.scale)+"px Terminal";
-        context.fillText("CPS: "+fps.promedio + "/ FPS: "+Math.floor(fps.promedio/2), 5, 15*this.scale);
+        context.fillText("CPS: "+fps.promedio.cps + "/ FPS: "+fps.promedio.fps, 5, 15*this.scale);
         context.fillText("Interval: "+fps.elapsed.toFixed(4), 5, 30*this.scale);
         var mOrigin = this.renderEngine.mouse.origin;
         if(mOrigin != null){
@@ -238,8 +241,9 @@ class Canvas extends React.Component{
         context.fillText("Res: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 60*this.scale);
         context.fillText("scale: "+this.scale+" : "+(Math.floor(window.devicePixelRatio*100)/100), 5, 75*this.scale);
         context.fillText("Keys: "+this.renderEngine.pressedKeys.join(" "),5,90*this.scale);
-        context.fillText("GPU: "+(renderingEndAt-renderingStartAt).toFixed(2) + "ms" ,5,105*this.scale);
+        context.fillText("GPU: "+(this.renderingElapsed).toFixed(2) + "ms" ,5,105*this.scale);
         context.fillText("CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,5,120*this.scale);
+        context.fillText("cycle:"+(this.renderingElapsed+this.animatingElapsed).toFixed(2) + "ms" ,5,135*this.scale);
         context.closePath();
         context.fill();
         context.globalAlpha = actualGlobalAlpha;
@@ -268,39 +272,36 @@ class Canvas extends React.Component{
         context.globalCompositeOperation = "source-over";
       }
     }
-    var then = performance.now();
-    var fpsArray = [], promedio = this.fps;
-    var drawnFrames = 0, startTimer = window.performance.now(), now,maxFps = 0;
-    var draw = (newtime,lId) => {          
+    var promedio = {cps:this.fps,fps:this.fps};
+    var drawnFrames = 0, startTimer = window.performance.now(),maxCps = 0;
+    var draw = (elapsed,lId) => {          
+      const operativeTimeStartedAt = performance.now();
       if(this.stopEngine){
         this.engineThreads--;
         return;
       }
       if(this.engineThreads >1)
         return;
-      if(lId == this.loopId){
-        rAF.modelThree(draw,(1000 / this.fps),lId);
-      }
       
-      now = newtime;
 
-      const elapsed = newtime - then;
-        drawnFrames++;
-        // then = now - elapsed;
-        then = now - 0.1;
-        if(now-startTimer >1000){
-          maxFps=drawnFrames-1;
-          startTimer = window.performance.now();
-          drawnFrames=1;
-          fpsArray.push(maxFps);
-          if(fpsArray.length>3){
-            fpsArray.shift();
-            promedio = 0;
-            promedio = fpsArray.reduce((a, b) => a + b, 0)
-            promedio/=3;
-          }
-        }
-        checkEvents({maxFps:maxFps,promedio:promedio,elapsed:elapsed});
+      drawnFrames++;
+
+      if(performance.now()-startTimer >1000){
+        maxCps=drawnFrames-1;
+        startTimer = window.performance.now();
+        drawnFrames=1;
+        promedio.fps = this.fpsCounter;
+        promedio.cps = maxCps;
+        this.fpsCounter = 0;
+      }
+
+      checkEvents({promedio:promedio,elapsed:elapsed});
+
+
+
+      if(lId == this.loopId){
+        rAF.modelThree(draw,(1000 / this.fps),operativeTimeStartedAt,lId);
+      }
     }
 
     try { 

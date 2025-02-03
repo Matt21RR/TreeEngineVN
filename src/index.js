@@ -23,7 +23,7 @@ root.render(
         avoidResizeBlackout
         clientSideResources 
         showFps
-        cyclesPerSecond={60}
+        cyclesPerSecond={24}
         setEngine={(engine = new RenderEngine)=>{
 
           Swal.fire("Controles",`
