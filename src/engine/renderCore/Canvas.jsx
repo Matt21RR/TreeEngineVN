@@ -210,12 +210,15 @@ class Canvas extends React.Component{
       }
     }
     var renderer = (fps) => {
-      const renderingStartAt = performance.now();
+
       context.filter = 'none';
-      this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
+      
+      const renderingStartAt = performance.now();
+      const [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender] = this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
+      this.renderingElapsed = performance.now()-renderingStartAt;
+
       const actualGlobalAlpha = context.globalAlpha;
 
-      this.renderingElapsed = performance.now()-renderingStartAt;
       if(this.showFps){
         context.globalCompositeOperation = "darker";
         context.filter = 'none';
@@ -244,6 +247,12 @@ class Canvas extends React.Component{
         context.fillText("GPU: "+(this.renderingElapsed).toFixed(2) + "ms" ,5,105*this.scale);
         context.fillText("CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,5,120*this.scale);
         context.fillText("cycle:"+(this.renderingElapsed+this.animatingElapsed).toFixed(2) + "ms" ,5,135*this.scale);
+        context.fillText("OrdeGrap: "+(orderingTime).toFixed(2) + "ms" ,5,150*this.scale);
+        context.fillText("AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,5,165*this.scale);
+        context.fillText("DrawTime: "+(drawingTime).toFixed(2) + "ms" ,5,180*this.scale);
+        context.fillText("DebuTime: "+(debugTime).toFixed(2) + "ms" ,5,195*this.scale);
+
+        context.fillText("Objects: "+ objectsToRender ,5,225*this.scale);
         context.closePath();
         context.fill();
         context.globalAlpha = actualGlobalAlpha;

@@ -111,7 +111,6 @@ class RenderEngine extends React.Component{
     this.noRenderedItemsCount = 0;
 
     this.drawObjectLimits = true;
-    this.showBounds = false;
     this.drawTriggers = false;
 
     this.objectsToDebug = [];//id of the object
@@ -442,6 +441,8 @@ class RenderEngine extends React.Component{
     return arr;
   }
   generateObjectsDisplayDimentions(){
+    const prevDimentionsPack = structuredClone(this.dimentionsPack);
+    this.dimentionsPack = {};
     let res;
     const canvas = this.canvasRef;
     const camera = this.camera;
@@ -450,6 +451,7 @@ class RenderEngine extends React.Component{
     for (let index = 0; index < this.graphArray.length; index++) {
       const gObject = this.getObject(arrayiseTree[index]);
       if(!gObject.pendingRenderingRecalculation){
+        Object.assign(this.dimentionsPack,{[gObject.id]:prevDimentionsPack[gObject.id]});
         continue;
       }
 
@@ -573,16 +575,28 @@ class RenderEngine extends React.Component{
         // ]}
         engine={this}
         renderGraphics={(canvas)=>{
+
+          const startOrd = performance.now();
           this.calculationOrder = generateCalculationOrder(this.graphArray);
           this.generateObjectsDisplayDimentions();
+          const orderingTime = performance.now()-startOrd;
 
           this.canvasRef = canvas;
           canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
 
           this.noRenderedItemsCount = 0;
 
-          const availableIdsToRender = this.renderingOrderById.filter(id =>{return this.graphArray.ids().indexOf(id) != -1}); 
+          let infoAdjudicationTime = 0;
+          let drawingTime = 0;
+          let debugTime = 0;
+
+          const availableIdsToRender = this.renderingOrderById; 
+
+          const objectsToRender = this.graphArray.length;
+
+
           for (let index = 0; index < this.graphArray.length; index++) {
+            let infoAdjudicationPre = performance.now();
             const gObject = this.getObject(availableIdsToRender[index]);
             const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
             const strRef = gObject.text == null ? null : this.getStr(gObject.text);
@@ -596,7 +610,11 @@ class RenderEngine extends React.Component{
             var objectWidth = this.dimentionsPack[gObject.id].width;
             var objectHeight = this.dimentionsPack[gObject.id].height;
 
+            infoAdjudicationTime += performance.now()-infoAdjudicationPre;
+
+            let drawingTimePre = performance.now();
             if(!(gObject.opacity == 0)){
+
                //*part one: global alpha
               canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
 
@@ -686,6 +704,7 @@ class RenderEngine extends React.Component{
                       );
                     });
                   }
+
                   if(texRef != null){
                     canvas.context.drawImage(
                       texRef.getTexture(gObject),
@@ -700,6 +719,8 @@ class RenderEngine extends React.Component{
                 this.noRenderedItemsCount++;
               }
 
+
+
               //*part four: anullate globalalpha and filters
               if(filterString != "none")
                 canvas.context.filter = "none";
@@ -707,8 +728,10 @@ class RenderEngine extends React.Component{
             }else{
               this.noRenderedItemsCount++;
             }
+            drawingTime += performance.now()-drawingTimePre;
 
             //*DEBUG INFO
+            let debugTimePre = performance.now();
             if(this.objectsToDebug.indexOf(gObject.id) != -1){
               //*part five: draw object info
               if(this.drawObjectLimits){
@@ -764,79 +787,12 @@ class RenderEngine extends React.Component{
                 canvas.context.fillStyle = "";
               }
             }
+            debugTime += performance.now()-debugTimePre;
           }
           // console.warn("Objects excluded: ",this.noRenderedItemsCount);
-          //*part seven: draw canvas grid
-          if(this.showBounds){
-            var grid = {
-              x: -this.camera.position.x+0.5,
-              y: -this.camera.position.y+0.5,
-              z: (this.camera.usePerspective ? -this.camera.position.z : 0)+0.56
-            }
-            const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
-            const perspectiveDiff = 1-((1/(grid.z))-(1))/((1/this.camera.maxZ)-(1));
-            const toAddSize = perspectiveDiff * tangencialConstant*(canvas.resolutionHeight)*this.camera.maxZ;
-            const computedPercentageSize = (100 / canvas.resolutionHeight) * (toAddSize);
-            const perspectiveScale = computedPercentageSize/100;
 
-            //*recalculate gobject coords
-            var perspectiveLayer = {
-              width:canvas.resolutionHeight*perspectiveScale,
-              height:canvas.resolutionHeight*perspectiveScale
-            }
-              //it will calc were the image must to be, inside the perspectiveLayer
-            grid.x *= perspectiveLayer.width;
-            grid.y *= perspectiveLayer.height;
-            //now add the origin of the perspectiveLayer
-            grid.x += -(perspectiveLayer.width-canvas.resolutionHeight)*this.camera.origin.x;
-            grid.y += -(perspectiveLayer.height-canvas.resolutionHeight)*this.camera.origin.y;
 
-            const height = perspectiveLayer.height;
-            const width = height*(canvas.resolutionWidth/canvas.resolutionHeight);
-
-            canvas.context.beginPath();
-            canvas.context.lineWidth = 5*perspectiveScale;
-            canvas.context.strokeStyle = "green";
-
-            canvas.context.moveTo(
-              grid.x,
-              grid.y
-            );
-            canvas.context.lineTo(
-              width + grid.x,
-              grid.y
-            );
-            canvas.context.lineTo(
-              width + grid.x,
-              height + grid.y
-            );
-            canvas.context.lineTo(
-              grid.x,
-              height + grid.y
-            );
-            canvas.context.lineTo(
-              grid.x,
-              grid.y
-            );
-            canvas.context.closePath();
-            canvas.context.stroke();
-
-            canvas.context.beginPath();
-            canvas.context.strokeStyle = "blue";
-            canvas.context.lineWidth = 1*perspectiveScale;
-            canvas.context.moveTo(
-              height+grid.x,
-              grid.y
-            );
-            canvas.context.lineTo(
-              height+grid.x,
-              height+grid.y
-            );
-
-            canvas.context.closePath();
-            canvas.context.stroke();
-            
-          }
+          return [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender];
         }} 
         onLoad={(canvas)=>{
           //calc the perspective angle
