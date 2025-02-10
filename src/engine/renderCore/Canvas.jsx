@@ -214,7 +214,7 @@ class Canvas extends React.Component{
       context.filter = 'none';
       
       const renderingStartAt = performance.now();
-      const [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender] = this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
+      const [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,dimsTimers] = this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
       this.renderingElapsed = performance.now()-renderingStartAt;
 
       const actualGlobalAlpha = context.globalAlpha;
@@ -247,12 +247,13 @@ class Canvas extends React.Component{
         context.fillText("GPU: "+(this.renderingElapsed).toFixed(2) + "ms" ,5,105*this.scale);
         context.fillText("CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,5,120*this.scale);
         context.fillText("cycle:"+(this.renderingElapsed+this.animatingElapsed).toFixed(2) + "ms" ,5,135*this.scale);
-        context.fillText("OrdeGrap: "+(orderingTime).toFixed(2) + "ms" ,5,150*this.scale);
+        context.fillText("OrdeGrap: "+(orderingTime.map((d)=>{return d.toFixed(2)})) + "ms" ,5,150*this.scale);
         context.fillText("AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,5,165*this.scale);
         context.fillText("DrawTime: "+(drawingTime).toFixed(2) + "ms" ,5,180*this.scale);
         context.fillText("DebuTime: "+(debugTime).toFixed(2) + "ms" ,5,195*this.scale);
+        context.fillText(dimsTimers ,5,210*this.scale);
 
-        context.fillText("Objects: "+ objectsToRender ,5,225*this.scale);
+        context.fillText("Objects: "+ objectsToRender ,5,275*this.scale);
         context.closePath();
         context.fill();
         context.globalAlpha = actualGlobalAlpha;
@@ -306,8 +307,6 @@ class Canvas extends React.Component{
 
       checkEvents({promedio:promedio,elapsed:elapsed});
 
-
-
       if(lId == this.loopId){
         rAF.modelThree(draw,(1000 / this.fps),operativeTimeStartedAt,lId);
       }
@@ -315,7 +314,6 @@ class Canvas extends React.Component{
 
     try { 
       this.engineThreads++;
-      console.log("disparo");
       draw(0,loopId);
     } catch (error) {
       console.log("in line:"+ error.lineNumber);

@@ -1,6 +1,8 @@
 class RenList{
+  #_ids
   constructor(){
     this.objects = new Array();
+    this.#_ids = new Array();
     this.enabled = new Object();
   }
   get length(){
@@ -13,35 +15,39 @@ class RenList{
     }
     return this.objects.length;
   }
+
   push(graphObject = new Object()){
-try {
-  if("id" in graphObject){
-    if(this.exist(graphObject.id)){
-      console.warn("Element with "+ graphObject.id + " id already exists");
-      return;
+    try {
+      if("id" in graphObject){
+        if(this.exist(graphObject.id)){
+          console.warn("Element with "+ graphObject.id + " id already exists");
+          return;
+        }
+      }
+      this.#_ids.push(graphObject.id);
+      this.objects.push(graphObject);
+    } catch (error) {
+      console.log(graphObject);
+      debugger;
     }
   }
-  this.objects.push(graphObject);
-} catch (error) {
-  console.log(graphObject);
-  debugger;
-}
 
-  }
   remove( objectId = new String()){
-    const graphIds = this.objects.map(e=>e.id);
-
-    if(graphIds.indexOf(objectId) != -1)
-    this.objects.splice(graphIds.indexOf(objectId),1);
+    const numId = this.#_ids.indexOf(objectId);
+    if(numId != -1){
+      this.objects.splice(numId,1);
+      this.#_ids.splice(numId,1);
+    }
   }
   get(objectId = new String()){
-    const graphIds = this.objects.map(e=>e.id);
-    if(graphIds.indexOf(objectId) != -1){
-      if(Object.keys(this.objects[graphIds.indexOf(objectId)]).indexOf("get") != -1){
-        return this.objects[graphIds.indexOf(objectId)].get();
-      }else{
-        return this.objects[graphIds.indexOf(objectId)];
-      }
+    const numId = this.#_ids.indexOf(objectId);
+    if(numId != -1){
+      const el = this.objects[numId];
+      // if(Object.keys(el).indexOf("get") != -1){
+      //   return el.get();
+      // }else{
+        return el;
+      // }
     }else{
       throw new Error(objectId +" don't exists in this list");
     }
@@ -52,8 +58,7 @@ try {
    * @returns 
    */
   exist(objectId =  new String()){
-    const graphIds = this.objects.map(e=>e.id);
-    return graphIds.indexOf(objectId) != -1;
+    return this.#_ids.indexOf(objectId) != -1;
   }
   ids(includeDisabled = false){
     if(includeDisabled){
@@ -99,7 +104,7 @@ try {
   }
   enabledList(){
     var res = Object.assign({},this.enabled);
-    this.ids().forEach(id => {
+    this.#_ids().forEach(id => {
       if(!(id in res)){
         Object.assign(res,{[id]:false})
       }

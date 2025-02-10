@@ -436,9 +436,6 @@ class GraphObject{
   set accomulatedZ(x) {this.#accomulatedZ = x;}
 
 
-  get(){// TF THIS ARE bEING USED?
-    return this;
-  }
   /**
    * Create a deepclone of a graphObject
    * @param {object} graphObject The graphObject that you want to be cloned

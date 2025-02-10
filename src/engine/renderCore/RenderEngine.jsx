@@ -15,7 +15,7 @@ import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim";
 import { CodedRoutine } from "../engineComponents/CodedRoutine";
 import { Chaos } from "./ChaosInterpreter";
-import { generateCalculationOrder } from "./RenderingOrder";
+import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder";
 
 import noImageTexture from "./no-image.png"
 
@@ -245,10 +245,8 @@ class RenderEngine extends React.Component{
    * @returns {GraphObject}
    */
   getObject(id){
-    var graphObject = new GraphObject();
-    graphObject = this.graphArray.get(id);
     //todo: Adapt to autoparse the data
-    return graphObject;
+    return this.graphArray.get(id);
   }
   /**
    * 
@@ -424,42 +422,46 @@ class RenderEngine extends React.Component{
     this.soundsList.get(songId).sound.play();
   }
 
-
-  arrayiseTree(){
-    const calculationOrder = this.calculationOrder;
-    var base ={};
-    var arr = [];
-    calculationOrder.map(element=>{
-      if(!([element.weight] in base)){
-        Object.assign(base,{[element.weight]:[]});
-      }
-      base[element.weight].push(element.id);
-    });
-    Object.keys(base).forEach(weight=>{
-      arr = arr.concat(base[weight]);
-    });
-    return arr;
-  }
   generateObjectsDisplayDimentions(){
+    const dimmensionsStartTimer = performance.now();
     const prevDimentionsPack = structuredClone(this.dimentionsPack);
     this.dimentionsPack = {};
-    let res;
+
     const canvas = this.canvasRef;
     const camera = this.camera;
 
-    const arrayiseTree = this.arrayiseTree();
+    const arrayisedTree = arrayiseTree(this.calculationOrder);
+
+
+
+    let trdTimer = 0;
+    let assignTimer = 0;
+    let setTimer = 0;
+    
+    const resolution = {
+      height:canvas.resolutionHeight,
+      width:canvas.resolutionWidth
+    };
+    const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
+
+    const perspectiveDiffHelper = ((1/camera.maxZ)-(1))
+    const toAddSizeHelper = tangencialConstant*resolution.height*camera.maxZ;
+
     for (let index = 0; index < this.graphArray.length; index++) {
-      const gObject = this.getObject(arrayiseTree[index]);
+      const setTimerA = performance.now();
+      
+      const gObject = this.getObject(arrayisedTree[index]);
+      setTimer += performance.now()-setTimerA;
+      
       if(!gObject.pendingRenderingRecalculation){
+        const assignTimerA = performance.now();
         Object.assign(this.dimentionsPack,{[gObject.id]:prevDimentionsPack[gObject.id]});
+        assignTimer += performance.now()-assignTimerA;
         continue;
       }
 
       const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
-      const resolution = {
-        height:canvas.resolutionHeight,
-        width:canvas.resolutionWidth
-      };
+
 
       const origin = {
         x: gObject.parent == "" ? 0 : this.dimentionsPack[gObject.parent].base.x,
@@ -479,18 +481,16 @@ class RenderEngine extends React.Component{
       
       var testD = 0.99;
 
-      // if(camera.usePerspective && !gObject.ignoreParallax){
+      
+      const trdTimerA = performance.now();
       if(camera.usePerspective && !gObject.ignoreParallax){
-        const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
-
         objectLeft = gObject.x + origin.x - this.camera.position.x+0.5;
         objectTop = gObject.y + origin.y - this.camera.position.y+0.5;
         objectZ = gObject.accomulatedZ - this.camera.position.z+0.56;
 
-        const perspectiveDiff = 1-((1/(objectZ))-(1))/((1/camera.maxZ)-(1));
-        const toAddSize = perspectiveDiff * tangencialConstant*(resolution.height)*camera.maxZ;
-        const computedPercentageSize = (100 / resolution.height) * (toAddSize);
-        const perspectiveScale = computedPercentageSize/100;
+        const perspectiveDiff = 1-((1/objectZ)-(1))/perspectiveDiffHelper;
+        const toAddSize = perspectiveDiff * (toAddSizeHelper);
+        const perspectiveScale = toAddSize/resolution.height;
         objectScale *= perspectiveScale;
         testD = perspectiveScale;
 
@@ -519,23 +519,36 @@ class RenderEngine extends React.Component{
           objectHeight = (texRef.texture.naturalHeight/texRef.texture.naturalWidth)*resolution.width*objectScale*gObject.heightScale;
         }
       }
-      res = {
+      trdTimer += performance.now()-trdTimerA;
+
+      const res = {
         id: gObject.id,
         x : objectLeft,
         y : objectTop,
         z : objectZ,
+        corner:{
+          x:objectLeft - objectWidth/2,
+          y:objectTop - objectHeight/2
+        },
         base:{
           x:origin.x + gObject.x,
           y:origin.y + gObject.y,
-          //z:gObject.z//*accomulated z
+          //z:gObject.z//*accomulated z ??????
         },
         sizeInDisplay : testD,
         width : objectWidth,
         height : objectHeight
       }
+      const assignTimerB = performance.now();
       Object.assign(this.dimentionsPack,{[gObject.id]:res});
+      assignTimer += performance.now()-assignTimerB;
+      // this.dimentionsPack[gObject.id] = res
     }
-    //*Build rendering order
+    const dimmensionsEndTimer = performance.now()-dimmensionsStartTimer;
+    
+    
+    //************************************************************************************Build rendering order
+    const orderingTimer = performance.now();
     var zRefs = {};
     var zetas = [];
     var renderingOrderById = [];
@@ -556,6 +569,10 @@ class RenderEngine extends React.Component{
     this.renderingOrderById = renderingOrderById;
     //*Update camera data
     this.prevCamera = structuredClone(this.camera);
+
+    const orderingEndTimer = performance.now()-orderingTimer;
+
+    return `DimsTimers: Total:${dimmensionsEndTimer.toFixed(2)}ms, SetVars: ${((setTimer/dimmensionsEndTimer)*100).toFixed(2)}%, DimsCalc: ${((trdTimer/dimmensionsEndTimer)*100).toFixed(2)}%, Assign: ${(((assignTimer/dimmensionsEndTimer)*100).toFixed(2))}% OrderingTimer: ${orderingEndTimer.toFixed(2)}ms`;
   }
   renderScene(){
     if(this.isReady){
@@ -564,7 +581,7 @@ class RenderEngine extends React.Component{
         CELGF={(er)=>{console.error(er)}} 
         displayResolution={this.engineDisplayRes} 
         id={"renderCanvas" +Math.floor(window.performance.now()*10000000).toString()} 
-        fps={this.cyclesPerSecond} 
+        fps={this.cyclesPerSecond}
         scale={1} 
         showFps={this.showFps}
         // debugMessage={[
@@ -576,10 +593,15 @@ class RenderEngine extends React.Component{
         engine={this}
         renderGraphics={(canvas)=>{
 
-          const startOrd = performance.now();
+          const startOrdA = performance.now();
           this.calculationOrder = generateCalculationOrder(this.graphArray);
-          this.generateObjectsDisplayDimentions();
-          const orderingTime = performance.now()-startOrd;
+          const endOrdA = performance.now()-startOrdA;
+
+          const startOrdB = performance.now();
+          const dimsTimers = this.generateObjectsDisplayDimentions();
+          const endOrdB = performance.now()-startOrdB;
+
+          const orderingTime = [endOrdA,endOrdB];
 
           this.canvasRef = canvas;
           canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
@@ -792,7 +814,7 @@ class RenderEngine extends React.Component{
           // console.warn("Objects excluded: ",this.noRenderedItemsCount);
 
 
-          return [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender];
+          return [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,dimsTimers];
         }} 
         onLoad={(canvas)=>{
           //calc the perspective angle
