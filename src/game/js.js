@@ -85,17 +85,15 @@ const game = (engine = new RenderEngine) => {
         }
 
         const enemyDirectory = engine.gameVars.enemyDirectory;
-        enemyDirectory.forEach((enemyId,idx)=>{
-          const enemy = engine.getObject(enemyId);
-          if(Math.abs(bullet.x-enemy.x)<0.05){
-            if(Math.abs(bullet.y-enemy.y)<0.05){
-              delete engine.gameVars.enemyDirectory.splice(idx,1);
-              engine.graphArray.remove(enemyId);
-              engine.codedRoutines.remove(newBulletId);
-              engine.graphArray.remove(newBulletId);
-            }
-          }
-        })
+        const collisions = engine.collisionLayer.check(newBulletId,enemyDirectory);
+        if(collisions.length>0){
+          const enemyId = collisions[0];
+          delete engine.gameVars.enemyDirectory.splice(enemyDirectory.indexOf(enemyId),1);
+          engine.graphArray.remove(enemyId);
+
+          engine.codedRoutines.remove(newBulletId);
+          engine.graphArray.remove(newBulletId);
+        }
       }}))
     }
     engine.keyboardTriggers.push(new KeyboardTrigger({

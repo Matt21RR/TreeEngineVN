@@ -214,7 +214,7 @@ class Canvas extends React.Component{
       context.filter = 'none';
       
       const renderingStartAt = performance.now();
-      const [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,dimsTimers] = this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
+      const [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,dimsTimers,updateColsTime] = this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
       this.renderingElapsed = performance.now()-renderingStartAt;
 
       const actualGlobalAlpha = context.globalAlpha;
@@ -251,7 +251,10 @@ class Canvas extends React.Component{
         context.fillText("AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,5,165*this.scale);
         context.fillText("DrawTime: "+(drawingTime).toFixed(2) + "ms" ,5,180*this.scale);
         context.fillText("DebuTime: "+(debugTime).toFixed(2) + "ms" ,5,195*this.scale);
+        
         context.fillText(dimsTimers ,5,210*this.scale);
+
+        context.fillText("UpdColsT: "+(updateColsTime).toFixed(2) + "ms" ,5,225*this.scale);
 
         context.fillText("Objects: "+ objectsToRender ,5,275*this.scale);
         context.closePath();

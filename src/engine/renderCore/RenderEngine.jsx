@@ -18,6 +18,7 @@ import { Chaos } from "./ChaosInterpreter";
 import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder";
 
 import noImageTexture from "./no-image.png"
+import CollisionLayer from "../engineComponents/CollisionLayer.ts";
 
 /**
  * aaaaa
@@ -59,18 +60,20 @@ class RenderEngine extends React.Component{
       keyboardTrigger : KeyboardTrigger,
       codedRoutine : CodedRoutine,
     }
+    this.gameVars = {};//Y guardar esto tambien
+
     this.graphObject = GraphObject;
     this.animation = Animation;
-
     this.codedRoutine = CodedRoutine;
-
     this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
     this.anims = new RenList();
     this.triggers = new RenList();
-    this.gameVars = {};//Y guardar esto tambien
+
     this.texturesList = new RenList();
     this.textureAnims = new RenList();//gifs-like
     this.soundsList = new RenList();
+
+    this.collisionLayer = new CollisionLayer();
 
     this.keyboardTriggers = new RenList();
     this.pressedKeys = [];
@@ -424,24 +427,23 @@ class RenderEngine extends React.Component{
 
   generateObjectsDisplayDimentions(){
     const dimmensionsStartTimer = performance.now();
+    let trdTimer = 0;
+    let assignTimer = 0;
+    let setTimer = 0;
+
     const prevDimentionsPack = structuredClone(this.dimentionsPack);
     this.dimentionsPack = {};
 
     const canvas = this.canvasRef;
-    const camera = this.camera;
-
-    const arrayisedTree = arrayiseTree(this.calculationOrder);
-
-
-
-    let trdTimer = 0;
-    let assignTimer = 0;
-    let setTimer = 0;
-    
     const resolution = {
       height:canvas.resolutionHeight,
       width:canvas.resolutionWidth
     };
+
+    const camera = this.camera;
+
+    const arrayisedTree = arrayiseTree(this.calculationOrder);
+    
     const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
 
     const perspectiveDiffHelper = ((1/camera.maxZ)-(1))
@@ -604,7 +606,12 @@ class RenderEngine extends React.Component{
           const orderingTime = [endOrdA,endOrdB];
 
           this.canvasRef = canvas;
-          canvas.context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
+          const resolution = {
+            height:canvas.resolutionHeight,
+            width:canvas.resolutionWidth
+          };
+
+          canvas.context.clearRect(0, 0, resolution.width, resolution.height);//cleanning window
 
           this.noRenderedItemsCount = 0;
 
@@ -651,15 +658,15 @@ class RenderEngine extends React.Component{
               if(testD>0.003){
                 let texts;
                 if(strRef != null){
-                  canvas.context.font = (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700)*testD)+"px "+gObject.font;
+                  canvas.context.font = (gObject.fontSizeNumeric*canvas.scale*(resolution.height/700)*testD)+"px "+gObject.font;
                   // console.warn(canvas.context.font);
                   texts = wrapText(//TODO: Wrap it until all the text get wraped
                     canvas.context,
                     strRef,
                     (gObject.margin*objectWidth) + objectLeft - (objectWidth/2),
-                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSizeNumeric*canvas.scale*(canvas.resolutionHeight/700)*testD) - (objectHeight/2),
+                    (gObject.margin*objectHeight) + objectTop + (gObject.fontSizeNumeric*canvas.scale*(resolution.height/700)*testD) - (objectHeight/2),
                     objectWidth - (gObject.margin*objectWidth)*2,
-                    (gObject.fontSize*canvas.scale*(canvas.resolutionHeight/700)*testD*window.devicePixelRatio*.6),
+                    (gObject.fontSize*canvas.scale*(resolution.height/700)*testD*window.devicePixelRatio*.6),
                     gObject.center
                   );
                 }
@@ -768,8 +775,8 @@ class RenderEngine extends React.Component{
                   0, 
                   2 * Math.PI);
                 canvas.context.lineTo(
-                  canvas.resolutionWidth/2,
-                  canvas.resolutionHeight/2
+                  resolution.width/2,
+                  resolution.height/2
                 );
                 canvas.context.stroke();
                 //image dimensions
@@ -813,8 +820,12 @@ class RenderEngine extends React.Component{
           }
           // console.warn("Objects excluded: ",this.noRenderedItemsCount);
 
+          var updatingColsTime = performance.now();
+          this.collisionLayer.update(this.dimentionsPack,resolution.width,resolution.height);
+          updatingColsTime = performance.now()-updatingColsTime;
 
-          return [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,dimsTimers];
+
+          return [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,dimsTimers,updatingColsTime];
         }} 
         onLoad={(canvas)=>{
           //calc the perspective angle

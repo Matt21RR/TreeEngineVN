@@ -158,7 +158,7 @@ class GraphObject{
     return new Proxy(this, {
       set: (target, property, value) => {
         if (target[property] !== value) {
-          console.log(`${property} value changed in ${target.id} to ${value}`);
+          // console.log(`${property} value changed in ${target.id} to ${value}`);
           target.pendingRenderingRecalculation = true;
         }
         target[property] = value; // Set the property
