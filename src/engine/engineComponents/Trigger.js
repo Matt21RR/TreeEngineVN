@@ -21,7 +21,7 @@ class Trigger{
     }
 
     this.#id = tInfo.id;
-    this.#relatedTo =   tInfo.relatedTo = null;
+    this.#relatedTo =   tInfo.relatedTo || null;
     this.#enabled =     tInfo.enabled || true;
     //if superposition is true the engine will ignore the graphObjects that are over the graphobject related to the trigger
     //superposition: tInfo.superposition != undefined ? tInfo.superposition : false,
@@ -60,6 +60,7 @@ class Trigger{
   set onMouseMove(x) {this.#onMouseMove = x;}
 
   check(engineRef = new RenderEngine(),action = new String()){
+    console.log(engineRef); 
     console.log(action);
     if(action == "mouseMove")//check onEnter
       action = "onEnter";

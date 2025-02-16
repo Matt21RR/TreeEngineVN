@@ -18,6 +18,15 @@ type EngineRenderingData = {
 
 type Tuple = [number, number];
 
+function engineRenderingDataCloner(engineRenderingData:EngineRenderingData){
+  var newData:EngineRenderingData = {};
+  for(const id in engineRenderingData){
+    const el = engineRenderingData[id]
+    newData[id] = el;
+  }
+  return newData;
+}
+
 class CollisionLayer {
   collisionMatrix:string[][][];
   refTable:{[key:string]:Array<Tuple>};
@@ -59,9 +68,6 @@ class CollisionLayer {
         }
       }
     }
-    console.clear();
-    console.table(this.collisionMatrix);
-    console.table(this.refTable);
   }
   #isColliding(a:RenderingData, b:RenderingData) {
     let aX = a.corner.x;
@@ -99,9 +105,7 @@ class CollisionLayer {
       return [];
       // throw new Error(`Key ${key} not found in collision matrix`);
     }
-    console.log(key);
     let tuples = this.refTable[key];//Cells to check
-    console.log(tuples)
     let collisionsToCheck:Array<string> = [];
     for(let tuple of tuples) {
       let [x, y] = tuple;//cell coord
@@ -133,3 +137,4 @@ class CollisionLayer {
   }
 }
 export default CollisionLayer;
+export {engineRenderingDataCloner}

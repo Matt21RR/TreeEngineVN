@@ -4,6 +4,7 @@ import { GraphObject } from "../engine/engineComponents/GraphObject"
 import { KeyboardTrigger } from "../engine/engineComponents/Trigger"
 import { RenderEngine } from "../engine/renderCore/RenderEngine"
 import arrow from "./resources/next8.png"
+import { degToRad } from "../engine/logic/Misc.ts"
 
 const game = (engine = new RenderEngine) => {
   engine.loadTexture(arrow,"arrow").then(()=>{
@@ -121,21 +122,27 @@ const game = (engine = new RenderEngine) => {
         const enemy = engine.getObject(enemyId);
         const dist = Math.sqrt((player.x-enemy.x)**2 + (player.y-enemy.y)**2);
         //Si los enemigos están muy lejos eliminarlos
-        if(dist > 2.7){
+        if(dist > 4){
           //TODO: Implementar el borrado de loas instancias de la clase shader
           delete engine.gameVars.enemyDirectory.splice(idx,1);
           engine.graphArray.remove(enemyId);
         }
         //Hacer que los enemigos se muevan hacia el jugador
         else if (dist > 0.06){
-          if(dist > 0.7){
-            displacementConstant = .035
+          if(dist > 0.5){
+            displacementConstant = .032
           }
-          if(dist > 1.1){
+          if(dist > 0.7){
             displacementConstant = .03
           }
+          if(dist > 0.9){
+            displacementConstant = .028
+          }
+          if(dist > 1.1){
+            displacementConstant = .026
+          }
           if(dist > 1.5){
-            displacementConstant = .02
+            displacementConstant = .023
           }
           const angle = Math.acos((player.x-enemy.x)/dist);
           enemy.rotateRad = angle
@@ -148,7 +155,6 @@ const game = (engine = new RenderEngine) => {
           }
           enemy.x += displacementConstant*Math.cos(angle);
         }else if(player.vivo){
-          return;
           setTimeout(()=>{
             Swal.fire("Has muerto","Volver a intentarlo?","question").then(v=>{
               if(v.isConfirmed){
@@ -163,27 +169,27 @@ const game = (engine = new RenderEngine) => {
     }})) 
 
     const enemyGenerator = ()=>{
-      let max = 2
-      var min = 1
-      var radius = (Math.random()*(max-min))+min
-      const a = (Math.random()*radius)
-      const b = Math.sqrt(radius**2 - a**2)
-      var x = a*(Math.random() >= 0.5 ? -1 : 1)
-      var y = b*(Math.random() >= 0.5 ? -1 : 1)
-      if(player.movimiento){
-        const playerAngle = Math.abs(player.graph.rotate % 360)
-        switch (playerAngle) {
-          case playerAngle<60 || playerAngle>300: //Si el jugador está apuntando hacia delante
-            y*=0.35
-            x = a*1.25+0.2
-            break;
-          case playerAngle>120 && playerAngle<240:
-            y*=0.35
-            x = (-a*1.25)-0.2
-            break;
-        }
+      let playerAngle;
+      playerAngle = 360 * Math.random();
 
+      var max = 3
+      var min = 1.7
+
+      if(player.movimiento){
+        var max = 2.5
+        var min = 1.3
+        if(player.movementType == "foward"){
+          playerAngle = (player.graph.rotate +(Math.random()*100)- 50) % 360 ;
+        }else{
+          playerAngle = (player.graph.rotate +(Math.random()*100)- 50 - 180) % 360 ;
+        }
       }
+      const radAngle = degToRad(playerAngle)
+      const radius = (Math.random()*(max-min))+min
+
+      const y = radius*Math.sin(radAngle);
+      const x = radius*Math.cos(radAngle);
+
       const enemyId = "enemy"+performance.now()+Math.random();
       engine.gameVars.enemyDirectory.push(enemyId);
       const graphEnemy =  new GraphObject({id:enemyId,x:player.x+x,y:player.y+y,texture:"arrow",scale:1.5,enabled:true});

@@ -9,38 +9,57 @@ const vertexShaderSource = /*glsl*/`
   }
 `
 
-const fragmentShaderSourceH = /*glsl*/`
+var fragmentShaderSourceH = /*glsl*/`
   precision lowp float;
   uniform sampler2D u_image;
   uniform float u_textureSize;
   uniform float u_blurAmount;
+  const float u_sampleRange = %sampleRange;
+  const float u_step = %step;
   varying vec2 v_texCoord;
+
+  // Gaussian function: e^(-(x^2)/(2σ^2)) where σ (sigma) is 3.0
+  float gaussian(float x) {
+    float sigma = 4.0;
+    return exp(-(x * x) / (2.0 * sigma * sigma));
+  }
 
   void main() {
     vec4 color = vec4(0.0);
     float total = 0.0;
-    for (float x = -3.0; x <= 3.0; x += 1.0) {
+
+    for (float x = -u_sampleRange; x <= u_sampleRange; x += u_step) {
+      float weight = gaussian(x);
       vec2 offset = vec2(x * u_blurAmount / u_textureSize, 0.0);
-      color += texture2D(u_image, v_texCoord + offset);
+      color += texture2D(u_image, v_texCoord + offset) * 1.0;
       total += 1.0;
     }
     gl_FragColor = color / total;
   }
 `
 
-const fragmentShaderSourceV = /*glsl*/`
+var fragmentShaderSourceV = /*glsl*/`
   precision mediump float;
   uniform sampler2D u_image;
   uniform float u_textureSize;
   uniform float u_blurAmount;
+  const float u_sampleRange = %sampleRange;
+  const float u_step = %step;
   varying vec2 v_texCoord;
+
+  // Gaussian function: e^(-(x^2)/(2σ^2)) where σ (sigma) is 3.0
+  float gaussian(float x) {
+    float sigma = 4.0;
+    return exp(-(x * x) / (2.0 * sigma * sigma));
+  }
 
   void main() {
     vec4 color = vec4(0.0);
     float total = 0.0;
-    for (float y = -3.0; y <= 3.0; y += 1.0) {
+    for (float y = -u_sampleRange; y <= u_sampleRange; y += u_step) {
+      float weight = gaussian(y);
       vec2 offset = vec2(0.0, y * u_blurAmount / u_textureSize);
-      color += texture2D(u_image, v_texCoord + offset);
+      color += texture2D(u_image, v_texCoord + offset) * 1.0;
       total += 1.0;
     }
     gl_FragColor = color / total;
@@ -160,6 +179,7 @@ function applyBlur(gl, programH, programV, textures, width, height, blurAmount) 
   gl.uniform1f(gl.getUniformLocation(programV, 'u_textureSize'), height)
   gl.uniform1f(gl.getUniformLocation(programV, 'u_blurAmount'), blurAmount)
 
+
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
   // Clean up
@@ -190,13 +210,22 @@ class Shader{
     canvas.height = height; //image.height;
 
 
+
     const gl = canvas.getContext('webgl2', { 
       premultipliedAlpha: true, 
       antialias:false, 
       preserveDrawingBuffer: false, 
       depth: false, 
       stencil: false});
+
+    //*Set fragmentShaders blur quality
+    fragmentShaderSourceH = fragmentShaderSourceH.replace('%sampleRange',"6.0");
+    fragmentShaderSourceV = fragmentShaderSourceV.replace('%sampleRange',"6.0");
+    fragmentShaderSourceH = fragmentShaderSourceH.replace('%step',"1.0");
+    fragmentShaderSourceV = fragmentShaderSourceV.replace('%step',"1.0");
+
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
     const fragmentShaderH = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSourceH);
     const fragmentShaderV = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSourceV);

@@ -39,7 +39,7 @@ class Animation{
     this.#reversing = "reverse" in aInfo ? 1 : 0;//control Var
     this.#looped = 1;
     this.#infinite = aInfo.infinite || false;//infinite looping
-    this.#loopback = "loopback" in aInfo ? 1 : 0;//repeat the animation in reverse after end
+    this.#loopback = "loopback" in aInfo ? true : false;//repeat the animation in reverse after end
     this.#duration = aInfo.duration || 0;
     this.#elapsed = 0;
     this.#tElapsed = 0;//total time elapsed

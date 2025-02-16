@@ -1,4 +1,4 @@
-import { lambdaConverter } from "../logic/Misc"
+import { lambdaConverter } from "../logic/Misc.ts"
 import { RenderEngine } from "../renderCore/RenderEngine"
 
 class GraphObject{
@@ -100,55 +100,55 @@ class GraphObject{
   }
 
   constructor(graphInfo = new Object()){
-    this.#id =              graphInfo.id || "error";
-    this.#enabled =         graphInfo.enabled || false;//exclude from calculation and renderin
+    this.#id =              graphInfo.id ?? "error";
+    this.#enabled =         graphInfo.enabled ?? false;//exclude from calculation and renderin
 
     this.#text =            "text" in graphInfo ? graphInfo.text : null;
-    this.#center =          graphInfo.center || false;
-    this.#color =           graphInfo.color || "gray";
-    this.#font =            graphInfo.font || "Arial";
+    this.#center =          graphInfo.center ?? false;
+    this.#color =           graphInfo.color ?? "gray";
+    this.#font =            graphInfo.font ?? "Arial";
     this.#fontSize =        "fontSize" in graphInfo ? parseFloat(graphInfo.fontSize):18;
-    this.#boxColor =        graphInfo.boxColor || "transparent";
-    this.#margin =          graphInfo.margin || 0;
+    this.#boxColor =        graphInfo.boxColor ?? "transparent";
+    this.#margin =          graphInfo.margin ?? 0;
 
-    this.#textureName =     graphInfo.texture || null;
+    this.#textureName =     graphInfo.texture ?? null;
     //Properties of the graph
-    this.#brightness =      "brightness" in graphInfo ? graphInfo.brightness : 1;
-    this.#contrast =        "contrast" in graphInfo ? graphInfo.contrast : 1;
-    this.#grayscale =       graphInfo.grayscale || 0;
+    this.#brightness =      graphInfo.brightness ?? 1;
+    this.#contrast =        graphInfo.contrast ?? 1;
+    this.#grayscale =       graphInfo.grayscale ?? 0;
     this.#hueRotate =       "hueRotate" in graphInfo ? parseFloat(graphInfo.hueRotate): 0;//deg
     //***SHADERS
     this.#blur =            "blur" in graphInfo ? parseFloat(graphInfo.blur): 0;//px
     this.#aberration =      "aberration" in graphInfo ? parseFloat(graphInfo.aberration): 0;
-    this.#aberrationType =  graphInfo.aberrationType || "static";
+    this.#aberrationType =  graphInfo.aberrationType ?? "static";
     //static or shaky
     // _dither:graphInfo.dither != undefined ? graphInfo.dither : 1,
     //***END SHADERS
-    this.#invert =          graphInfo.invert || 0;
-    this.#saturate =        "saturate" in graphInfo ? graphInfo.saturate : 1;
-    this.#sepia =           graphInfo.sepia || 0;
+    this.#invert =          graphInfo.invert ?? 0;
+    this.#saturate =        graphInfo.saturate ?? 1;
+    this.#sepia =           graphInfo.sepia ?? 0;
     this.#filterString = "";
 
-    this.#opacity =         "opacity" in graphInfo ? graphInfo.opacity : 1;
+    this.#opacity =         graphInfo.opacity ?? 1;
 
-    this.#parent =          graphInfo.parent || "";
+    this.#parent =          graphInfo.parent ?? "";
 
-    this.#x =               graphInfo.x || 0;
-    this.#y =               graphInfo.y || 0;
-    this.#z =               graphInfo.z || 0;
+    this.#x =               graphInfo.x ?? 0;
+    this.#y =               graphInfo.y ?? 0;
+    this.#z =               graphInfo.z ?? 0;
     //multipliers of canvasResolution
     //Resets the width and height scales
-    this.#scale =           "scale" in graphInfo ? graphInfo.scale : 1;
+    this.#scale =           graphInfo.scale ?? 1;
     //imageRotation
     this.#rotate =          "rotate" in graphInfo ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0;
 
     //ignoreParallax forces the object to ignore the camera parallax movement
-    this.#ignoreParallax = "z" in graphInfo ? true : false;
+    this.#ignoreParallax = "z" in graphInfo;
     this.#ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this.#ignoreParallax
     //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
     //Todo: force the engine to use this when it's a text object.
-    this.#widthScale =     "widthScale" in graphInfo ? graphInfo.widthScale : 1;
-    this.#heightScale =    "heightScale" in graphInfo ? graphInfo.heightScale : 1;
+    this.#widthScale =     graphInfo.widthScale ?? 1;
+    this.#heightScale =    graphInfo.heightScale ?? 1;
 
     this.#states = "states" in graphInfo ? new States(this,graphInfo.states) : {};
 
@@ -337,7 +337,7 @@ class GraphObject{
       hueRotate:"hue-rotate",
       dropShadow:"dropShadow",
       invert:"invert",
-      blurPX:"blur",
+      // blurPX:"blur",
       saturate:"saturate",
       sepia:"sepia",
     }
@@ -348,7 +348,7 @@ class GraphObject{
     if(this.#contrast != 1){filters.push("contrast");}
     if((this.#grayscale % 360) != 0){filters.push("grayscale");}
     if(this.#invert != 0){filters.push("invert");}
-    if(this.#blur != 0){filters.push("blurPX")}
+    // if(this.#blur != 0){filters.push("blurPX")}
     if(this.#saturate != 1){filters.push("saturate");}
     if(this.#sepia != 0){filters.push("sepia");}
 

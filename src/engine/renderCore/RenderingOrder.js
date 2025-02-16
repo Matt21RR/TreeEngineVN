@@ -1,9 +1,10 @@
-import { RenList } from "../engineComponents/RenList";
+import { GraphObject } from "../engineComponents/GraphObject";
+import RenList from "../engineComponents/RenList.ts";
 
 /**
  * Genera el orden de renderización de los elementos en pantalla tomando en cuenta el valor z
  */
-function generateCalculationOrder(graphArray = new RenList()){
+function generateCalculationOrder(graphArray = new RenList(GraphObject)){
   var ordered = 0;
   var order = [];
   var dictionary = [];
@@ -41,9 +42,9 @@ function arrayiseTree(calculationOrder){
     }
     base[element.weight].push(element.id);
   });
-  Object.keys(base).forEach(weight=>{
+  for (const weight in base) {
     arr = arr.concat(base[weight]);
-  });
+  }
   return arr;
 }
 

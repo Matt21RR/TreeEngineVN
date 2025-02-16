@@ -10,7 +10,7 @@ class Property extends React.Component{
   constructor(props){
     super(props);
     this.inputRef = {}
-    this.checkNullRef = {}
+    this.checkNullRef = null
     this.checkFunctionRef = {}
 
     this.isNull = this.props.defaultValue==null;
@@ -50,8 +50,10 @@ class Property extends React.Component{
             action={(e)=>{
               change(e);
               this.isNull = false;
-              this.checkNullRef.checked = false;
-              this.checkNullRef.forceUpdate();
+              if(this.checkNullRef != null){
+                this.checkNullRef.checked = false;
+                this.checkNullRef.forceUpdate();
+              }
             }}
             selfSet={(e)=>{this.inputRef = e}}
             />

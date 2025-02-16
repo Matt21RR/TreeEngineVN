@@ -16,8 +16,8 @@ window.backendRoute = "http://192.168.101.76"
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <>
-    {/* <Test/> */}
-    <div className='absolute h-full w-full'>
+    <Test/>
+    {/* <div className='absolute h-full w-full'>
       <RenderEngine 
         aspectRatio="undefined"
         avoidResizeBlackout
@@ -36,7 +36,7 @@ root.render(
             Disparar: Espacio
             `).then(()=>{game(engine);})      
         }}/>
-    </div>
+    </div> */}
   </>
 );
 

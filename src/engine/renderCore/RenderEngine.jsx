@@ -6,10 +6,10 @@ import { Canvas } from "./Canvas";
 
 import { Animation } from "../engineComponents/Animation"
 import { GraphObject } from "../engineComponents/GraphObject";
-import { RenList } from "../engineComponents/RenList";
+import RenList from "../engineComponents/RenList.ts";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger";
 
-import { lambdaConverter, mobileCheck, wrapText } from "../logic/Misc";
+import { lambdaConverter, mobileCheck, wrapText } from "../logic/Misc.ts";
 import { Shader } from "./Shaders";
 import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim";
@@ -18,7 +18,7 @@ import { Chaos } from "./ChaosInterpreter";
 import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder";
 
 import noImageTexture from "./no-image.png"
-import CollisionLayer from "../engineComponents/CollisionLayer.ts";
+import CollisionLayer, { engineRenderingDataCloner } from "../engineComponents/CollisionLayer.ts";
 
 /**
  * aaaaa
@@ -65,20 +65,20 @@ class RenderEngine extends React.Component{
     this.graphObject = GraphObject;
     this.animation = Animation;
     this.codedRoutine = CodedRoutine;
-    this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
-    this.anims = new RenList();
-    this.triggers = new RenList();
+    this.graphArray = new RenList(GraphObject);//array de objetos, un objeto para cada imagen en pantalla
+    this.anims = new RenList(Animation);
+    this.triggers = new RenList(Trigger);
 
-    this.texturesList = new RenList();
-    this.textureAnims = new RenList();//gifs-like
+    this.texturesList = new RenList(Shader);
+    this.textureAnims = new RenList(TextureAnim);//gifs-like
     this.soundsList = new RenList();
 
     this.collisionLayer = new CollisionLayer();
 
-    this.keyboardTriggers = new RenList();
+    this.keyboardTriggers = new RenList(KeyboardTrigger);
     this.pressedKeys = [];
 
-    this.codedRoutines = new RenList();
+    this.codedRoutines = new RenList(CodedRoutine);
     this.routines = new Array();
     this.flags = new Object();
     this.routineNumber = -1;
@@ -99,7 +99,6 @@ class RenderEngine extends React.Component{
       position:{x:.5,y:.5,z:0,angle:0},
       usePerspective:false
     }
-    this.prevCamera = structuredClone(this.camera);
 
     this.calculationOrder = []; //for di
 
@@ -134,6 +133,7 @@ class RenderEngine extends React.Component{
 
   }  
   componentDidMount(){
+    console.clear();
     if (!this.mounted) {
       this.mounted = true;
       //* ASPECT RATIO
@@ -199,6 +199,7 @@ class RenderEngine extends React.Component{
     this.loadScript(window.backendRoute + "/renderEngineBackend/game/main.txt");
   }
   loadScript(scriptRoute){
+    console.clear();
     this.dataCleaner();
     const h = new Chaos();
     var self = this;
@@ -393,11 +394,11 @@ class RenderEngine extends React.Component{
   dataCleaner(){
      //reset values
      this.engineTime = 0;
-     this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
-     this.anims = new RenList();
-     this.triggers = new RenList();
-     this.keyboardTriggers = new RenList();
-     this.textureAnims = new RenList();
+     this.graphArray = new RenList(GraphObject);//array de objetos, un objeto para cada imagen en pantalla
+     this.anims = new RenList(Animation);
+     this.triggers = new RenList(Trigger);
+     this.keyboardTriggers = new RenList(KeyboardTrigger);
+     this.textureAnims = new RenList(TextureAnim);
  
      this.camera = {
        maxZ:1000,
@@ -407,7 +408,7 @@ class RenderEngine extends React.Component{
      }
      this.dimentionsPack = {};
  
-     this.codedRoutines = new RenList();
+     this.codedRoutines = new RenList(CodedRoutine);
      this.routines = new Array();
      this.flags = new Object();
      this.routineNumber = -1;
@@ -427,11 +428,15 @@ class RenderEngine extends React.Component{
 
   generateObjectsDisplayDimentions(){
     const dimmensionsStartTimer = performance.now();
+
+    var innitialSetTimer = performance.now();
     let trdTimer = 0;
     let assignTimer = 0;
     let setTimer = 0;
 
-    const prevDimentionsPack = structuredClone(this.dimentionsPack);
+    // const prevDimentionsPack = structuredClone(this.dimentionsPack)
+    const prevDimentionsPack = engineRenderingDataCloner(this.dimentionsPack);
+
     this.dimentionsPack = {};
 
     const canvas = this.canvasRef;
@@ -442,12 +447,18 @@ class RenderEngine extends React.Component{
 
     const camera = this.camera;
 
+
+
     const arrayisedTree = arrayiseTree(this.calculationOrder);
+
+    innitialSetTimer = performance.now()-innitialSetTimer;
     
     const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
 
     const perspectiveDiffHelper = ((1/camera.maxZ)-(1))
     const toAddSizeHelper = tangencialConstant*resolution.height*camera.maxZ;
+
+
 
     for (let index = 0; index < this.graphArray.length; index++) {
       const setTimerA = performance.now();
@@ -457,13 +468,15 @@ class RenderEngine extends React.Component{
       
       if(!gObject.pendingRenderingRecalculation){
         const assignTimerA = performance.now();
-        Object.assign(this.dimentionsPack,{[gObject.id]:prevDimentionsPack[gObject.id]});
+        // Object.assign(this.dimentionsPack,{[gObject.id]:prevDimentionsPack[gObject.id]});
+        this.dimentionsPack[gObject.id] = prevDimentionsPack[gObject.id]
         assignTimer += performance.now()-assignTimerA;
         continue;
       }
 
-      const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
+      const setTimerB = performance.now();
 
+      const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
 
       const origin = {
         x: gObject.parent == "" ? 0 : this.dimentionsPack[gObject.parent].base.x,
@@ -482,6 +495,8 @@ class RenderEngine extends React.Component{
       var objectZ = gObject.accomulatedZ + camera.position.z;
       
       var testD = 0.99;
+
+      setTimer += performance.now()-setTimerB;
 
       
       const trdTimerA = performance.now();
@@ -523,6 +538,7 @@ class RenderEngine extends React.Component{
       }
       trdTimer += performance.now()-trdTimerA;
 
+      const assignTimerB = performance.now();
       const res = {
         id: gObject.id,
         x : objectLeft,
@@ -541,10 +557,11 @@ class RenderEngine extends React.Component{
         width : objectWidth,
         height : objectHeight
       }
-      const assignTimerB = performance.now();
-      Object.assign(this.dimentionsPack,{[gObject.id]:res});
+
+      // Object.assign(this.dimentionsPack,{[gObject.id]:res});
+      this.dimentionsPack[gObject.id] = res;
       assignTimer += performance.now()-assignTimerB;
-      // this.dimentionsPack[gObject.id] = res
+
     }
     const dimmensionsEndTimer = performance.now()-dimmensionsStartTimer;
     
@@ -570,11 +587,16 @@ class RenderEngine extends React.Component{
     });
     this.renderingOrderById = renderingOrderById;
     //*Update camera data
-    this.prevCamera = structuredClone(this.camera);
+    // this.prevCamera = structuredClone(this.camera);
 
     const orderingEndTimer = performance.now()-orderingTimer;
 
-    return `DimsTimers: Total:${dimmensionsEndTimer.toFixed(2)}ms, SetVars: ${((setTimer/dimmensionsEndTimer)*100).toFixed(2)}%, DimsCalc: ${((trdTimer/dimmensionsEndTimer)*100).toFixed(2)}%, Assign: ${(((assignTimer/dimmensionsEndTimer)*100).toFixed(2))}% OrderingTimer: ${orderingEndTimer.toFixed(2)}ms`;
+    return `DimsTimers: Total:${dimmensionsEndTimer.toFixed(2)}ms, 
+                        InnitialSet: ${((innitialSetTimer/dimmensionsEndTimer)*100).toFixed(2)}%, 
+                        SetVars: ${((setTimer/dimmensionsEndTimer)*100).toFixed(2)}%, 
+                        DimsCalc: ${((trdTimer/dimmensionsEndTimer)*100).toFixed(2)}%, 
+                        Assign: ${(((assignTimer/dimmensionsEndTimer)*100).toFixed(2))}% 
+            OrderingTimer: ${orderingEndTimer.toFixed(2)}ms`;
   }
   renderScene(){
     if(this.isReady){
@@ -960,7 +982,7 @@ class RenderEngine extends React.Component{
         }
       }
     }
-    //*check the unassigned triggers
+    //*Check the triggers that wasn't assigned to a GraphObject
     for (const triggerId of this.triggers.relatedToNullList()){
       this.triggers.get(triggerId).check(mouse,action);
     }

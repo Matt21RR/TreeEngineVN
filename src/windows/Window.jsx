@@ -23,7 +23,7 @@ class Window extends React.Component {
   renderWindowTop(){
     return(
       <div className='relative top-0 h-8 w-full flex flex-col'>
-        <div className='relative h-full bg-gray-950 text-white flex flex-row-reverse border-b-[1px] border-gray-700'>
+        <div className='relative h-full bg-gray-900 text-white flex flex-row-reverse border-b-[1px] border-gray-700'>
           <IconButton 
             icon="cross" 
             style={" hover:bg-red-600 w-11 h-8 min-w-[3rem]"} 
