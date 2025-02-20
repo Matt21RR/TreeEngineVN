@@ -1,16 +1,16 @@
 import { RenderEngine } from "../renderCore/RenderEngine";
 
 class Trigger{
-  #id
-  #relatedTo = null
-  #enabled
+  #id:string
+  #relatedTo:string|null = null
+  #enabled:boolean
 
-  #onHold
-  #onRelease
-  #onEnter
-  #onLeave
-  #onWheel
-  #onMouseMove
+  #onHold:Function|null
+  #onRelease:Function|null
+  #onEnter:Function|null
+  #onLeave:Function|null
+  #onWheel:Function|null
+  #onMouseMove:Function|null
 
   constructor(tInfo){
     if(!("id" in tInfo))
@@ -59,9 +59,7 @@ class Trigger{
   get onMouseMove() {return this.#onMouseMove;}
   set onMouseMove(x) {this.#onMouseMove = x;}
 
-  check(engineRef = new RenderEngine(),action = new String()){
-    console.log(engineRef); 
-    console.log(action);
+  check(engineRef = new RenderEngine(), action:string){
     if(action == "mouseMove")//check onEnter
       action = "onEnter";
     if(this[action] == null || !this.enabled){
@@ -72,22 +70,22 @@ class Trigger{
       this[action]();
     }else if(numberOfArguments == 1){
       this[action](engineRef);
-    }else if (numberOfArguments == 2){
+    }else if (numberOfArguments == 2 && this.relatedTo != null){
       const graphObjectRef = engineRef.graphArray.get(this.relatedTo);
       this[action](engineRef,graphObjectRef);
     }else{
-      throw new Error("Too much arguments (",numberOfArguments,") for the function defined to the action ",action,", for the trigger",this.id)
+      throw new Error(`Too much arguments (${numberOfArguments}) for the function defined to the action ${action}, for the trigger "${this.id}`)
     }
   }
 }
 
 class KeyboardTrigger{
-  #keys = "";
-  #enabled
+  #keys:Array<string>;
+  #enabled:boolean
 
-  #onPress
-  #onHold
-  #onRelease
+  #onPress:Function|null
+  #onHold:Function|null
+  #onRelease:Function|null
 
   constructor(tInfo){
     this.#keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
@@ -114,7 +112,7 @@ class KeyboardTrigger{
   set onRelease(x) {this.#onRelease = x;}
 
 
-  check(engineRef = new RenderEngine(),action = new String()){
+  check(engineRef = new RenderEngine(),action:string){
     if(this[action] == null || !this.enabled){
       return;
     }
@@ -123,11 +121,8 @@ class KeyboardTrigger{
       this[action]();
     }else if(numberOfArguments == 1){
       this[action](engineRef);
-    }else if (numberOfArguments == 2){
-      const graphObjectRef = engineRef.graphArray.get(this.relatedTo);
-      this[action](engineRef,graphObjectRef);
     }else{
-      throw new Error("Too much arguments (",numberOfArguments,") for the function defined to the action ",action,", for the keyboardtrigger",this.id)
+      throw new Error(`Too much arguments (${numberOfArguments}) for the function defined to the action ${action}, for the trigger "${this.id}`)
     }
   }
 }

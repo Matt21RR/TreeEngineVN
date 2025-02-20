@@ -3,16 +3,17 @@ import { getAttribs } from "../logic/Misc.ts";
 type RenElement = {
   enabled:boolean,
   id:string,
-  /**
-   * it's optional, but throws a waring/error if is defined as optional :)
-   */
   relatedTo:string,
   [key: string]: any
 };
+type UnrelatedRenElement = {
+  enabled:boolean,
+  id:string,
+  [key: string]: any
+};
 
-
-class RenList <T extends RenElement | RenElement>{
-  #dummy:{type:string, keys:string[]}
+class RenList <T extends RenElement|UnrelatedRenElement>{
+  #dummy:{type:string, keys:string[],hasId:boolean, hasEnabled:boolean}
   objects:Array<T>
   #_ids:Array<String>
   constructor(classRef?: new () => T) {
@@ -22,12 +23,16 @@ class RenList <T extends RenElement | RenElement>{
       console.warn("Assuming objects with id will be stored");
       this.#dummy = {
         type: '',
-        keys: ["id"]
+        keys: ["id"],
+        hasId:true,
+        hasEnabled:false //TODO: Check this
       };
     } else {
       this.#dummy = {
         type: classRef.name,
-        keys: getAttribs(classRef)
+        keys: getAttribs(classRef),
+        hasId:getAttribs(classRef).includes("id"),
+        hasEnabled:getAttribs(classRef).includes("enabled"),
       };
     }
     this.objects = new Array<T>();
@@ -35,8 +40,8 @@ class RenList <T extends RenElement | RenElement>{
   }
   get length(){
     if(this.objects.length > 0){
-      if(this.#dummy.keys.includes("id")){
-        if(this.#dummy.keys.includes("enabled")){
+      if(this.#dummy.hasId){
+        if(this.#dummy.hasEnabled){
           return this.objects.filter(e=>{return e.enabled}).length;
         }
       }
@@ -45,19 +50,14 @@ class RenList <T extends RenElement | RenElement>{
   }
 
   push(element:T){
-    try {
-      if("id" in element){
-        if(this.exist(element.id)){
-          console.warn("Element with "+ element.id + " id already exists");
-          return;
-        }
-        this.#_ids.push(element.id);
-      }
-      this.objects.push(element);
-    } catch (error) {
-      console.log(element);
-      debugger;
+
+    if(this.exist(element.id)){
+      console.warn("Element with "+ element.id + " id already exists");
+      return;
     }
+    this.#_ids.push(element.id);
+
+    this.objects.push(element);
   }
 
   remove(objectId = new String()){
@@ -81,10 +81,10 @@ class RenList <T extends RenElement | RenElement>{
    * @returns 
    */
   exist(objectId: string){
-    return this.#_ids.includes(objectId);
+    return this.#_ids.indexOf(objectId) != -1;
   }
   ids(includeDisabled = false){
-    if(!this.#dummy.keys.includes("enabled") || includeDisabled){
+    if(!this.#dummy.hasEnabled || includeDisabled){
       return this.objects.map(e => {return e.id;});
     }else{
       return this.objects.filter(e => {return e.enabled;}).map(e => {return e.id;});
@@ -94,26 +94,23 @@ class RenList <T extends RenElement | RenElement>{
   relatedToList(){
     return this.objects.map(e => {return {[e.id]:e.relatedTo};});
   }
-  #verifyKeyInClass(key:string="relatedTo"){
-    if(this.#dummy)
-    if(!(this.#dummy.keys.includes(key))){
-      throw new Error (`Class ${this.#dummy.type} don't have the "${key}" attribute`);
-    }
-  }
-  relatedToReversedList(){
+  #verifyRelatedToInClass(this: RenList<RenElement>){
+    throw new Error (`Class ${this.#dummy.type} don't have the "relatedTo" attribute`);
+}
+  relatedToReversedList(this: RenList<RenElement>){
     var list:{[key:string]:Array<string>} = {};
     if(this.objects.length == 0){
       return list;
     }
 
-    this.#verifyKeyInClass();
+    this.#verifyRelatedToInClass();
 
     this.objects.forEach(element => {
-        if(element.relatedTo in list){
-          list[element.relatedTo].push(element.id);
-        }else{
-          Object.assign(list,{[element.relatedTo]:[element.id]});
-        }
+      if(element.relatedTo in list){
+        list[element.relatedTo].push(element.id);
+      }else{
+        Object.assign(list,{[element.relatedTo]:[element.id]});
+      }
     });
     return list;
   }
@@ -121,16 +118,16 @@ class RenList <T extends RenElement | RenElement>{
    * 
    * @returns {Array} List of objects that are not related to any other object
    */
-  relatedToNullList(){
+  relatedToNullList(this: RenList<RenElement>){
     var list:Array<string> = [];
 
     if(this.objects.length == 0){
       return list;
     }
-    this.#verifyKeyInClass();
+    this.#verifyRelatedToInClass();
 
     this.objects.forEach(element => {
-      if(element.relatedTo == null){
+      if(!element.relatedTo){
         list.push(element.id);
       }
     });

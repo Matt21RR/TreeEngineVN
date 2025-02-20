@@ -1,12 +1,10 @@
-import { RenderEngine } from "../renderCore/RenderEngine";
-
 class TextureAnim{
-  #id
-  #list = [];
+  #id:string
+  #list:Array<string> = [];
 
-  #duration = 1000;
-  #timer = 0;
-  #speed = 1;
+  #duration:number = 1000;
+  #timer:number = 0;
+  #speed:number = 1;
 
   constructor(tInfo){
     if(!("id" in tInfo))

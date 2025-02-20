@@ -1,7 +1,7 @@
 import Swal from "sweetalert2"
 import { CodedRoutine } from "../engine/engineComponents/CodedRoutine"
 import { GraphObject } from "../engine/engineComponents/GraphObject"
-import { KeyboardTrigger } from "../engine/engineComponents/Trigger"
+import { KeyboardTrigger } from "../engine/engineComponents/Trigger.ts"
 import { RenderEngine } from "../engine/renderCore/RenderEngine"
 import arrow from "./resources/next8.png"
 import { degToRad } from "../engine/logic/Misc.ts"

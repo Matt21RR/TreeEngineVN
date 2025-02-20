@@ -7,15 +7,15 @@ import { Canvas } from "./Canvas";
 import { Animation } from "../engineComponents/Animation"
 import { GraphObject } from "../engineComponents/GraphObject";
 import RenList from "../engineComponents/RenList.ts";
-import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger";
+import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger.ts";
 
 import { lambdaConverter, mobileCheck, wrapText } from "../logic/Misc.ts";
 import { Shader } from "./Shaders";
 import gsap from "gsap";
-import { TextureAnim } from "../engineComponents/TextureAnim";
+import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine";
 import { Chaos } from "./ChaosInterpreter";
-import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder";
+import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder.ts";
 
 import noImageTexture from "./no-image.png"
 import CollisionLayer, { engineRenderingDataCloner } from "../engineComponents/CollisionLayer.ts";
@@ -429,7 +429,6 @@ class RenderEngine extends React.Component{
   generateObjectsDisplayDimentions(){
     const dimmensionsStartTimer = performance.now();
 
-    var innitialSetTimer = performance.now();
     let trdTimer = 0;
     let assignTimer = 0;
     let setTimer = 0;
@@ -450,8 +449,6 @@ class RenderEngine extends React.Component{
 
 
     const arrayisedTree = arrayiseTree(this.calculationOrder);
-
-    innitialSetTimer = performance.now()-innitialSetTimer;
     
     const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
 
@@ -461,20 +458,14 @@ class RenderEngine extends React.Component{
 
 
     for (let index = 0; index < this.graphArray.length; index++) {
-      const setTimerA = performance.now();
       
       const gObject = this.getObject(arrayisedTree[index]);
-      setTimer += performance.now()-setTimerA;
       
       if(!gObject.pendingRenderingRecalculation){
-        const assignTimerA = performance.now();
         // Object.assign(this.dimentionsPack,{[gObject.id]:prevDimentionsPack[gObject.id]});
         this.dimentionsPack[gObject.id] = prevDimentionsPack[gObject.id]
-        assignTimer += performance.now()-assignTimerA;
         continue;
       }
-
-      const setTimerB = performance.now();
 
       const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
 
@@ -495,11 +486,7 @@ class RenderEngine extends React.Component{
       var objectZ = gObject.accomulatedZ + camera.position.z;
       
       var testD = 0.99;
-
-      setTimer += performance.now()-setTimerB;
-
       
-      const trdTimerA = performance.now();
       if(camera.usePerspective && !gObject.ignoreParallax){
         objectLeft = gObject.x + origin.x - this.camera.position.x+0.5;
         objectTop = gObject.y + origin.y - this.camera.position.y+0.5;
@@ -536,9 +523,7 @@ class RenderEngine extends React.Component{
           objectHeight = (texRef.texture.naturalHeight/texRef.texture.naturalWidth)*resolution.width*objectScale*gObject.heightScale;
         }
       }
-      trdTimer += performance.now()-trdTimerA;
 
-      const assignTimerB = performance.now();
       const res = {
         id: gObject.id,
         x : objectLeft,
@@ -560,7 +545,6 @@ class RenderEngine extends React.Component{
 
       // Object.assign(this.dimentionsPack,{[gObject.id]:res});
       this.dimentionsPack[gObject.id] = res;
-      assignTimer += performance.now()-assignTimerB;
 
     }
     const dimmensionsEndTimer = performance.now()-dimmensionsStartTimer;
@@ -591,12 +575,7 @@ class RenderEngine extends React.Component{
 
     const orderingEndTimer = performance.now()-orderingTimer;
 
-    return `DimsTimers: Total:${dimmensionsEndTimer.toFixed(2)}ms, 
-                        InnitialSet: ${((innitialSetTimer/dimmensionsEndTimer)*100).toFixed(2)}%, 
-                        SetVars: ${((setTimer/dimmensionsEndTimer)*100).toFixed(2)}%, 
-                        DimsCalc: ${((trdTimer/dimmensionsEndTimer)*100).toFixed(2)}%, 
-                        Assign: ${(((assignTimer/dimmensionsEndTimer)*100).toFixed(2))}% 
-            OrderingTimer: ${orderingEndTimer.toFixed(2)}ms`;
+    return `DimsTimers: Total:${dimmensionsEndTimer.toFixed(2)}ms, OrderingTimer: ${orderingEndTimer.toFixed(2)}ms`;
   }
   renderScene(){
     if(this.isReady){
@@ -643,10 +622,9 @@ class RenderEngine extends React.Component{
 
           const availableIdsToRender = this.renderingOrderById; 
 
-          const objectsToRender = this.graphArray.length;
+          const objectsToRender = availableIdsToRender.length;
 
-
-          for (let index = 0; index < this.graphArray.length; index++) {
+          for (let index = 0; index < objectsToRender; index++) {
             let infoAdjudicationPre = performance.now();
             const gObject = this.getObject(availableIdsToRender[index]);
             const texRef = gObject.textureName == null ? null : this.getTexture(gObject);

@@ -1,13 +1,15 @@
 import { GraphObject } from "../engineComponents/GraphObject";
-import RenList from "../engineComponents/RenList.ts";
+import RenList from "../engineComponents/RenList";
+
+type CalculationOrder = Array<{id:string,weight:number,z:number}>;
 
 /**
  * Genera el orden de renderización de los elementos en pantalla tomando en cuenta el valor z
  */
-function generateCalculationOrder(graphArray = new RenList(GraphObject)){
+function generateCalculationOrder(graphArray:RenList<GraphObject>){
   var ordered = 0;
-  var order = [];
-  var dictionary = [];
+  var order:CalculationOrder = [];
+  var dictionary:Array<string> = [];
   while (ordered < graphArray.length) {
     graphArray.ids().forEach(id=>{
       if(dictionary.indexOf(id) == -1){
@@ -18,13 +20,14 @@ function generateCalculationOrder(graphArray = new RenList(GraphObject)){
           gObject.accomulatedZ = gObject.z;
           dictionary.push(id);
           ordered++;
-        }
-        if(dictionary.indexOf(parent) != -1){
-          if(graphArray.get(parent).pendingRenderingRecalculation){
-            graphArray.get(id).pendingRenderingRecalculation = true;
+        }else if(dictionary.indexOf(parent) != -1){
+          const gParent = graphArray.get(parent);
+          if(gParent.pendingRenderingRecalculation){
+            gObject.pendingRenderingRecalculation = true;
           }
-          order.push({id,weight:order[dictionary.indexOf(parent)].weight +1});
-          gObject.accomulatedZ = gObject.z + graphArray.get(parent).accomulatedZ;
+          const elementZ = gObject.z + gParent.accomulatedZ;
+          gObject.accomulatedZ = elementZ;
+          order.push({id,weight:order[dictionary.indexOf(parent)].weight +1, z:elementZ});
           dictionary.push(id);
           ordered++;
         }
@@ -33,11 +36,12 @@ function generateCalculationOrder(graphArray = new RenList(GraphObject)){
   }
   return order;
 }
-function arrayiseTree(calculationOrder){
+function arrayiseTree(calculationOrder:CalculationOrder){
+  //TODO: I don't remember what this funcion does 
   var base ={};
   var arr = [];
   calculationOrder.map(element=>{
-    if(!([element.weight] in base)){
+    if(!(element.weight in base)){
       Object.assign(base,{[element.weight]:[]});
     }
     base[element.weight].push(element.id);

@@ -1,50 +1,49 @@
 import { lambdaConverter } from "../logic/Misc.ts"
-import { RenderEngine } from "../renderCore/RenderEngine"
 
 class GraphObject{
-  #enabled //TODO: use I'T
+  #enabled:boolean //TODO: use I'T
 
-  #text
-  #center
-  #color
-  #font
-  #fontSize
-  #boxColor
-  #margin
+  #text:Function|string|null
+  #center:boolean
+  #color:string
+  #font:string
+  #fontSize:number
+  #boxColor:string
+  #margin:number
 
-  #textureName
+  #textureName:string|null
 
-  #id
-  #brightness
-  #contrast
-  #grayscale
-  #hueRotate
+  #id:string
+  #brightness:number
+  #contrast:number
+  #grayscale:number
+  #hueRotate:number
 
-  #blur
-  #aberration
-  #aberrationType
+  #blur:number
+  #aberration:number
+  #aberrationType:string
 
-  #invert
-  #saturate
-  #sepia
+  #invert:number
+  #saturate:number
+  #sepia:number
 
-  #opacity
+  #opacity:number
 
-  #x
-  #y
-  #z
+  #x:number
+  #y:number
+  #z:number
 
-  #scale
-  #widthScale
-  #heightScale
-  #rotate
+  #scale:number
+  #widthScale:number
+  #heightScale:number
+  #rotate:number
 
-  #ignoreParallax
+  #ignoreParallax:boolean
 
-  #states = new States(this);
-  #pendingRenderingRecalculation = true;
+  #states:States|Object = new States(this);
+  #pendingRenderingRecalculation:boolean = true;
 
-  #useEngineUnits
+  #useEngineUnits:boolean
 
   #parent
   
@@ -98,7 +97,7 @@ class GraphObject{
     rotate : "number",
   }
 
-  constructor(graphInfo = new Object()){
+  constructor(graphInfo:{[key:string]:any} = {}){
     this.#id =              graphInfo.id ?? "error";
     this.#enabled =         graphInfo.enabled ?? false;//exclude from calculation and renderin
 
@@ -186,13 +185,13 @@ class GraphObject{
 
 
   get fontSize() {return this.#fontSize;}
-  set fontSize(x) {
+  set fontSize(x:string|number) {
     if(typeof x == "string"){
       if(x.indexOf("px") != -1){
         x = parseFloat(x);
       }
     }
-    if(!isNaN(x)){
+    if(typeof x == "number"){
       if(x<0){
         this.#fontSize = 0;
       }else{
@@ -202,14 +201,14 @@ class GraphObject{
   }
 
   get fontSizeNumeric() {return this.#fontSize;}
-  set fontSizeNumeric(x) {this.#fontSize = parseFloat(x);}
+  set fontSizeNumeric(x:any) {this.#fontSize = parseFloat(x);}
 
   get boxColor() {return this.#boxColor}
   set boxColor(x) {this.#boxColor = typeof x == "string"? x : "black"}
     
     
   get margin() {return this.#margin;}
-  set margin(x) {this.#margin = parseFloat(x);}
+  set margin(x:any) {this.#margin = parseFloat(x);}
     
     
   get texture() { return this.#textureName; }
@@ -274,7 +273,7 @@ class GraphObject{
 
   get blur() {return this.#blur;}
   get blurPX() {return this.#blur + "px";}
-  set blur(x) {this.#blur = parseFloat(x);}
+  set blur(x:any) {this.#blur = parseFloat(x);}
 
   get aberration() {return this.#aberration}
   set aberration(x) {
@@ -339,7 +338,7 @@ class GraphObject{
       saturate:"saturate",
       sepia:"sepia",
     }
-    var filters = [];
+    var filters:Array<string> = [];
     var filterstr = "";
     
     if(this.#brightness != 1){filters.push("brightness");}
@@ -395,10 +394,10 @@ class GraphObject{
   get rotate() {return (this.#rotate*180)/Math.PI;}
   set rotateRad(x) {this.#rotate = x}
   get rotateRad() {return this.#rotate;}
-  set rotate(x) {this.#rotate = parseFloat(x)*Math.PI/180;}
+  set rotate(x:any) {this.#rotate = parseFloat(x)*Math.PI/180;}
 
   get z() {return this.#z;}
-  set z(x) {
+  set z(x:any) {
     this.#z = parseFloat(x);
   }
 
@@ -540,4 +539,10 @@ class State{
   }
 
 }
+declare global {
+  interface Window {
+    engineRef: any;
+  }
+}
+
 export {GraphObject}

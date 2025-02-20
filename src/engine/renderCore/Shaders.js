@@ -258,9 +258,7 @@ class Shader{
    * @param {GraphObject} graphObject 
    */
   getTexture(graphObject){
-    if(graphObject.aberration != 0){
-    }
-    else if (Math.round(graphObject.blur)!=0){
+    if (Math.round(graphObject.blur)!=0){
       applyBlur(this.#renData[0], this.#renData[1], this.#renData[2], this.#renData[3], this.#renData[4], this.#renData[5], graphObject.blur);
       return this.#canvas;
     }
