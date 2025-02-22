@@ -13,11 +13,10 @@ type UnrelatedRenElement = {
 };
 
 class RenList <T extends RenElement|UnrelatedRenElement>{
-  #dummy:{type:string, keys:string[],hasId:boolean, hasEnabled:boolean}
+  #dummy:{type:string, keys:string[],hasId:boolean, hasEnabled:boolean, hasRelatedTo:boolean}
   objects:Array<T>
   #_ids:Array<String>
   constructor(classRef?: new () => T) {
-    console.log(classRef);
     if (!classRef) {
       console.warn("Class constructor wasn't provided to create the RenList.");
       console.warn("Assuming objects with id will be stored");
@@ -25,7 +24,8 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
         type: '',
         keys: ["id"],
         hasId:true,
-        hasEnabled:false //TODO: Check this
+        hasEnabled:false, //TODO: Check this
+        hasRelatedTo:false
       };
     } else {
       this.#dummy = {
@@ -33,6 +33,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
         keys: getAttribs(classRef),
         hasId:getAttribs(classRef).includes("id"),
         hasEnabled:getAttribs(classRef).includes("enabled"),
+        hasRelatedTo:getAttribs(classRef).includes("relatedTo"),
       };
     }
     this.objects = new Array<T>();
@@ -94,10 +95,13 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
   relatedToList(){
     return this.objects.map(e => {return {[e.id]:e.relatedTo};});
   }
-  #verifyRelatedToInClass(this: RenList<RenElement>){
+  #verifyRelatedToInClass(this: RenList<T>){
+    if(this.#dummy.hasRelatedTo){
+      return;
+    }
     throw new Error (`Class ${this.#dummy.type} don't have the "relatedTo" attribute`);
 }
-  relatedToReversedList(this: RenList<RenElement>){
+  relatedToReversedList(this: RenList<T>){
     var list:{[key:string]:Array<string>} = {};
     if(this.objects.length == 0){
       return list;
@@ -118,7 +122,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
    * 
    * @returns {Array} List of objects that are not related to any other object
    */
-  relatedToNullList(this: RenList<RenElement>){
+  relatedToNullList(this: RenList<T>){
     var list:Array<string> = [];
 
     if(this.objects.length == 0){

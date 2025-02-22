@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { MenuButton, Button1, ListCheckedBox, InputText, InputCheck } from "./components/Buttons";
-import { GraphObject } from "../engine/engineComponents/GraphObject";
+import { GraphObject } from "../engine/engineComponents/GraphObject.ts";
 import { Window } from '../windows/Window';
 import Swal from 'sweetalert2';
 

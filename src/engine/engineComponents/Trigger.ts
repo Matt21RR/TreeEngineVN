@@ -1,4 +1,5 @@
 import { RenderEngine } from "../renderCore/RenderEngine";
+import { GraphObject } from "./GraphObject";
 
 class Trigger{
   #id:string
@@ -21,16 +22,16 @@ class Trigger{
     }
 
     this.#id = tInfo.id;
-    this.#relatedTo =   tInfo.relatedTo || null;
-    this.#enabled =     tInfo.enabled || true;
+    this.#relatedTo =   tInfo.relatedTo ?? null;
+    this.#enabled =     tInfo.enabled ?? true;
     //if superposition is true the engine will ignore the graphObjects that are over the graphobject related to the trigger
     //superposition: tInfo.superposition != undefined ? tInfo.superposition : false,
-    this.#onHold =      tInfo.onHold || null;
-    this.#onRelease =   tInfo.onRelease || null;
-    this.#onEnter =     tInfo.onEnter || null;
-    this.#onLeave =     tInfo.onLeave || null;
-    this.#onWheel =     tInfo.onWheel || null;
-    this.#onMouseMove = tInfo.onMouseMove || null;
+    this.#onHold =      tInfo.onHold ?? null;
+    this.#onRelease =   tInfo.onRelease ?? null;
+    this.#onEnter =     tInfo.onEnter ?? null;
+    this.#onLeave =     tInfo.onLeave ?? null;
+    this.#onWheel =     tInfo.onWheel ?? null;
+    this.#onMouseMove = tInfo.onMouseMove ?? null;
   }
 
   get id(){return this.#id}
@@ -59,7 +60,7 @@ class Trigger{
   get onMouseMove() {return this.#onMouseMove;}
   set onMouseMove(x) {this.#onMouseMove = x;}
 
-  check(engineRef = new RenderEngine(), action:string){
+  check(engineOrMouseRef:RenderEngine|React.MouseEvent|React.TouchEvent, action:string){
     if(action == "mouseMove")//check onEnter
       action = "onEnter";
     if(this[action] == null || !this.enabled){
@@ -69,10 +70,11 @@ class Trigger{
     if(numberOfArguments == 0){
       this[action]();
     }else if(numberOfArguments == 1){
-      this[action](engineRef);
+      this[action](engineOrMouseRef);
     }else if (numberOfArguments == 2 && this.relatedTo != null){
-      const graphObjectRef = engineRef.graphArray.get(this.relatedTo);
-      this[action](engineRef,graphObjectRef);
+      //@ts-ignore
+      const graphObjectRef:GraphObject = engineOrMouseRef.graphArray.get(this.relatedTo);
+      this[action](engineOrMouseRef,graphObjectRef);
     }else{
       throw new Error(`Too much arguments (${numberOfArguments}) for the function defined to the action ${action}, for the trigger "${this.id}`)
     }
@@ -89,10 +91,10 @@ class KeyboardTrigger{
 
   constructor(tInfo){
     this.#keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
-    this.#enabled =     tInfo.enabled || true;
-    this.#onPress =     tInfo.onPress || null;
-    this.#onHold =      tInfo.onHold || null;
-    this.#onRelease =   tInfo.onRelease || null;
+    this.#enabled =     tInfo.enabled ?? true;
+    this.#onPress =     tInfo.onPress ?? null;
+    this.#onHold =      tInfo.onHold ?? null;
+    this.#onRelease =   tInfo.onRelease ?? null;
   }
 
   get id(){return this.#keys.join(" ")}

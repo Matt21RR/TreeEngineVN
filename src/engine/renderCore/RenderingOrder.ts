@@ -1,4 +1,4 @@
-import { GraphObject } from "../engineComponents/GraphObject";
+import { GraphObject } from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList";
 
 type CalculationOrder = Array<{id:string,weight:number,z:number}>;

@@ -1,5 +1,5 @@
 import React from "react";
-import $ from "jquery";
+import * as $ from "jquery";
 import {Howl} from 'howler';
 
 import { Canvas } from "./Canvas";
@@ -20,6 +20,17 @@ import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder.ts";
 import noImageTexture from "./no-image.png"
 import CollisionLayer, { engineRenderingDataCloner } from "../engineComponents/CollisionLayer.ts";
 
+type CalculationOrder = Array<{id:string,weight:number,z:number}>;
+
+declare global {
+  interface Window {
+    engineRef:RenderEngine;
+    backendRoute:string;
+    setUsePerspective:Function;
+
+  }
+}
+
 /**
  * aaaaa
  * 
@@ -28,7 +39,84 @@ import CollisionLayer, { engineRenderingDataCloner } from "../engineComponents/C
  * @param {string} props.aspectRatio - Set aspect ratio (default 16:9)
  * 
  */
-class RenderEngine extends React.Component{
+interface RenderEngineProps {
+  clientSideResources?: boolean;
+  aspectRatio?: string;
+  showFps?: boolean;
+  cyclesPerSecond?: number;
+  developmentDeviceHeight?: number;
+  avoidResizeBlackout?: boolean;
+  setEngine?: (engine: RenderEngine) => void;
+}
+
+class RenderEngine extends React.Component<RenderEngineProps>{
+  id: string;
+  projectRoot: string;
+  isReady: boolean;
+  aspectRatio: string;
+  showFps: boolean;
+  cyclesPerSecond: number;
+  developmentDeviceHeight: number;
+  engineDisplayRes: { width: number; height: number };
+  resizeTimeout: number;
+  isMobile: boolean;
+  mounted: boolean;
+  canvasRef: any;
+  engineTime: number;
+  engineSpeed: number;
+  stopEngine: boolean;
+  actualSceneId: string;
+  constructors: {
+    graphObject: typeof GraphObject;
+    animation: typeof Animation;
+    textureAnim: typeof TextureAnim;
+    trigger: typeof Trigger;
+    keyboardTrigger: typeof KeyboardTrigger;
+    codedRoutine: typeof CodedRoutine;
+  };
+  gameVars: Record<string, any>;
+  graphObject: typeof GraphObject;
+  animation: typeof Animation;
+  codedRoutine: typeof CodedRoutine;
+  graphArray: RenList<GraphObject>;
+  anims: RenList<Animation>;
+  triggers: RenList<Trigger>;
+  texturesList: RenList<any>;
+  textureAnims: RenList<any>;
+  soundsList: RenList<any>;
+  collisionLayer: CollisionLayer;
+  keyboardTriggers: RenList<KeyboardTrigger>;
+  pressedKeys: string[];
+  codedRoutines: RenList<CodedRoutine>;
+  routines: Array<Function>;
+  flags: Record<string, any>;
+  routineNumber: number;
+  continue: boolean;
+  voiceFrom: string;
+  paragraphNumber: number;
+  paragraph: string;
+  dialogNumber: number;
+  dialog: Array<any>;
+  narration: string;
+  camera: {
+    id: string;
+    maxZ: number;
+    origin: { x: number; y: number };
+    position: { x: number; y: number; z: number; angle: number };
+    usePerspective: boolean;
+  };
+  calculationOrder: CalculationOrder;
+  dimentionsPack: Record<string, any>;
+  renderingOrderById: Array<string>;
+  mouseListener: number;
+  mouse: { x: number; y: number; origin: any };
+  noRenderedItemsCount: number;
+  drawObjectLimits: boolean;
+  drawTriggers: boolean;
+  objectsToDebug: Array<string>;
+  setMouseOrigin: boolean;
+  lambdaConverter: Function;
+  noImageTexture: Shader;
   constructor(props){
     super(props);
     this.id = "rengine" + String(window.performance.now()).replaceAll(".","");
@@ -66,19 +154,19 @@ class RenderEngine extends React.Component{
     this.animation = Animation;
     this.codedRoutine = CodedRoutine;
     this.graphArray = new RenList(GraphObject);//array de objetos, un objeto para cada imagen en pantalla
-    this.anims = new RenList(Animation);
-    this.triggers = new RenList(Trigger);
+    this.anims = new RenList();
+    this.triggers = new RenList();
 
-    this.texturesList = new RenList(Shader);
-    this.textureAnims = new RenList(TextureAnim);//gifs-like
+    this.texturesList = new RenList();
+    this.textureAnims = new RenList();//gifs-like
     this.soundsList = new RenList();
 
     this.collisionLayer = new CollisionLayer();
 
-    this.keyboardTriggers = new RenList(KeyboardTrigger);
+    this.keyboardTriggers = new RenList();
     this.pressedKeys = [];
 
-    this.codedRoutines = new RenList(CodedRoutine);
+    this.codedRoutines = new RenList();
     this.routines = new Array();
     this.flags = new Object();
     this.routineNumber = -1;
@@ -118,7 +206,6 @@ class RenderEngine extends React.Component{
     this.objectsToDebug = [];//id of the object
     this.setMouseOrigin = false;
     window.setUsePerspective = (x) =>{this.camera.usePerspective = x;}
-    window.setCameraPerspectiveCoords = (x,y) =>{this.camera.position = {y:y,x:x};}
 
     window.engineRef = this;
 
@@ -142,39 +229,46 @@ class RenderEngine extends React.Component{
       }, 200);
 
       new ResizeObserver(() => {
-        if(!("avoidResizeBlackout") in this.props)
+        if(!("avoidResizeBlackout" in this.props)){
           gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 0 });
+        }
         clearTimeout(this.resizeTimeout);
-        this.resizeTimeout = setTimeout(
+        this.resizeTimeout = window.setTimeout(
           () => {
             this.aspectRatioCalc();
-            if(!("avoidResizeBlackout") in this.props)
-            gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 1 });
+            if(!("avoidResizeBlackout" in this.props)){
+              gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 1 });
+            }
+
           }, 800);
       })
-      .observe(document.getElementById("display"+this.id));
+      .observe(document.getElementById("display"+this.id) as Element);
 
       //*LOAD GAME
       if(!("clientSideResources" in this.props)){
         this.entryPoint();
       }else{
-        if("setEngine" in  this.props ){
-          this.props.setEngine(this);
+        if("setEngine" in  this.props){
+          if(typeof this.props.setEngine == "function"){
+            this.props.setEngine(this);
+          }
         }
       }
       
       //*TECLADO
-      const self = this;
+      const self = this as RenderEngine;
       document.body.addEventListener("keydown",function(e){
         const keyCode = e.code;
         if(self.pressedKeys.indexOf(keyCode) == -1){
           self.pressedKeys.push(keyCode);
           const mix = self.pressedKeys.join(" ");
           if(self.keyboardTriggers.exist(mix)){
+            // @ts-expect-error
             self.keyboardTriggers.get(mix).check(self,"onPress");
           }
           if(self.pressedKeys.length > 1){//Si hay mas de una tecla oprimiendose, comprobar la ultima tecla
             if(self.keyboardTriggers.exist(keyCode)){
+              // @ts-expect-error
               self.keyboardTriggers.get(keyCode).check(self,"onPress");
             }
           }
@@ -185,10 +279,12 @@ class RenderEngine extends React.Component{
         const mix = self.pressedKeys.join(" ");
         self.pressedKeys.splice(self.pressedKeys.indexOf(keyCode),1);
         if(self.keyboardTriggers.exist(mix)){
+          // @ts-expect-error
           self.keyboardTriggers.get(mix).check(self,"onRelease");
         }
         if(self.pressedKeys.length > 0){//Si habia mas de una tecla oprimiendose, comprobar la tecla que se soltó
           if(self.keyboardTriggers.exist(keyCode)){
+            // @ts-expect-error
             self.keyboardTriggers.get(keyCode).check(self,"onRelease");
           }
         }
@@ -203,6 +299,7 @@ class RenderEngine extends React.Component{
     this.dataCleaner();
     const h = new Chaos();
     var self = this;
+    // @ts-expect-error
     $.get(scriptRoute).then(scriptFile=>{
       this.projectRoot = h.projectRoot;
       h.kreator(scriptFile).then(scriptData=>{
@@ -213,17 +310,18 @@ class RenderEngine extends React.Component{
         self.isReady = true;
         self.forceUpdate();
         if("setEngine" in  self.props ){
+          // @ts-expect-error
           self.props.setEngine(self);
         }
       })
     })
   }
-  aspectRatioCalc(aspectRatio = this.aspectRatio) {
-    const w = document.getElementById("display"+this.id);
+  aspectRatioCalc(aspectRatio:string = this.aspectRatio) {
+    const w = document.getElementById("display"+this.id) as HTMLElement;
 
     if (aspectRatio != "undefined") {
-      let newWidth = Math.floor((w.offsetHeight / (aspectRatio.split(":")[1] * 1)) * (aspectRatio.split(":")[0] * 1));
-      let newHeight = Math.floor((w.offsetWidth / (aspectRatio.split(":")[0] * 1)) * (aspectRatio.split(":")[1] * 1));
+      let newWidth = Math.floor((w.offsetHeight / parseFloat(aspectRatio.split(":")[1])) * parseFloat(aspectRatio.split(":")[0]));
+      let newHeight = Math.floor((w.offsetWidth / parseFloat(aspectRatio.split(":")[0])) * parseFloat(aspectRatio.split(":")[1]));
       if (newWidth <= w.offsetWidth) {
         newHeight = w.offsetHeight;
       } else {
@@ -238,7 +336,9 @@ class RenderEngine extends React.Component{
       this.engineDisplayRes = {width:newWidth,height:newHeight};
     } else {
       this.engineDisplayRes = {width:w.offsetWidth,height:w.offsetHeight};
+      // @ts-expect-error
       document.getElementById("engineDisplay"+this.id).style.width = w.offsetWidth+"px";
+      // @ts-expect-error
       document.getElementById("engineDisplay"+this.id).style.height = w.offsetHeight+"px";
     }
     this.forceUpdate();  
@@ -315,20 +415,21 @@ class RenderEngine extends React.Component{
                 fetch(self.projectRoot + "snd/" + soundsList[sndName].replace("./","")).then(res=>res.blob()).then( blob =>{
                   var reader = new FileReader() ;
                   reader.onload = function(){ 
-                    resolveFile({Base64:this.result,ext:soundsList[sndName].split('.').at(-1),id:sndName}) 
+                    const ans = {Base64:this.result,ext:soundsList[sndName].split('.').at(-1),id:sndName};
+                    resolveFile(ans) 
                   };
                   reader.readAsDataURL(blob) ;
                 });
               })
-            )).then(sounds => {
-              sounds.forEach(snd => {
+            )).then((sounds) => {
+              (sounds as Array<{[key:string]:any}>).forEach(snd => {
                 var sound = new Howl({
                   src: [snd.Base64],
                   format: snd.ext
                 });
                 self.soundsList.push({sound:sound,id:snd.id})
               });
-              resolve();
+              resolve(null);
             }).catch(reason =>{
               console.error("===============================");
               console.error("Error during sounds load phase:");
@@ -337,8 +438,7 @@ class RenderEngine extends React.Component{
             });
           }else{
             console.warn("No sounds in this file: "+indexPath);
-            if(typeof fun == "function")
-                resolve();
+              resolve(null);
           }
         })
     })
@@ -353,7 +453,7 @@ class RenderEngine extends React.Component{
         image.addEventListener('load',()=>{
           // const res = new Object({[textureId]:image});
           self.texturesList.push(new Shader(image,textureId))
-          resolve();
+          resolve(null);
         });
       });
     }
@@ -381,7 +481,7 @@ class RenderEngine extends React.Component{
               })
             }
           })).then(() => {
-            resolve();
+            resolve(null);
           }).catch(reason =>{
             console.error("===============================");
             console.error("Error during textures load phase:");
@@ -392,34 +492,35 @@ class RenderEngine extends React.Component{
       })
   }
   dataCleaner(){
-     //reset values
-     this.engineTime = 0;
-     this.graphArray = new RenList(GraphObject);//array de objetos, un objeto para cada imagen en pantalla
-     this.anims = new RenList(Animation);
-     this.triggers = new RenList(Trigger);
-     this.keyboardTriggers = new RenList(KeyboardTrigger);
-     this.textureAnims = new RenList(TextureAnim);
+    //reset values
+    this.engineTime = 0;
+    this.graphArray = new RenList(GraphObject);//array de objetos, un objeto para cada imagen en pantalla
+    this.anims = new RenList();
+    this.triggers = new RenList();
+    this.keyboardTriggers = new RenList();
+    this.textureAnims = new RenList();
+
+    this.camera = {
+      id:"engineCamera",
+      maxZ:1000,
+      origin:{x:.5,y:.5},//position of the virtual engineDisplay
+      position:{x:.5,y:.5,z:0,angle:0},//position od the camera in the space.... angle? who knows (0_-)
+      usePerspective:false, //or use3D
+    }
+    this.dimentionsPack = {};
  
-     this.camera = {
-       maxZ:1000,
-       origin:{x:.5,y:.5},//position of the virtual engineDisplay
-       position:{x:.5,y:.5,z:0,angle:0},//position od the camera in the space.... angle? who knows (0_-)
-       usePerspective:false, //or use3D
-     }
-     this.dimentionsPack = {};
- 
-     this.codedRoutines = new RenList(CodedRoutine);
-     this.routines = new Array();
-     this.flags = new Object();
-     this.routineNumber = -1;
-     this.continue = true;
-     //Dialogs
-     this.voiceFrom = "";
-     this.paragraphNumber = 0;
-     this.paragraph = "";
-     this.dialogNumber = 0;
-     this.dialog = [];
-     this.narration = "";
+    this.codedRoutines = new RenList();
+    this.routines = new Array();
+    this.flags = new Object();
+    this.routineNumber = -1;
+    this.continue = true;
+    //Dialogs
+    this.voiceFrom = "";
+    this.paragraphNumber = 0;
+    this.paragraph = "";
+    this.dialogNumber = 0;
+    this.dialog = [];
+    this.narration = "";
   }
 
   play(songId){
@@ -428,10 +529,6 @@ class RenderEngine extends React.Component{
 
   generateObjectsDisplayDimentions(){
     const dimmensionsStartTimer = performance.now();
-
-    let trdTimer = 0;
-    let assignTimer = 0;
-    let setTimer = 0;
 
     // const prevDimentionsPack = structuredClone(this.dimentionsPack)
     const prevDimentionsPack = engineRenderingDataCloner(this.dimentionsPack);
@@ -553,19 +650,19 @@ class RenderEngine extends React.Component{
     //************************************************************************************Build rendering order
     const orderingTimer = performance.now();
     var zRefs = {};
-    var zetas = [];
-    var renderingOrderById = [];
+    var zetas:Array<number> = [];
+    var renderingOrderById:Array<string> = [];
     Object.keys(this.dimentionsPack).forEach(id=>{
-      const z = this.dimentionsPack[id].z.toString(); 
+      const z:string = this.dimentionsPack[id].z.toString(); 
         if(Object.keys(zRefs).indexOf(z) == -1){
           Object.assign(zRefs,{[z]:[id]});
-          zetas.push(z*1)
+          zetas.push(parseFloat(z))
         }else{
           zRefs[z].push(id);
         }
     });
     zetas.sort((a, b) => a - b).reverse().forEach(zIndex => {
-      zRefs[zIndex.toString()].forEach(id => {
+      zRefs[zIndex.toString()].forEach((id:string) => {
         renderingOrderById.push(id);
       });
     });
@@ -848,10 +945,12 @@ class RenderEngine extends React.Component{
         events={(fps)=>{
           const mix = this.pressedKeys.join(" ");
           if(this.keyboardTriggers.exist(mix) && (this.pressedKeys.length>1)){
+            // @ts-expect-error
             this.keyboardTriggers.get(mix).check(this,"onHold");
           }
           this.pressedKeys.forEach(key => {
             if(this.keyboardTriggers.exist(key)){
+              // @ts-expect-error
               this.keyboardTriggers.get(key).check(this,"onHold");
             }
           });
@@ -863,9 +962,8 @@ class RenderEngine extends React.Component{
           for (let index = 0; index < this.anims.objects.length; index++) {
             const anim = this.anims.objects[index];
             if(anim.relatedTo != null){
-              anim.updateState(
-                this.engineTime,
-                this);
+              // @ts-expect-error
+              anim.updateState(this.engineTime,this);
             }
           }  
         }}
@@ -878,6 +976,7 @@ class RenderEngine extends React.Component{
           }
 
           this.codedRoutines.objects.forEach(element => {
+            //@ts-expect-error
             element.run(this);
           });
 
@@ -889,12 +988,12 @@ class RenderEngine extends React.Component{
       return(<span className="text-white absolute">ISN'T READY YET, OR UNABLE TO RUN YOUR SCRIPT</span>);
     }
   }
-  checkTriggers(mouse,action){//check using mouse stats
+  checkTriggers(mouse:React.MouseEvent|React.TouchEvent,action:string){//check using mouse stats
     var offset = $("#"+"triggersTarget"+this.id).offset();
-    let mX,mY;
-    var clientX;
-    var clientY;
-    if(this.isMobile){
+    let mX:number,mY:number;
+    var clientX:number;
+    var clientY:number;
+    if(mouse instanceof TouchEvent){
       if(action == "onHold"){
         clientX = mouse.touches[0].clientX;
         clientY = mouse.touches[0].clientY;
@@ -903,13 +1002,17 @@ class RenderEngine extends React.Component{
         clientY = mouse.changedTouches[0].clientY;
       }
     }else{
+      //@ts-ignore
       clientX = mouse.clientX;
+      //@ts-ignore
       clientY = mouse.clientY;
     }
     clientX-=offset.left;
     clientY-=offset.top;
 
+    //@ts-ignore
     mX = clientX/mouse.target.clientWidth;
+    //@ts-ignore
     mY = clientY/mouse.target.clientHeight;
     //move mouse "digital coords" with camera origin
     mX += (0.5-this.camera.origin.x);
@@ -922,6 +1025,7 @@ class RenderEngine extends React.Component{
     mY *= this.canvasRef.resolutionHeight;
 
     var targetGraphObjectId = "";
+    //@ts-ignore
     var reversedRenderOrderList = [].concat(this.renderingOrderById).reverse();
     const availableIdsToRender = reversedRenderOrderList.filter(id =>{return this.graphArray.ids().indexOf(id) != -1}); 
     const objectsWithTriggersList = this.triggers.relatedToReversedList();
@@ -944,6 +1048,7 @@ class RenderEngine extends React.Component{
               if(targetGraphObjectId in objectsWithTriggersList){
                 objectsWithTriggersList[targetGraphObjectId].forEach(triggerId => {
                   try {
+                    //@ts-ignore
                     this.triggers.get(triggerId).check(this,action);
                   } catch (error) {
                     console.log("Error on trigger execution:",error,this.triggers.get(triggerId))
@@ -976,6 +1081,7 @@ class RenderEngine extends React.Component{
       unexecutedTriggers.forEach(triggerId => {
         const trigger = this.triggers.get(triggerId);
         if(trigger.relatedTo != null){
+          //@ts-ignore
           trigger.check(this,"onLeave");
         }
       });

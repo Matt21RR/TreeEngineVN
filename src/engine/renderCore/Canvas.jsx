@@ -1,6 +1,6 @@
 import React from "react";
 import $ from "jquery";
-import { rAF } from "../logic/rAF";
+import { rAF } from "../logic/rAF.ts";
 
 class Canvas extends React.Component{
   constructor(props){

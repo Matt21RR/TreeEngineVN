@@ -1,6 +1,6 @@
 import Swal from "sweetalert2"
-import { CodedRoutine } from "../engine/engineComponents/CodedRoutine"
-import { GraphObject } from "../engine/engineComponents/GraphObject"
+import { CodedRoutine } from "../engine/engineComponents/CodedRoutine.ts"
+import { GraphObject } from "../engine/engineComponents/GraphObject.ts"
 import { KeyboardTrigger } from "../engine/engineComponents/Trigger.ts"
 import { RenderEngine } from "../engine/renderCore/RenderEngine"
 import arrow from "./resources/next8.png"

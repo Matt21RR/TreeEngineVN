@@ -1,4 +1,9 @@
-  
+declare global {
+  interface Window {
+    loopId: string;
+    rAFLastTime?: number
+  }
+}
   class rAF{
     static modelThree(callback, interval = 16, prevCycleStartedAt,loopId){
       if(loopId != window.loopId){

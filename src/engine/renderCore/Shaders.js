@@ -1,4 +1,4 @@
-import GraphObject from "../engineComponents/GraphObject"
+import GraphObject from "../engineComponents/GraphObject.ts"
 const vertexShaderSource = /*glsl*/`
   attribute vec2 a_position;
   attribute vec2 a_texCoord;

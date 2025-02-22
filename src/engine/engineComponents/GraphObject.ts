@@ -1,4 +1,6 @@
 import { lambdaConverter } from "../logic/Misc.ts"
+import { RenderEngine } from "../renderCore/RenderEngine.jsx"
+
 
 class GraphObject{
   #enabled:boolean //TODO: use I'T
@@ -40,7 +42,7 @@ class GraphObject{
 
   #ignoreParallax:boolean
 
-  #states:States|Object = new States(this);
+  #states:States;
   #pendingRenderingRecalculation:boolean = true;
 
   #useEngineUnits:boolean
@@ -147,7 +149,7 @@ class GraphObject{
     this.#widthScale =     graphInfo.widthScale ?? 1;
     this.#heightScale =    graphInfo.heightScale ?? 1;
 
-    this.#states = "states" in graphInfo ? new States(this,graphInfo.states) : {};
+    this.#states = "states" in graphInfo ? new States(this,graphInfo.states) : new States(this);
 
     this.#useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits : ("parent" in graphInfo ? false : true); //for scale
   
@@ -184,7 +186,7 @@ class GraphObject{
   set font(x) {this.#font = typeof x == "string" ? x: "Arial"}
 
 
-  get fontSize() {return this.#fontSize;}
+  get fontSize():number {return this.#fontSize;}
   set fontSize(x:string|number) {
     if(typeof x == "string"){
       if(x.indexOf("px") != -1){
@@ -407,12 +409,12 @@ class GraphObject{
   }
 
   get widthScale() {return this.#widthScale;}
-  set widthScale(x) {
+  set widthScale(x:any) {
     this.#widthScale = parseFloat(x);
   }
 
   get heightScale() {return this.#heightScale;}
-  set heightScale(x) {
+  set heightScale(x:any) {
     this.#heightScale = parseFloat(x);
   }
 
@@ -485,20 +487,17 @@ class States{
     });
     this.#referenceToObject = ref != undefined ? ref : {};
   }
-  addState(id,stateInfo){
+  addState(id:string,stateInfo){
     Object.assign(this.#states,{[id]:new State(stateInfo)});
   }
-  removeState(id){
+  removeState(id:string){
     delete this.#states[id];
   }
   get states(){return this.#states}
 
   set state(stateName){
-    console.log(2);
     if(stateName != this.#actualState){
-      console.log(3);
       if(stateName in this.#states){
-        console.log(4);
         this.#actualState = stateName;
         const targetState = this.#states[stateName];
         targetState.setThisState(this.#referenceToObject);
@@ -508,11 +507,11 @@ class States{
   get actualState() {return this.#actualState}
 }
 class State{
-  #beforeChange = null
+  #beforeChange: Function|null = null
   #data
-  #afterChange = null
+  #afterChange: Function|null = null
 
-  constructor(stateInfo = new Object()){
+  constructor(stateInfo:{[key:string]:any}){
     if(!("data" in stateInfo))
       throw new Error("stateInfo without data key");
     this.#data = stateInfo.data;
@@ -538,11 +537,6 @@ class State{
     }
   }
 
-}
-declare global {
-  interface Window {
-    engineRef: any;
-  }
 }
 
 export {GraphObject}

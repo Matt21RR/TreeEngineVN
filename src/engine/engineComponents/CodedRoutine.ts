@@ -16,6 +16,17 @@ class CodedRoutine{
     this.#continious = tInfo.continious || false;
     this.#code = tInfo.code || null;
   }
+  
+  print() {
+    const output =  `CodedRoutine {
+      id: ${this.#id},
+      enabled: ${this.#enabled},
+      continious: ${this.#continious},
+      code: ${this.#code}
+    }`;
+    
+    console.log(output);
+  }
 
   get id(){return this.#id}
 
@@ -41,17 +52,19 @@ class CodedRoutine{
       }else if(numberOfArguments == 2){
         this.#code(engineRef,engineRef.engineTime);
       }else{
-        throw new Error("Too much arguments (",numberOfArguments,") , for the codedRoutine",this.id)
+        this.print();
+        throw new Error(`Too much arguments (${numberOfArguments}) , for the codedRoutine "${this.id}"`);
       }
       if(!this.#continious){
         this.#enabled = false;
       } 
     } catch (error) {
-      console.log(this.#code);
       console.error(error);
+      this.print()
       debugger;
     }
   }
+  
 }
 
 export {CodedRoutine}
