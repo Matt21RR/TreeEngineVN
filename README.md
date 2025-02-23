@@ -1,4 +1,4 @@
-## Basics of the project
+## TreeDialog
 
 This project was bootstrapped using [Create React App](https://github.com/facebook/create-react-app).
 

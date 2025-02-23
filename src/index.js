@@ -6,7 +6,7 @@ import './index.css';
 import "./engine/res/css/fonts.css";
 
 import { Test } from './windows/Test';
-import { RenderEngine } from './engine/renderCore/RenderEngine';
+import { RenderEngine } from './engine/renderCore/RenderEngine.tsx';
 
 import { game } from './game/js';
 import Swal from 'sweetalert2';

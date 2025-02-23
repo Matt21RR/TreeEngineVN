@@ -993,7 +993,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     let mX:number,mY:number;
     var clientX:number;
     var clientY:number;
-    if(mouse instanceof TouchEvent){
+    if(window.TouchEvent && mouse instanceof TouchEvent){
       if(action == "onHold"){
         clientX = mouse.touches[0].clientX;
         clientY = mouse.touches[0].clientY;
