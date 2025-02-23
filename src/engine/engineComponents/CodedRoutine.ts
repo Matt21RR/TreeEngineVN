@@ -1,4 +1,4 @@
-import { RenderEngine } from "../renderCore/RenderEngine";
+import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 
 class CodedRoutine{
   #id
@@ -39,7 +39,7 @@ class CodedRoutine{
   get code() {return this.#code;}
   set code(x) {this.#code = x;}
 
-  run(engineRef = new RenderEngine()){
+  run(engineRef:RenderEngine){
     try {
       if(this.#code == null || !this.enabled){
         return;

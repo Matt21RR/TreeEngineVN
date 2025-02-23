@@ -1,4 +1,4 @@
-import { RenderEngine } from "../renderCore/RenderEngine";
+import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 import { GraphObject } from "./GraphObject";
 
 class Trigger{
@@ -114,7 +114,7 @@ class KeyboardTrigger{
   set onRelease(x) {this.#onRelease = x;}
 
 
-  check(engineRef = new RenderEngine(),action:string){
+  check(engineRef:RenderEngine,action:string){
     if(this[action] == null || !this.enabled){
       return;
     }

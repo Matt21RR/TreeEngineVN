@@ -17,7 +17,7 @@ import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
 import { Chaos } from "./ChaosInterpreter";
 import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder.ts";
 
-import noImageTexture from "./no-image.png"
+import noImageTexture from "./no-image.png";
 import CollisionLayer, { engineRenderingDataCloner } from "../engineComponents/CollisionLayer.ts";
 
 type CalculationOrder = Array<{id:string,weight:number,z:number}>;
@@ -153,7 +153,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.graphObject = GraphObject;
     this.animation = Animation;
     this.codedRoutine = CodedRoutine;
-    this.graphArray = new RenList(GraphObject);//array de objetos, un objeto para cada imagen en pantalla
+    this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
     this.anims = new RenList();
     this.triggers = new RenList();
 
@@ -263,12 +263,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           self.pressedKeys.push(keyCode);
           const mix = self.pressedKeys.join(" ");
           if(self.keyboardTriggers.exist(mix)){
-            // @ts-expect-error
+            // @ts-ignore
             self.keyboardTriggers.get(mix).check(self,"onPress");
           }
           if(self.pressedKeys.length > 1){//Si hay mas de una tecla oprimiendose, comprobar la ultima tecla
             if(self.keyboardTriggers.exist(keyCode)){
-              // @ts-expect-error
+              // @ts-ignore
               self.keyboardTriggers.get(keyCode).check(self,"onPress");
             }
           }
@@ -279,12 +279,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         const mix = self.pressedKeys.join(" ");
         self.pressedKeys.splice(self.pressedKeys.indexOf(keyCode),1);
         if(self.keyboardTriggers.exist(mix)){
-          // @ts-expect-error
+          // @ts-ignore
           self.keyboardTriggers.get(mix).check(self,"onRelease");
         }
         if(self.pressedKeys.length > 0){//Si habia mas de una tecla oprimiendose, comprobar la tecla que se soltó
           if(self.keyboardTriggers.exist(keyCode)){
-            // @ts-expect-error
+            // @ts-ignore
             self.keyboardTriggers.get(keyCode).check(self,"onRelease");
           }
         }
@@ -299,7 +299,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.dataCleaner();
     const h = new Chaos();
     var self = this;
-    // @ts-expect-error
+    // @ts-ignore
     $.get(scriptRoute).then(scriptFile=>{
       this.projectRoot = h.projectRoot;
       h.kreator(scriptFile).then(scriptData=>{
@@ -310,7 +310,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         self.isReady = true;
         self.forceUpdate();
         if("setEngine" in  self.props ){
-          // @ts-expect-error
+          // @ts-ignore
           self.props.setEngine(self);
         }
       })
@@ -320,8 +320,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     const w = document.getElementById("display"+this.id) as HTMLElement;
 
     if (aspectRatio != "undefined") {
-      let newWidth = Math.floor((w.offsetHeight / parseFloat(aspectRatio.split(":")[1])) * parseFloat(aspectRatio.split(":")[0]));
-      let newHeight = Math.floor((w.offsetWidth / parseFloat(aspectRatio.split(":")[0])) * parseFloat(aspectRatio.split(":")[1]));
+      let newWidth = Math.floor((w.offsetHeight / parseInt(aspectRatio.split(":")[1])) * parseInt(aspectRatio.split(":")[0]));
+      let newHeight = Math.floor((w.offsetWidth / parseInt(aspectRatio.split(":")[0])) * parseInt(aspectRatio.split(":")[1]));
       if (newWidth <= w.offsetWidth) {
         newHeight = w.offsetHeight;
       } else {
@@ -494,7 +494,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   dataCleaner(){
     //reset values
     this.engineTime = 0;
-    this.graphArray = new RenList(GraphObject);//array de objetos, un objeto para cada imagen en pantalla
+    this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
     this.anims = new RenList();
     this.triggers = new RenList();
     this.keyboardTriggers = new RenList();
@@ -945,12 +945,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         events={(fps)=>{
           const mix = this.pressedKeys.join(" ");
           if(this.keyboardTriggers.exist(mix) && (this.pressedKeys.length>1)){
-            // @ts-expect-error
+            // @ts-ignore
             this.keyboardTriggers.get(mix).check(this,"onHold");
           }
           this.pressedKeys.forEach(key => {
             if(this.keyboardTriggers.exist(key)){
-              // @ts-expect-error
+              // @ts-ignore
               this.keyboardTriggers.get(key).check(this,"onHold");
             }
           });
@@ -962,7 +962,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           for (let index = 0; index < this.anims.objects.length; index++) {
             const anim = this.anims.objects[index];
             if(anim.relatedTo != null){
-              // @ts-expect-error
+              // @ts-ignore
               anim.updateState(this.engineTime,this);
             }
           }  
@@ -976,7 +976,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           }
 
           this.codedRoutines.objects.forEach(element => {
-            //@ts-expect-error
+            //@ts-ignore
             element.run(this);
           });
 

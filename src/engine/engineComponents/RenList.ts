@@ -16,26 +16,14 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
   #dummy:{type:string, keys:string[],hasId:boolean, hasEnabled:boolean, hasRelatedTo:boolean}
   objects:Array<T>
   #_ids:Array<String>
-  constructor(classRef?: new () => T) {
-    if (!classRef) {
-      console.warn("Class constructor wasn't provided to create the RenList.");
-      console.warn("Assuming objects with id will be stored");
-      this.#dummy = {
-        type: '',
-        keys: ["id"],
-        hasId:true,
-        hasEnabled:false, //TODO: Check this
-        hasRelatedTo:false
-      };
-    } else {
-      this.#dummy = {
-        type: classRef.name,
-        keys: getAttribs(classRef),
-        hasId:getAttribs(classRef).includes("id"),
-        hasEnabled:getAttribs(classRef).includes("enabled"),
-        hasRelatedTo:getAttribs(classRef).includes("relatedTo"),
-      };
-    }
+  constructor() {
+    this.#dummy = {
+      type: '',
+      keys: ["id"],
+      hasId:true,
+      hasEnabled:false, //TODO: Check this
+      hasRelatedTo:false
+    };
     this.objects = new Array<T>();
     this.#_ids = [];
   }
@@ -51,13 +39,24 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
   }
 
   push(element:T){
-
     if(this.exist(element.id)){
       console.warn("Element with "+ element.id + " id already exists");
       return;
     }
-    this.#_ids.push(element.id);
+    if(this.objects.length == 0){
+      if(this.#dummy.type == ""){
+        const classRef = element.__proto__.constructor;
+        this.#dummy = {
+          type: classRef.name,
+          keys: getAttribs(classRef),
+          hasId:getAttribs(classRef).includes("id"),
+          hasEnabled:getAttribs(classRef).includes("enabled"),
+          hasRelatedTo:getAttribs(classRef).includes("relatedTo"),
+        };
+      }
+    }
 
+    this.#_ids.push(element.id);
     this.objects.push(element);
   }
 
@@ -95,12 +94,14 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
   relatedToList(){
     return this.objects.map(e => {return {[e.id]:e.relatedTo};});
   }
+
   #verifyRelatedToInClass(this: RenList<T>){
     if(this.#dummy.hasRelatedTo){
       return;
     }
     throw new Error (`Class ${this.#dummy.type} don't have the "relatedTo" attribute`);
 }
+
   relatedToReversedList(this: RenList<T>){
     var list:{[key:string]:Array<string>} = {};
     if(this.objects.length == 0){
@@ -128,6 +129,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     if(this.objects.length == 0){
       return list;
     }
+
     this.#verifyRelatedToInClass();
 
     this.objects.forEach(element => {

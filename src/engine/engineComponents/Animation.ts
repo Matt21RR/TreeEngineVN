@@ -1,5 +1,5 @@
 import { ExtendedObjects } from "../logic/ExtendedObjects";
-import { RenderEngine } from "../renderCore/RenderEngine";
+import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 
 var ease = require("ease-component"); 
 
