@@ -43,6 +43,9 @@ interface RenderEngineProps {
   clientSideResources?: boolean;
   aspectRatio?: string;
   showFps?: boolean;
+  /** 
+   * Render half of the cycles of the engine*/
+  halfFPS?: boolean;
   cyclesPerSecond?: number;
   developmentDeviceHeight?: number;
   avoidResizeBlackout?: boolean;
@@ -303,6 +306,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     $.get(scriptRoute).then(scriptFile=>{
       this.projectRoot = h.projectRoot;
       h.kreator(scriptFile).then(scriptData=>{
+        //@ts-ignore
         var commands = scriptData["gameEntrypoint"];
         commands = commands.join("");
         const commandsF = new Function ("engine",commands);
@@ -681,6 +685,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         CELGF={(er)=>{console.error(er)}} 
         displayResolution={this.engineDisplayRes} 
         id={"renderCanvas" +Math.floor(window.performance.now()*10000000).toString()} 
+        halfFPS={"halfFPS" in this.props ? true : false}
         fps={this.cyclesPerSecond}
         scale={1} 
         showFps={this.showFps}
@@ -933,6 +938,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           canvas.context.textRendering = "optimizeSpeed";
         }}
         onResize={(canvas)=>{
+          console.warn("On Resize directive called");
           //calc the perspective angle
           this.camera.position.angle = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
           //disable image smoothing
@@ -957,8 +963,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           
           this.engineTime += (fps.elapsed * (this.stopEngine ? 0 : this.engineSpeed));
           const a = new Array();
-          a.push(123);
-          const arl = a[0];
           for (let index = 0; index < this.anims.objects.length; index++) {
             const anim = this.anims.objects[index];
             if(anim.relatedTo != null){
@@ -989,10 +993,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     }
   }
   checkTriggers(mouse:React.MouseEvent|React.TouchEvent,action:string){//check using mouse stats
-    var offset = $("#"+"triggersTarget"+this.id).offset();
-    let mX:number,mY:number;
-    var clientX:number;
-    var clientY:number;
+    var offset = $("#"+"triggersTarget"+this.id).offset() as JQuery.Coordinates;
+    let mX:number, mY:number, clientX:number, clientY:number;
     if(window.TouchEvent && mouse instanceof TouchEvent){
       if(action == "onHold"){
         clientX = mouse.touches[0].clientX;

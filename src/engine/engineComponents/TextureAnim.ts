@@ -30,7 +30,7 @@ class TextureAnim{
   get speed() {return this.#speed;}
   set speed(x) {this.#speed = x;}
 
-  getTexture(engDelta){
+  getTexture(engDelta: number){
     this.#timer = engDelta;
     const listLength = this.#list.length;
     const delta = this.#timer % this.#duration;

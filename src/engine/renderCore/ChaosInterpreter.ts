@@ -1,4 +1,23 @@
+import $ from "jquery";
+
+declare global {
+  interface Window {
+    backendRoute: string;
+  }
+}
+type ScriptInstruction ={
+  command: string,
+  parameters : Array<string>,
+  value : string,
+  text : string
+}
+
 class ChaosInterpreter {
+  projectRoot:string;
+  sounds:Object;
+  textures:Object;
+  scripts:Object;
+  scriptsUrls:Object;
   constructor(){
     this.sounds = {};
     this.textures = {};
@@ -32,7 +51,7 @@ class ChaosInterpreter {
     const self = this;
     return new Promise((resolve,reject)=>{
       if(doNothing){
-        resolve();
+        resolve(null);
       }else{
         fetch(this.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
           Promise.all(
@@ -44,49 +63,40 @@ class ChaosInterpreter {
                     self.kreator(res2,false).then(
                     (textScr)=>{
                       Object.assign(self.scripts,textScr);
-                      resolveScript();
+                      resolveScript(null);
                     }
                   )}
                 )
               })
             })
-          ).then(()=>{resolve()});
+          ).then(()=>{resolve(null)});
         });
       }
     })
-  }
-  #isASceneOrModule(groupedInstructions){
-    return groupedInstructions.constructor.name != "Array";
   }
   kreator(script,loadAudioVisual = true){
     return new Promise((resolve,reject)=>{
       //TODO: add textures and sounds js exists check
       this.loadScripts(!loadAudioVisual).then(()=>{
-
-        //TODO: ignore lines with no content
         var instructions = this.instructionsDesintegrator(script);
-
-        var groupedInstructions = this.separateScenes(instructions);
-
-        let scenes;
-
-        let res = [];
-        //*is not a scene or module (it must be a MAIN or ISOLATED script)
-        if(!this.#isASceneOrModule(groupedInstructions)){
+        console.log(instructions);
+        debugger;
+        var scenes = this.separateScenes(instructions);
+        let res:Array<string> = [];
+        if(scenes.constructor.name == "Array"){
           if(loadAudioVisual){
             res.push("engine.loadTexture('"+this.getTexture()+"').then(()=>{");
             res.push("engine.loadSound('"+this.getSound()+"').then(()=>{");
           }
-            groupedInstructions.map((instruction,idx)=>{
-              res = res.concat(this.interpretateScriptInstruction(instruction));
+            (scenes as Array<ScriptInstruction>).map((instruction,idx)=>{
+              res = res.concat(this.evaluateStuff(idx,instruction));
             });
           if (loadAudioVisual) {
             res.push("  });");
             res.push("});");
           }
           scenes = {"gameEntrypoint":res};
-        }else{//*is a scene or module
-          scenes = groupedInstructions;
+        }else{
           Object.keys(scenes).map(sceneName=>{
             const scene = scenes[sceneName];
   
@@ -95,7 +105,7 @@ class ChaosInterpreter {
               res.push("engine.loadSound('"+this.getSound()+"').then(()=>{");
             }
               scene.forEach((instruction,idx)=>{
-                res = res.concat(this.interpretateScriptInstruction(instruction));
+                res = res.concat(this.evaluateStuff(idx,instruction));
               });
             if (loadAudioVisual) {
               res.push("  });");
@@ -133,11 +143,11 @@ class ChaosInterpreter {
     }
     return false;
   }
-  instructionsDesintegrator(script){
-    var instructions = [];
-    var acomulateLines = "";
-    var indexWhereCommandObjectStart = 0;
-    var counter = 0;//counts the openned {, [, (,
+  instructionsDesintegrator(script:string){
+    var instructions:Array<ScriptInstruction> = [];
+    var acomulateLines:string = "";
+    var indexWhereCommandObjectStart:number = 0;
+    var counter:number = 0;//counts the openned {, [, (,
 
     script = script.replaceAll(/(@{2})+\w+/g,(e)=>{
       return e.replace("@@","engine.gameVars.");
@@ -148,7 +158,7 @@ class ChaosInterpreter {
 
       if(counter != 0){
         if(this.checkIfKeywordInLine(lineF)){
-          lineF = this.interpretateScriptInstruction(this.instructionsDesintegrator(lineF)[0],false).join("");
+          lineF = this.evaluateStuff(0,this.instructionsDesintegrator(lineF)[0],false).join("");
         }
       }
 
@@ -159,17 +169,17 @@ class ChaosInterpreter {
         if(char == "}" || char == "]" || char == ")"){counter--;}
         
         if(indexWhereCommandObjectStart == 0 && counter != 0){
-          var e ={};
+          var e:{[key:number]:string} ={};
           e[acomulateLines.indexOf("{")] = "{";
           e[acomulateLines.indexOf("[")] = "[";
           e[acomulateLines.indexOf("(")] = "(";
           delete e[-1];
-          indexWhereCommandObjectStart = Object.keys(e)[0];
+          indexWhereCommandObjectStart = parseInt(Object.keys(e)[0]);
         }
       });
 
-      let command = "";
-      let parameters = [];
+      let command:string = "";
+      let parameters:string|Array<string> = "";
       let value = "";
       if(counter == 0){//Counter keeps being zero
         if(indexWhereCommandObjectStart != 0){
@@ -189,7 +199,8 @@ class ChaosInterpreter {
 
         parameters = parameters.trim().split(" ").filter(word => {return word != ""});
         if(parameters.length != 0){
-          command = parameters.shift();
+          //the first word of the line is the command
+          command = parameters.shift() as string;
         }
         if (command == "" && parameters.length == 0){
           command = value;
@@ -200,7 +211,7 @@ class ChaosInterpreter {
           command : command,
           parameters : parameters,
           value : value,
-          text : acomulateLines
+          text : acomulateLines 
         })
         acomulateLines = "";
         indexWhereCommandObjectStart = 0;
@@ -211,8 +222,8 @@ class ChaosInterpreter {
     return(instructions);
   }
   separateScenes(primitiveScripts){
-    var sceneStack = new Object();
-    var commandStack = [];
+    var sceneStack:Object|Array<ScriptInstruction> = new Object();
+    var commandStack:Array<ScriptInstruction> = [];
     var sceneId = "";
     primitiveScripts.forEach(instruction => {
         if(instruction.command == "scene" || instruction.command ==  "module"){
@@ -221,82 +232,70 @@ class ChaosInterpreter {
               commandStack = [];    
             }
             sceneId = instruction.value;
-        }else if(instruction.command == "end" && (instruction.value == "scene" || instruction.value == "module")){
+        }else if(instruction.command == "end" && instruction.value == "file"){
           Object.assign(sceneStack,{[sceneId]:commandStack});
         }else{
           commandStack.push(instruction);    
         }
     });
-    if(Object.keys(sceneStack) == 0){
+    if(Object.keys(sceneStack).length == 0){
       sceneStack = commandStack;
     }
     return sceneStack;
   }
-  #isACreationInstruction(instruction){
-    var flag = false;
-    if( instruction.command == "new"){
-      flag = true;
-    }else if(instruction.parameters.length == 3 && instruction.parameters[1] == "new"){
-      flag = true;
-    }
-    return flag;
-  }
-  #isACreationInstructionWithId(instruction){
-    if(instruction.parameters.length == 3 && instruction.parameters[1] == "new"){
-      return true;
-    }
-    return false;
-  }
-  #instructionCreationAdecuation(instruction,creationType){
-    let res = structuredClone(instruction);
-    delete res.parameters;
-    res.creationType = creationType;
-    res.command = "create";
-    //removes parenthesis
-    var value = instruction.value.slice(1,instruction.value.length-1);
-    
-    if(creationType == "Animation" || creationType=="TextureAnim" || creationType=="Trigger" || creationType=="KeyboardTrigger"){
-      value = "["+value+"]"
-    }
-    res.value = value;
 
-    return res;
-  }
+
+
   //With the dam instructions separated we will...
   /**
    * 
    * @param {String} instruction 
    * @param {String} Scrapped Value of the instruction
    */
-  interpretateScriptInstruction(instruction,routine = true){
+  evaluateStuff(index:number, instruction:ScriptInstruction,routine = true){
     let command = instruction.command;
     let parameters = instruction.parameters;
     let creationType = "";
     let settingType = "";
     let id = "";
+    let value = instruction.value;
+    let text = instruction.text;
     let res = [];
 
     var dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
 
-    if(this.#isACreationInstruction(instruction)){
-      if(this.#isACreationInstructionWithId(instruction)){
-        id = '"'+command+'"';
-        creationType = parameters[2];
+    const creationAdecuation =()=>{
+      command = "create";
+      //removes parenthesis
+      value = value.split("")
+      value.shift();
+      value.pop();
+      value = value.join("");
+      if(creationType == "Animation" || creationType=="TextureAnim" || creationType=="Trigger" || creationType=="KeyboardTrigger"){
+        value = "["+value+"]"
       }else{
-        creationType = parameters[0];
+        value = value
       }
-      instruction = this.#instructionCreationAdecuation(instruction,creationType);
-      command = instruction.command;
     }
 
+
+    if(parameters.length == 3){
+      if(parameters[0] == "=" && parameters[1] == "new"){
+        id = '"'+command+'"';
+        creationType = parameters[2];
+        creationAdecuation();
+      }
+    }
+    if(command == "new"){
+      creationType = parameters[0];
+      creationAdecuation();
+    }
     if(command == "set"){
       settingType = parameters[0];
       id = parameters[1];
     }
 
-    let value = instruction.value;
-    let text = instruction.text;
-
+    // res.push("//**Instruction #"+index+"*/")
     switch(command){
       case ">":
         res.push(
@@ -307,14 +306,8 @@ class ChaosInterpreter {
         const loadType = parameters[0];
         switch (loadType) {
           case "script":
-            const sceneOrModuleId = value.replaceAll('"',"");
-            //!If there is some error here that probably means that the scene or module is not being loaded or don't exists
-            if(!(sceneOrModuleId in this.scripts)){
-              console.error("List of scripts and modules:",Object.keys(this.scripts));
-              throw new Error("Scene or module "+sceneOrModuleId+" not found or don't exists.");
-            }
             res.push(
-              this.scripts[sceneOrModuleId].join("")
+              this.scripts[value.replaceAll('"',"")].join("")
             );
             break;
         }
