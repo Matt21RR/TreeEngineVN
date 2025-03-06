@@ -128,4 +128,12 @@ function getAttribs<T>(elConstructor: new () => T){
   }
   return attributesNames;
 }
-export {mobileCheck,wrapText,random,lambdaConverter,degToRad,rad2Deg,getAttribs}
+
+function arrayFlatter(list:Array<any>){
+  list = list.flat() as Array<any>;
+  if(list.filter(e => {return e.constructor.name == "Array"}).length != 0){
+      list = arrayFlatter(list);
+  }
+  return list;
+}
+export {mobileCheck,wrapText,random,lambdaConverter,degToRad,rad2Deg,getAttribs,arrayFlatter}

@@ -61,7 +61,6 @@ class Animation{
     this.#keyframes = aInfo.keyframes || {};
     this.#keyFrameNumber =  -1;
     this.#timeline = [];//controla los tiempos de cada frame de forma independiente
-    this.print();
   }
 
   print() {
@@ -91,7 +90,7 @@ class Animation{
       keyFrameNumber: ${this.#keyFrameNumber},
       timeline: ${JSON.stringify(this.#timeline)}
     }`;
-    console.log(output)
+    console.log(output);
   }
 
   get id (){return this.#id;}
