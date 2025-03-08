@@ -14,7 +14,7 @@ import { Shader } from "./Shaders";
 import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
-import { Chaos } from "./ChaosInterpreter";
+import { Chaos } from "./ChaosInterpreter.ts";
 import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder.ts";
 
 import noImageTexture from "./no-image.png";
@@ -297,7 +297,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   entryPoint(){
     this.loadScript(window.backendRoute + "/renderEngineBackend/game/main.txt");
   }
-  loadScript(scriptRoute){
+  loadScript(scriptRoute:string,destination = "gameEntrypoint"){
     console.clear();
     this.dataCleaner();
     const h = new Chaos();
@@ -306,10 +306,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     $.get(scriptRoute).then(scriptFile=>{
       this.projectRoot = h.projectRoot;
       h.kreator(scriptFile).then(scriptData=>{
+        console.log(scriptData);
         //@ts-ignore
-        var commands = scriptData["gameEntrypoint"];
-        commands = commands.join("");
+        var commands = scriptData[destination];
+        // commands = commands.join("");//TODO: remove Join operation
         const commandsF = new Function ("engine",commands);
+        console.log(commandsF);
         commandsF(self);
         self.isReady = true;
         self.forceUpdate();
