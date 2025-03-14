@@ -1,7 +1,7 @@
 import React from "react";
 import { Button1, IconButton, InputList } from "./components/Buttons";
 import Swal from "sweetalert2";
-import { Chaos } from "../engine/renderCore/ChaosInterpreter";
+import { Chaos } from "../engine/renderCore/ChaosInterpreter.ts";
 class EngTools extends React.Component{
   constructor(props){
     super(props);

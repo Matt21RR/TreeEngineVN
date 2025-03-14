@@ -5,10 +5,10 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import "./engine/res/css/fonts.css";
 
-import { Test } from './windows/Test';
+import { Test } from './windows/Test.jsx';
 import { RenderEngine } from './engine/renderCore/RenderEngine.tsx';
 
-import { game } from './game/js';
+import { game } from './game/js.js';
 import Swal from 'sweetalert2';
 
 window.backendRoute = "http://192.168.101.76"

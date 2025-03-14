@@ -2,7 +2,7 @@ import React from "react";
 import * as $ from "jquery";
 import {Howl} from 'howler';
 
-import { Canvas } from "./Canvas";
+import { Canvas } from "./Canvas.tsx";
 
 import { Animation } from "../engineComponents/Animation.ts"
 import { GraphObject } from "../engineComponents/GraphObject.ts";
@@ -17,7 +17,9 @@ import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
 import { Chaos } from "./ChaosInterpreter.ts";
 import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder.ts";
 
+//@ts-ignore
 import noImageTexture from "./no-image.png";
+// const noImageTexture = require("./no-image.png");
 import CollisionLayer, { engineRenderingDataCloner } from "../engineComponents/CollisionLayer.ts";
 
 type CalculationOrder = Array<{id:string,weight:number,z:number}>;
@@ -27,7 +29,6 @@ declare global {
     engineRef:RenderEngine;
     backendRoute:string;
     setUsePerspective:Function;
-
   }
 }
 
@@ -68,6 +69,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   engineTime: number;
   engineSpeed: number;
   stopEngine: boolean;
+  redraw:boolean;
   actualSceneId: string;
   constructors: {
     graphObject: typeof GraphObject;
@@ -125,11 +127,11 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.id = "rengine" + String(window.performance.now()).replaceAll(".","");
     this.projectRoot = "";
     if(props){
-      this.isReady = props.clientSideResources || false;
-      this.aspectRatio = props.aspectRatio || "16:9";
-      this.showFps = props.showFps || false;
-      this.cyclesPerSecond = props.cyclesPerSecond || 24;
-      this.developmentDeviceHeight = props.developmentDeviceHeight || window.screen.height*window.devicePixelRatio;
+      this.isReady = props.clientSideResources ?? false;
+      this.aspectRatio = props.aspectRatio ?? "16:9";
+      this.showFps = props.showFps ?? false;
+      this.cyclesPerSecond = props.cyclesPerSecond ?? 24;
+      this.developmentDeviceHeight = props.developmentDeviceHeight ?? window.screen.height*window.devicePixelRatio;
     }
     this.engineDisplayRes = {width:0,height:0};
     this.resizeTimeout = 0;
@@ -140,6 +142,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.engineTime = 0;
     this.engineSpeed = 1;
     this.stopEngine = false; //Stop engine time
+
+    this.redraw = false;
 
     this.actualSceneId = "";//Guardar esto
 
@@ -306,12 +310,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     $.get(scriptRoute).then(scriptFile=>{
       this.projectRoot = h.projectRoot;
       h.kreator(scriptFile).then(scriptData=>{
-        console.log(scriptData);
+        // console.log(scriptData);
         //@ts-ignore
         var commands = scriptData[destination];
         // commands = commands.join("");//TODO: remove Join operation
         const commandsF = new Function ("engine",commands);
-        console.log(commandsF);
+        // console.log(commandsF);
         commandsF(self);
         self.isReady = true;
         self.forceUpdate();
@@ -549,8 +553,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
     const camera = this.camera;
 
-
-
     const arrayisedTree = arrayiseTree(this.calculationOrder);
     
     const tangencialConstant = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
@@ -648,6 +650,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
       // Object.assign(this.dimentionsPack,{[gObject.id]:res});
       this.dimentionsPack[gObject.id] = res;
+      gObject.pendingRenderingRecalculation = false;
 
     }
     const dimmensionsEndTimer = performance.now()-dimmensionsStartTimer;
@@ -684,19 +687,11 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     if(this.isReady){
       return(
         <Canvas 
-        CELGF={(er)=>{console.error(er)}} 
         displayResolution={this.engineDisplayRes} 
-        id={"renderCanvas" +Math.floor(window.performance.now()*10000000).toString()} 
-        halfFPS={"halfFPS" in this.props ? true : false}
+        halfFps={"halfFPS" in this.props ? true : false}
         fps={this.cyclesPerSecond}
         scale={1} 
         showFps={this.showFps}
-        // debugMessage={[
-        //   ()=>{return "x: "+this.camera.position.x},
-        //   ()=>{return "y: "+this.camera.position.y},
-        //   ()=>{return "z: "+this.camera.position.z},
-        //   ()=>{return "usePerspective: "+this.camera.usePerspective},
-        // ]}
         engine={this}
         renderGraphics={(canvas)=>{
 
@@ -709,6 +704,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           const endOrdB = performance.now()-startOrdB;
 
           const orderingTime = [endOrdA,endOrdB];
+
+          // if(!this.redraw){
+          //   return;
+          // }
 
           this.canvasRef = canvas;
           const resolution = {
@@ -929,9 +928,11 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           updatingColsTime = performance.now()-updatingColsTime;
 
 
+          this.redraw = false;
           return [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,dimsTimers,updatingColsTime];
         }} 
         onLoad={(canvas)=>{
+          this.canvasRef = canvas;
           //calc the perspective angle
           this.camera.position.angle = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
           //disable image smoothing
@@ -940,6 +941,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           canvas.context.textRendering = "optimizeSpeed";
         }}
         onResize={(canvas)=>{
+          this.canvasRef = canvas;
           console.warn("On Resize directive called");
           //calc the perspective angle
           this.camera.position.angle = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
@@ -948,9 +950,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           canvas.context.imageSmoothingQuality = "low";
           canvas.context.textRendering = "optimizeSpeed"; 
 
-          this.graphArray.objects.forEach(e=>{e.pendingRenderingRecalculation = true;})
+          //prevents reescaling glitches
+          this.graphArray.objects.forEach(e=>{
+            e.pendingRenderingRecalculation = true;
+          });
         }}
-        events={(fps)=>{
+        events={()=>{
           const mix = this.pressedKeys.join(" ");
           if(this.keyboardTriggers.exist(mix) && (this.pressedKeys.length>1)){
             // @ts-ignore
@@ -962,9 +967,9 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               this.keyboardTriggers.get(key).check(this,"onHold");
             }
           });
-          
+        }}
+        animateGraphics={(fps)=>{
           this.engineTime += (fps.elapsed * (this.stopEngine ? 0 : this.engineSpeed));
-          const a = new Array();
           for (let index = 0; index < this.anims.objects.length; index++) {
             const anim = this.anims.objects[index];
             if(anim.relatedTo != null){
@@ -972,15 +977,13 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               anim.updateState(this.engineTime,this);
             }
           }  
-        }}
-        animateGraphics={(canvas)=>{
+
           if(this.continue){
             if((this.routineNumber+1)<this.routines.length){
               this.routineNumber++;
               this.routines[this.routineNumber](this);
             }
           }
-
           this.codedRoutines.objects.forEach(element => {
             //@ts-ignore
             element.run(this);
@@ -995,6 +998,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     }
   }
   checkTriggers(mouse:React.MouseEvent|React.TouchEvent,action:string){//check using mouse stats
+    
     var offset = $("#"+"triggersTarget"+this.id).offset() as JQuery.Coordinates;
     let mX:number, mY:number, clientX:number, clientY:number;
     if(window.TouchEvent && mouse instanceof TouchEvent){

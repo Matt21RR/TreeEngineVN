@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import { Loading } from './components/alerts';
 import byteSize from 'byte-size';
 import { AudioPlayer } from './AudioPlayer';
-import { Chaos } from '../engine/renderCore/ChaosInterpreter';
+import { Chaos } from '../engine/renderCore/ChaosInterpreter.ts';
 
 
 class Multimedia extends React.Component{

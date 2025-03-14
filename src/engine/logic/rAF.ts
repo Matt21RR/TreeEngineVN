@@ -5,31 +5,28 @@ declare global {
   }
 }
   class rAF{
-    static modelThree(callback, interval = 16, prevCycleStartedAt,loopId){
+    static modelThree(callback: Function, interval = 16, prevCycleStartedAt:number,loopId:string){
       if(loopId != window.loopId){
         return;
       }
-      if(window.rAFLastTime === undefined){
-        window.rAFLastTime = 0;
-      }
+
       var now = window.performance.now();
 
       // Time between the calls less the time it took to execute the engine cycle (running code and rendering)
 			var nextTime = interval - (now - prevCycleStartedAt);
 
-      window.rAFLastTime = nextTime
-
       if(nextTime < 0){
-        window.rAFLastTime = now;
         return setTimeout(
           function() { 
-            callback((now - prevCycleStartedAt),loopId);
-          },1   
+            const engDelta = window.performance.now() - prevCycleStartedAt;
+            callback((now - prevCycleStartedAt),engDelta,loopId);
+          }, 1   
         );
       }else{
         return setTimeout(
           function() { 
-            callback(interval,loopId); 
+            const engDelta = window.performance.now() - prevCycleStartedAt;
+            callback(interval,engDelta,loopId); 
           }, 
           nextTime-1
         ); 

@@ -1,25 +1,98 @@
 import React from "react";
 import $ from "jquery";
 import { rAF } from "../logic/rAF.ts";
+import { RenderEngine } from "./RenderEngine.tsx";
 
-class Canvas extends React.Component{
+declare global{
+  interface Window{
+    setFps:Function;
+  }
+}
+
+interface CanvasProps{
+  halfFps?:boolean;
+  fps?:number;
+  scale?:number;
+  showFps?: boolean;
+
+  engine:RenderEngine;
+
+  renderGraphics:Function;
+  animateGraphics:Function;
+  onLoad?:Function;
+  onResize?:Function;
+  afterEffects?:Function;
+
+  events:Function;
+
+  displayResolution:{
+    width:number,
+    height:number
+  }
+}
+
+class Canvas extends React.Component<CanvasProps>{
+  id:string;
+  loopId:string;
+  mounted:boolean;
+
+  renderEngine:RenderEngine;
+
+  windowHasFocus:boolean;
+
+  halfFps:boolean;
+  targetFps:number;
+  fpsCounter:number;
+  scale:number;
+
+  interval:number;
+
+  resolutionHeight:number;
+  resolutionWidth:number;
+
+  element:React.RefObject<HTMLCanvasElement>;
+
+  stopEngine:boolean;
+  engineThreads:number;
+  engineKilled:boolean;
+
+  onLoad : Function;
+  onResize : Function;
+  afterEffects : Function;
+
+  showFps: boolean;
+  animatingElapsed: number;
+  renderingElapsed: number;
+  totalEngineElapsedTime: number;
+   
+
   constructor(props){
     super(props);
-    this.CELGF = props.CELGF || ((error)=>console.error(error));
+
+    if(props){
+      this.halfFps = props.halfFps ?? false; //*Unused
+      this.targetFps = props.fps ? (props.fps > 0 ? props.fps : 24) : 24;//suggesed max fps = 24
+      this.scale = props.scale ?? 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
+
+      this.renderEngine = props.engine;
+
+      this.onLoad = props.onLoad ?? ((canvas)=>{})//Do something after the canvas params have been set
+      this.onResize = props.onResize ?? ((canvas)=>{})//Do something after the canvas have been resized
+
+      this.showFps = props.showFps ?? false;
+    }
+
+
     this.id = "canvas"+performance.now();
     this.loopId = "loop"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
     window.loopId = structuredClone(this.loopId);
     this.mounted = false;
 
-    this.renderEngine = props.engine || {};
-
     this.windowHasFocus = true;
 
-    this.fps = props.fps ? (props.fps > 0 ? props.fps : 24) : 24;//suggesed max fps = 24
     this.fpsCounter = 0;
-    this.scale = props.scale || 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
 
-    this.interval = Math.round(1000 / this.fps);
+    this.interval = Math.round(1000 / this.targetFps);
 
     this.resolutionHeight = Math.floor(window.innerHeight * this.scale *window.devicePixelRatio);
     this.resolutionWidth = Math.floor(window.innerWidth * this.scale *window.devicePixelRatio); 
@@ -30,34 +103,21 @@ class Canvas extends React.Component{
     this.engineThreads = 0;
     this.engineKilled = false;
 
-    this.onLoad = props.onLoad || ((canvas)=>{})//Do something after the canvas params have been set
-    this.onResize = props.onResize || ((canvas)=>{})//Do something after the canvas have been resized
-    this.animateGraphics = props.animateGraphics || ((canvas)=>{})
-    this.renderGraphics = props.renderGraphics ;
-
-    this.afterEffects = props.afterEffects || ((canvas)=>{})
-    
-
     //*Debug
-    this.showFps = props.showFps || false;
     this.animatingElapsed = 0;
     this.renderingElapsed = 0;
+    this.totalEngineElapsedTime = 0;
 
-    this.setFps = (x) => { 
-      const canvas = this.element.current;
-      if(canvas == null){return;}
-      this.fps = x; 
-      this.stopEngine = (x == 0) && !this.stopEngine; 
-      this.interval = Math.floor(1000 / x); 
-      if (!this.stopEngine) 
-        this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")}); 
-    }
     window.setFps = this.setFps;
-    window.setScale = (x) => { this.scale = x;
-      const canvas = this.element.current;
-      canvas.getContext("2d").scale(x,x);
+  }
+  setFps(x:number){ 
+    const canvas = this.element.current;
+    if(canvas == null){return;}
+    this.targetFps = x; 
+    this.stopEngine = (x == 0) && !this.stopEngine; 
+    this.interval = Math.floor(1000 / x); 
+    if (!this.stopEngine) 
       this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")}); 
-    }
   }
   
   componentDidUpdate(){
@@ -67,30 +127,36 @@ class Canvas extends React.Component{
     if(resH != this.resolutionHeight || resW != this.resolutionWidth){
       if(!this.engineKilled){
         const canvas = this.element.current;
-        this.resolutionHeight = resH;
-        this.resolutionWidth = resW;
-        //set dimensions
-        canvas.width = this.resolutionWidth;
-        canvas.height = this.resolutionHeight;
-        //set the reset function
-        this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")});
+        if(canvas){
+          this.resolutionHeight = resH;
+          this.resolutionWidth = resW;
+          //set dimensions
+          canvas.width = this.resolutionWidth;
+          canvas.height = this.resolutionHeight;
+          //set the reset function
+          this.onResize({
+            object:this,
+            context:canvas.getContext("2d"),
+            scale:this.scale,
+            resolutionWidth:this.resolutionWidth,
+            resolutionHeight:this.resolutionHeight,
+            fps:{}});
+        }
       }
     } 
   }
   componentDidMount(){
     if (!this.mounted) { 
       this.mounted = true;
-      //check if a CELGF was provided
-      if(!this.props.CELGF){
-        console.warn("a CELGF - Critical Error Log Graphic Interface, wasn't provided");
-        console.warn("fallbacking to console output")
-      }
+      const canvas = this.element.current;
       //set resolution
       this.resolutionHeight = Math.floor(this.props.displayResolution.height * this.scale *window.devicePixelRatio);
       this.resolutionWidth = Math.floor(this.props.displayResolution.width * this.scale *window.devicePixelRatio);
       //set dimensions
-      document.getElementById(this.id).width = this.resolutionWidth;
-      document.getElementById(this.id).height = this.resolutionHeight;
+      if(canvas){
+        canvas.width = this.resolutionWidth;
+        canvas.height = this.resolutionHeight;
+      }
 
       let self = this;
       $(window).off("blur");
@@ -102,39 +168,69 @@ class Canvas extends React.Component{
       });
       $(window).off("focus");
       $(window).on("focus", function (e) {
-
         if(!self.engineKilled && !self.windowHasFocus){
           self.windowHasFocus = true;
-          window.rAFLastTime = window.performance.now();
         }
       });
       //set the every graphic object data
-      this.onLoad({context:this.element.current.getContext("2d"),scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight});
+      if(canvas){
+        this.onLoad({
+          object:this,
+          context:canvas.getContext("2d"),
+          scale:this.scale,
+          resolutionWidth:this.resolutionWidth,
+          resolutionHeight:this.resolutionHeight,
+          fps:{}});
+      }else{
+        console.error("Error on the canvas reference");
+      }
       //call engine
-
       this.engine(this.loopId);
+    }
+  }
+  canvasWriter(text:Array<string>,origin:{x:number,y:number},lineHeight:number){
+    const canvas = this.element.current;
+    if(canvas){
+      const context = canvas.getContext("2d");
+      if(context){
+        context.font = (12*this.scale)+"px Terminal";
+        context.fillStyle = "orange";
+        context.filter = 'none';
+        context.globalAlpha = 1;
+        context.beginPath();
 
+        text.forEach((line,index) => {
+           context.fillText(
+            line,
+            origin.x*this.scale,
+            (origin.y+(index*lineHeight))*this.scale
+          );
+        });
+
+        context.closePath();
+        context.fill();
+      }
     }
   }
   // Engine starter
-  engine(loopId) {
+  engine(loopId:string) {
     if(loopId != this.loopId){
       return;
     }
     if(this.element == null){
-      console.log("element reference error")
+      console.error("element reference error")
       this.element = React.createRef();
     }
     const canvas = this.element.current;
     if(canvas == null){
-      console.log("canvas reference error")
+      console.error("canvas reference error")
       return;
     }
-    var context = canvas.getContext("2d");
+    var context = canvas.getContext("2d") as CanvasRenderingContext2D;
 
     var checkEvents = (fps) => {
       try {
-        this.props.events(fps);
+        this.props.events();
         animator(fps);
       } catch (error) {//!Kill engine
         this.stopEngine = true;
@@ -148,10 +244,10 @@ class Canvas extends React.Component{
       //*ANIMATE
       try {
         const animateStartAt = performance.now();
-        this.props.animateGraphics({context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps.maxCps});
+        this.props.animateGraphics(fps);
         this.animatingElapsed = performance.now()-animateStartAt;
       } catch (error) {//!KILL ENGINE
-        context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
+        context.clearRect(0, 0, canvas.width, canvas.height);//cleanning window
         context.filter = 'none';
         context.globalAlpha = 1;
         context.beginPath();
@@ -184,8 +280,9 @@ class Canvas extends React.Component{
           renderer(fps);
           this.fpsCounter++;
         }
-      }catch (error) {//!KILL ENGINE
-        context.clearRect(0, 0, canvas.resolutionWidth, canvas.resolutionHeight);//cleanning window
+      }
+      catch (error) {//!KILL ENGINE
+        context.clearRect(0, 0, canvas.width, canvas.height);//cleanning window
         context.filter = 'none';
         context.globalAlpha = 1;
         context.beginPath();
@@ -214,20 +311,27 @@ class Canvas extends React.Component{
       context.filter = 'none';
       
       const renderingStartAt = performance.now();
-      const [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,dimsTimers,updateColsTime] = this.renderGraphics({object:this,context:context,scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,fps:fps});
+      const [
+        orderingTime,
+        infoAdjudicationTime,
+        drawingTime,
+        debugTime,
+        objectsToRender,
+        dimsTimers,
+        updateColsTime
+      ] = this.props.renderGraphics({
+        object:this,
+        context:context,
+        scale:this.scale,
+        resolutionWidth:this.resolutionWidth,
+        resolutionHeight:this.resolutionHeight,
+        fps:fps});
+
       this.renderingElapsed = performance.now()-renderingStartAt;
 
       const actualGlobalAlpha = context.globalAlpha;
 
       if(this.showFps){
-        context.globalCompositeOperation = "darker";
-        context.filter = 'none';
-        context.globalAlpha = 1;
-        context.beginPath();
-        context.fillStyle = "orange";
-        context.font = (12*this.scale)+"px Terminal";
-        context.fillText("CPS: "+fps.promedio.cps + "/ FPS: "+fps.promedio.fps, 5, 15*this.scale);
-        context.fillText("Interval: "+fps.elapsed.toFixed(4), 5, 30*this.scale);
         var mOrigin = this.renderEngine.mouse.origin;
         if(mOrigin != null){
           if(!(mOrigin in this.renderEngine.dimentionsPack)){
@@ -240,54 +344,41 @@ class Canvas extends React.Component{
           x : mOrigin == null ? this.renderEngine.mouse.x : this.renderEngine.mouse.x - this.renderEngine.dimentionsPack[mOrigin].x/this.resolutionHeight,
           y : mOrigin == null ? this.renderEngine.mouse.y : this.renderEngine.mouse.y - (this.renderEngine.dimentionsPack[mOrigin].y/this.resolutionHeight),
         };
-        context.fillText("Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2)+" ,origin:"+mOrigin, 5, 45*this.scale);
-        context.fillText("Res: "+this.resolutionWidth+"x"+this.resolutionHeight, 5, 60*this.scale);
-        context.fillText("scale: "+this.scale+" : "+(Math.floor(window.devicePixelRatio*100)/100), 5, 75*this.scale);
-        context.fillText("Keys: "+this.renderEngine.pressedKeys.join(" "),5,90*this.scale);
-        context.fillText("GPU: "+(this.renderingElapsed).toFixed(2) + "ms" ,5,105*this.scale);
-        context.fillText("CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,5,120*this.scale);
-        context.fillText("cycle:"+(this.renderingElapsed+this.animatingElapsed).toFixed(2) + "ms" ,5,135*this.scale);
-        context.fillText("OrdeGrap: "+(orderingTime.map((d)=>{return d.toFixed(2)})) + "ms" ,5,150*this.scale);
-        context.fillText("AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,5,165*this.scale);
-        context.fillText("DrawTime: "+(drawingTime).toFixed(2) + "ms" ,5,180*this.scale);
-        context.fillText("DebuTime: "+(debugTime).toFixed(2) + "ms" ,5,195*this.scale);
-        
-        context.fillText(dimsTimers ,5,210*this.scale);
 
-        context.fillText("UpdColsT: "+(updateColsTime).toFixed(2) + "ms" ,5,225*this.scale);
+        const fpsData: Array<string> = [
+          "CPS: "+fps.promedio.cps + "/ FPS: "+fps.promedio.fps,
+          "Interval: "+fps.elapsed.toFixed(4),
+          "Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2)+" ,origin:"+mOrigin,
+          "Res: "+this.resolutionWidth+"x"+this.resolutionHeight,
+          "EngTime: "+this.totalEngineElapsedTime.toFixed(2) + "ms",
+          "Keys: "+this.renderEngine.pressedKeys.join(" "),
+          "GPU: "+(this.renderingElapsed).toFixed(2) + "ms" ,
+          "CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,
+          "cycle:"+(this.renderingElapsed+this.animatingElapsed).toFixed(2) + "ms" ,
+          "OrdeGrap: "+(orderingTime.map((d)=>{return d.toFixed(2)})) + "ms" ,
+          "AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,
+          "DrawTime: "+(drawingTime).toFixed(2) + "ms" ,
+          "DebuTime: "+(debugTime).toFixed(2) + "ms" ,
+          "",
+          dimsTimers,
+          "",
+          "UpdColsT: "+(updateColsTime).toFixed(2) + "ms",
+          "Objects: "+ objectsToRender
+        ];
+        this.canvasWriter(fpsData,{x:5,y:15},15);
 
-        context.fillText("Objects: "+ objectsToRender ,5,275*this.scale);
-        context.closePath();
-        context.fill();
-        context.globalAlpha = actualGlobalAlpha;
-        context.globalCompositeOperation = "source-over";
-      }
-      if(this.props.debugMessage){
-        var debug = this.props.debugMessage
-        if(typeof debug == "string" || typeof debug == "function"){
-          debug = [debug]
-        }
-        context.globalCompositeOperation = "darker";
-        context.filter = 'none';
-        context.globalAlpha = 1;
-        context.beginPath();
-        context.fillStyle = "orange";
-        context.font = (12*this.scale)+"px Terminal";
-        debug.forEach((t,i)=>{
-          if(typeof t == "function"){
-            t = t()
-          }
-          context.fillText(t, 5, 15*(i+1)*this.scale);
-        })
-        context.closePath();
-        context.fill();
         context.globalAlpha = actualGlobalAlpha;
         context.globalCompositeOperation = "source-over";
       }
     }
-    var promedio = {cps:this.fps,fps:this.fps};
+    var promedio = {cps:this.targetFps,fps:this.targetFps};
     var drawnFrames = 0, startTimer = window.performance.now(),maxCps = 0;
-    var draw = (elapsed,lId) => {          
+    var draw = (elapsed:number,engDelta:number,lId:string) => {       
+
+      if(engDelta <0){
+        debugger;
+      }
+
       const operativeTimeStartedAt = performance.now();
       if(this.stopEngine){
         this.engineThreads--;
@@ -308,16 +399,22 @@ class Canvas extends React.Component{
         this.fpsCounter = 0;
       }
 
-      checkEvents({promedio:promedio,elapsed:elapsed});
+      if(this.windowHasFocus){
+        this.totalEngineElapsedTime += engDelta;   
+        checkEvents({promedio:promedio,elapsed:engDelta});
+      }else{
+        checkEvents({promedio:promedio,elapsed:0});
+      }
+      
 
       if(lId == this.loopId){
-        rAF.modelThree(draw,(1000 / this.fps),operativeTimeStartedAt,lId);
+        rAF.modelThree(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
       }
     }
 
     try { 
       this.engineThreads++;
-      draw(0,loopId);
+      draw(0,0,loopId);
     } catch (error) {
       console.log("in line:"+ error.lineNumber);
       console.log(error);

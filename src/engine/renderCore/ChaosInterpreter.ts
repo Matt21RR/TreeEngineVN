@@ -111,6 +111,33 @@ class ChaosInterpreter {
       })
     });
   }
+  instructionsDesintegrator(script:string){
+    script += "\n"; //To avoid the last line to be ignored
+    var tokenList = this.#lexer(script);
+    var abs = this.#preParser(tokenList);
+
+    var collection:Array<[boolean,Object|string]> = [];
+
+    for (let index = 0; index < abs.length; index++) {
+      const instruction = abs[index] as Instruction|Token;
+    
+      if(instruction instanceof Array){
+        const interpreted = this.#interpretateInstruction(instruction as Instruction);
+        if(interpreted[0]){
+          collection.push(interpreted as [boolean,Object|string]);
+        }
+        continue;
+      }else if(instruction instanceof Token){
+        if(instruction.type == "jsCode"){
+          collection.push([true,instruction.value]);
+          continue;
+        }
+      }
+      console.warn("Un-understandable or unsupported instruction",instruction);
+    }
+    return this.#haveSceneOrModuleDefinition(collection);
+
+  }
 
   #lexer(script:string){
     // Regular expression to match words, punctuation, and special characters
@@ -230,7 +257,7 @@ class ChaosInterpreter {
           }
           if(prevLineBreakFound){
             plausibleInstruction.reverse();
-            console.log(plausibleInstruction);
+            // console.log(plausibleInstruction);
             
             const [itWasAScriptInstruction,interpretResult] = this.#interpretateInstruction(plausibleInstruction,true);
             if(itWasAScriptInstruction){
@@ -250,19 +277,25 @@ class ChaosInterpreter {
     return abs;
   }
   //*instruction:Array<Token|Array<any>>
-  #isSceneDefinitionInstruction(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-    if(getToken(0).type == "word" && getToken(0).value == "scene"){
-      if(getToken(1).type == "word"){
+  #isSceneDefinitionInstruction(instruction:Instruction){
+    const getToken = (idx:number)=>{return instruction[idx];}
+    //@ts-ignore
+    if(getToken(0) instanceof Token && getToken(0).type == "word" && getToken(0).value == "scene"){
+      //@ts-ignore
+      if(getToken(1) instanceof Token && getToken(1).type == "word"){
+        //@ts-ignore
         return [true, getToken(1).value];
       }
     }
     return [false, null];
   }
-  #isModuleDefinitionInstruction(instruction){
+  #isModuleDefinitionInstruction(instruction:Instruction){
     const getToken = (idx)=>{return instruction[idx];}
-    if(getToken(0).type == "word" && getToken(0).value == "module"){
-      if(getToken(1).type == "word"){
+    //@ts-ignore
+    if(getToken(0) instanceof Token && getToken(0).type == "word" && getToken(0).value == "module"){
+      //@ts-ignore
+      if(getToken(1) instanceof Token && getToken(1).type == "word"){
+        //@ts-ignore
         return [true, getToken(1).value];
       }
     }
@@ -406,12 +439,12 @@ class ChaosInterpreter {
 
     let strParams;
 
-    const [isSceneDefinitionInstruction,sceneId] = this.#isSceneDefinitionInstruction(instruction);
+    const [isSceneDefinitionInstruction,sceneId] = this.#isSceneDefinitionInstruction(instruction as Instruction);
     if(isSceneDefinitionInstruction){
       itWasAScriptInstruction = true;
       result = {define:"scene",id:sceneId};
     }
-    const [isModuleDefinitionInstruction,moduleId] = this.#isModuleDefinitionInstruction(instruction);
+    const [isModuleDefinitionInstruction,moduleId] = this.#isModuleDefinitionInstruction(instruction as Instruction);
     if(isModuleDefinitionInstruction){
       itWasAScriptInstruction = true;
       result = {define:"module",id:moduleId};
@@ -492,33 +525,6 @@ class ChaosInterpreter {
 
     return scenes;
   }
-  instructionsDesintegrator(script:string){
-    script += "\n"; //To avoid the last line to be ignored
-    var tokenList = this.#lexer(script);
-    var abs = this.#preParser(tokenList);
-
-    var collection:Array<[boolean,Object|string]> = [];
-
-    for (let index = 0; index < abs.length; index++) {
-      const instruction = abs[index] as Instruction|Token;
-    
-      if(instruction instanceof Array){
-        const interpreted = this.#interpretateInstruction(instruction as Instruction);
-        if(interpreted[0]){
-          collection.push(interpreted as [boolean,Object|string]);
-        }
-        continue;
-      }else if(instruction instanceof Token){
-        if(instruction.type == "jsCode"){
-          collection.push([true,instruction.value]);
-          continue;
-        }
-      }
-      console.warn("Un-understandable or unsupported instruction",instruction);
-    }
-    return this.#haveSceneOrModuleDefinition(collection);
-
-  }
   #interpretateCreateInstruction(createBranch:string,id:string,value:string,routine=true){
     let res:Array<string> = [];
 
@@ -529,7 +535,6 @@ class ChaosInterpreter {
         "engine.routines.push((engine)=>{"
       );
     }
-    console.log(`var ${dynaVarName} = ${value};`);
     res.push(
       `var ${dynaVarName} = ${value};`
     );

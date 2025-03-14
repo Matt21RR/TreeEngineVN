@@ -24,7 +24,7 @@ const game = (engine = new RenderEngine) => {
       y:1.35, 
       ignoreParallax:true, 
       enabled:true, 
-      fontSize:"32px",  
+      fontSize:"32px",
       text:()=>{
         return "Distancia hasta la frontera: \n" + 
         (300 -Math.round(Math.sqrt(player.x**2 + player.y**2)*20)/10)
