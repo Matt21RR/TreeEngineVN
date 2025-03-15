@@ -10,7 +10,7 @@ import RenList from "../engineComponents/RenList.ts";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger.ts";
 
 import { lambdaConverter, mobileCheck, wrapText } from "../logic/Misc.ts";
-import { Shader } from "./Shaders";
+import { Shader } from "./Shaders.ts";
 import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
@@ -19,7 +19,7 @@ import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder.ts";
 
 //@ts-ignore
 import noImageTexture from "./no-image.png";
-// const noImageTexture = require("./no-image.png");
+
 import CollisionLayer, { engineRenderingDataCloner } from "../engineComponents/CollisionLayer.ts";
 
 type CalculationOrder = Array<{id:string,weight:number,z:number}>;

@@ -1,4 +1,4 @@
-import GraphObject from "../engineComponents/GraphObject.ts"
+import {GraphObject} from "../engineComponents/GraphObject.ts"
 const vertexShaderSource = /*glsl*/`
   attribute vec2 a_position;
   attribute vec2 a_texCoord;
@@ -69,12 +69,12 @@ var fragmentShaderSourceV = /*glsl*/`
 /**
  * 
  * @param {WebGLRenderingContext} gl 
- * @param {number} type 
+ * @param {GLenum} type 
  * @param {string} source 
  * @returns 
  */
-function createShader(gl, type, source) {
-  const shader = gl.createShader(type)
+function createShader(gl:WebGL2RenderingContext, type:GLenum, source:string) {
+  const shader = gl.createShader(type) as WebGLShader;
   gl.shaderSource(shader, source)
   gl.compileShader(shader)
   return shader
@@ -86,10 +86,10 @@ function createShader(gl, type, source) {
  * @param {WebGLShader} fragmentShader 
  * @returns 
  */
-function createProgram(gl, vertexShader, fragmentShader) {
-  const program = gl.createProgram()
-  gl.attachShader(program, vertexShader)
-  gl.attachShader(program, fragmentShader)
+function createProgram(gl:WebGL2RenderingContext, vertexShader:WebGLShader, fragmentShader:WebGLShader) {
+  const program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
   gl.linkProgram(program)
   return program
 }
@@ -99,7 +99,7 @@ function createProgram(gl, vertexShader, fragmentShader) {
  * @param {HTMLImageElement} image
  * @returns
  */
-function createAndSetupTexture(gl,image) {
+function createAndSetupTexture(gl:WebGL2RenderingContext,image:HTMLImageElement) {
   const texture = gl.createTexture()
   gl.bindTexture(gl.TEXTURE_2D, texture)
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
@@ -120,7 +120,7 @@ function createAndSetupTexture(gl,image) {
  * @param {number} height 
  * @param {number} blurAmount 
  */
-function applyBlur(gl, programH, programV, textures, width, height, blurAmount) {
+function applyBlur(gl:WebGL2RenderingContext, programH:WebGLProgram, programV:WebGLProgram, textures:WebGLTexture, width:number, height:number, blurAmount:number) {
   // Create framebuffers
   const fbos = [gl.createFramebuffer(), gl.createFramebuffer()]
 
@@ -193,7 +193,7 @@ class Shader{
   #id;
   #canvas;
   #renderedTree;
-  constructor(image,id,widthArg = null, heightArg = null){
+  constructor(image: HTMLImageElement,id:string,widthArg = null, heightArg = null){
     this.#image = image;
     this.#renData = [];
     this.#id = id;
@@ -216,7 +216,7 @@ class Shader{
       antialias:false, 
       preserveDrawingBuffer: false, 
       depth: false, 
-      stencil: false});
+      stencil: false}) as WebGL2RenderingContext;
 
     //*Set fragmentShaders blur quality
     fragmentShaderSourceH = fragmentShaderSourceH.replace('%sampleRange',"6.0");
@@ -244,12 +244,13 @@ class Shader{
    * @param {boolean} createMode 
    * @returns HTMLCanvasElement
    */
-  copyCanvas(original,createMode = false) {
-    var copy = document.createElement('canvas');
+  copyCanvas(original:HTMLCanvasElement,createMode = false) {
+    var copy = document.createElement('canvas') as HTMLCanvasElement;
     copy.width = original.width;
     copy.height = original.height;
+    const context = copy.getContext('2d') as CanvasRenderingContext2D;
     if(!createMode){
-      copy.getContext('2d').drawImage(original, 0, 0);  // Copy the image.
+      context.drawImage(original, 0, 0);  // Copy the image.
     }
     return copy;
   }
@@ -257,7 +258,7 @@ class Shader{
    * 
    * @param {GraphObject} graphObject 
    */
-  getTexture(graphObject){
+  getTexture(graphObject:GraphObject){
     if (Math.round(graphObject.blur)!=0){
       applyBlur(this.#renData[0], this.#renData[1], this.#renData[2], this.#renData[3], this.#renData[4], this.#renData[5], graphObject.blur);
       return this.#canvas;
