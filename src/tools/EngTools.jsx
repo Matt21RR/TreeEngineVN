@@ -1,11 +1,12 @@
 import React from "react";
-import { Button1, IconButton, InputList } from "./components/Buttons";
+import { Button1, IconButton, InputList, InputText } from "./components/Buttons";
 import Swal from "sweetalert2";
 import { Chaos } from "../engine/renderCore/ChaosInterpreter.ts";
 class EngTools extends React.Component{
   constructor(props){
     super(props);
     this.scripts = {};
+    this.sceneName = "gameEntrypoint";
     this.selectedScript = 0;
     this.mounted = false;
   }
@@ -29,8 +30,16 @@ class EngTools extends React.Component{
           action={(e)=>{this.selectedScript = e;}}
           value={0}
         ></InputList>
+        <InputText style="bg-white text-black" defaultValue={"gameEntrypoint"} action={(value)=>{
+          if(value != ""){
+            this.sceneName = value;
+          }else{
+            this.sceneName = "gameEntrypoint";
+          }
+          
+          }}/>
         <Button1 text={"Run!!"} action={()=>{
-          engine.loadScript(this.scripts[Object.keys(this.scripts)[this.selectedScript]]);
+          engine.loadScript(this.scripts[Object.keys(this.scripts)[this.selectedScript]], this.sceneName);
           const chaos = new Chaos();
           chaos.listScripts().then(scriptsId=>{
             this.scripts = scriptsId;
@@ -94,6 +103,7 @@ class EngTools extends React.Component{
       }}/>
       <Button1 text={"Restart canvas"} action={()=>{
         const canvasObject = engine.canvasRef.object;
+        console.log(Object.keys(engine.canvasRef.object));
         engine.canvasRef.object.stopEngine = false;
         engine.canvasRef.object.engineKilled = false;
         engine.canvasRef.object.resizeTimeout = 0;

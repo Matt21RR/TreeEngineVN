@@ -33,11 +33,7 @@ class AudioPlayer extends React.Component{
       $("#"+this.id).width((constant * 100) + "%");
       $("#range"+this.id).val(constant);
       $("#time"+this.id).text(
-        this.timeConverter(this.sound.seek())
-        +
-        " / "
-        +
-        this.timeConverter(this.sound.duration())
+        `${this.timeConverter(this.sound.seek())} / ${this.timeConverter(this.sound.duration())}`
       );
   }
   componentWillUnmount(){
@@ -50,7 +46,10 @@ class AudioPlayer extends React.Component{
       this.mounted = true;
       this.sound = new Howl({
         src: this.src,
-        onload:()=>{this.soundReady = true; this.forceUpdate(); console.warn(this.sound)},
+        onload:()=>{
+          this.soundReady = true; 
+          this.forceUpdate(); 
+        },
         onend:()=>{
           if(!this.stats.loop){
             $("#"+this.id).width(0 + "%");
@@ -68,21 +67,20 @@ class AudioPlayer extends React.Component{
           this.sound.loop(false);
           this.stats.playing = false;
           this.forceUpdate();
+        },
+        onplay:()=>{
+          requestAnimationFrame(onAnimationFrame);
         }
       }); 
-
-      //progress tracking
-      let updatedRaf;
 
       const onAnimationFrame = () => {
         if (this.sound.playing()) {
             const width = (this.sound.seek() / this.sound.duration());
             this.setStyle(width);
+            requestAnimationFrame(onAnimationFrame);
         }
-        updatedRaf = requestAnimationFrame(onAnimationFrame);
       };
-
-      updatedRaf = requestAnimationFrame(onAnimationFrame);
+      
     }
   }
   progressBar(){
@@ -97,12 +95,9 @@ class AudioPlayer extends React.Component{
             <div className='relative w-full h-full'>
               <div className='absolute w-full h-full bg-white '></div>
               <div id={this.id} className='relative w-0 h-full bg-gray-600 flex'>
-                <div className='h-5 w-2 bg-slate-500 top-1/2 right-0 absolute -translate-y-1/2 translate-x-1/2'>
-
-                </div>
+                <div className='h-5 w-2 bg-slate-500 top-1/2 right-0 absolute -translate-y-1/2 translate-x-1/2' />
               </div>
             </div>
-
           </div>
 
           <input 
@@ -118,14 +113,14 @@ class AudioPlayer extends React.Component{
               this.setStyle(value);
             }}
             onMouseDown={()=>{
-              if(this.stats.playing){this.sound.pause(); }
-              // this.stats.playing=!this.stats.playing;
-              // this.forceUpdate();
+              if(this.stats.playing){
+                this.sound.pause(); 
+              }
             }}
             onMouseUp={()=>{
-              if(this.stats.playing){this.sound.play(); }
-              // this.stats.playing=!this.stats.playing;
-              // this.forceUpdate();
+              if(this.stats.playing){
+                this.sound.play(); 
+              }
             }}/>
         </div>
       </div>

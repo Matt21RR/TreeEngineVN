@@ -13,7 +13,6 @@ function mobileCheck() {
 // @returns an array of [ lineText, x, y ] for all lines
 function wrapText(ctx:CanvasRenderingContext2D, text:string, x:number, y:number, maxWidth:number, lineHeight:number,center = false) {
   // First, start by splitting all of our text into words, but splitting it into an array split by spaces
-  // console.log(text)
   let words = text.replaceAll('\n',()=>{return ' \n \n '}).split(' ');
   let line = ''; // This will store the text of the current line
   let testLine = ''; // This will store the text when we add a word, to test if it's too long
@@ -85,14 +84,12 @@ function lambdaConverter(str:string|Function|null): string | Function | null {
   }
 
   try {
-      console.log(match);
       const parameter = match[2] || null; // Extract parameter name or null if no parameter
       if (parameter && parameter.includes(",")) {
           // Break if more than one parameter
-          console.warn("Lambda function must have at most one parameter, "+((parameter.match(/,/g) || []).length+1)+" given")
+          console.warn(`Lambda function must have at most one parameter, ${((parameter.match(/,/g) || []).length+1)} given`)
           return str;
       }
-
       // Use the Function constructor to create the function
       let func;  
       func = new Function('engine',`return ${str};`)();
@@ -102,7 +99,7 @@ function lambdaConverter(str:string|Function|null): string | Function | null {
   } catch (error) {
       console.error("Error creating function:", error);
   }
-  return str; // Invalid or unsafe string
+  return str; // Invalid string
 }
 
 function random(max:number,min=0){
@@ -116,7 +113,11 @@ function rad2Deg(rad:number){
   return (180*rad)/Math.PI;
 }
 
-
+/**
+ * Generic method used to get the attribute names of a class
+ * @param elConstructor T
+ * @returns 
+ */
 function getAttribs<T>(elConstructor: new () => T){
   const propertyDescriptors = (Object.getOwnPropertyDescriptors(elConstructor.prototype));
   var attributesNames:Array<string> = [];

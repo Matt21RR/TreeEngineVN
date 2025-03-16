@@ -21,7 +21,6 @@ import gsap from "gsap";
 import $ from "jquery";
 import './highlight-within-textarea/jquery.highlight-within-textarea.js';
 import './highlight-within-textarea/jquery.highlight-within-textarea.css';
-import Swal from "sweetalert2";
 
 const icons ={
   arrow:arrow,
@@ -378,7 +377,8 @@ class InputText extends React.Component{
         id={this.id}
         type={this.props.type || "text"}
         step={0.1}
-        className={" bg-black my-0.5 px-1 rounded-md text-white text-[12px] " + ("style" in this.props ? this.props.style : "") + ((this.props.hide) ? " hidden":"")} 
+        
+        className={" bg-black my-0.5 px-1 rounded-md   text-[12px] " + ("style" in this.props ? this.props.style : "") + ((this.props.hide) ? " hidden":"")} 
         defaultValue={"defaultValue" in this.props ? this.props.defaultValue : ""}
         onChange={(e)=>{if("action" in this.props){this.props.action(e.target.value)}}}
       />

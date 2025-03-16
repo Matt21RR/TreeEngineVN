@@ -4,7 +4,7 @@ class Token{
   _value:any
   _type:string
   _index:number
-  constructor(value,type,index){
+  constructor(value:any,type:string,index:number){
     this._value = value;
     this._type = type;
     this._index = index;
@@ -20,7 +20,7 @@ class Token{
 type ProcesedInstruction = Array<[boolean,string|Instruction]>;
 
 class Instruction extends Array<Token | Instruction>{
-  get(index){
+  get(index:number){
     this.at(index);
   }
   get index():number{
@@ -210,7 +210,7 @@ class ChaosInterpreter {
               return [acum,loops];
             }
           }else{
-            console.error("Syntax error: "+token.value+" in token "+token.index+", expected "+latestBracketInChain.value);
+            console.error(`Syntax error: ${token.value} in token ${token.index}, expected ${latestBracketInChain.value}`);
             debugger;
             //TODO: Add a throw error
             break;
@@ -257,7 +257,6 @@ class ChaosInterpreter {
           }
           if(prevLineBreakFound){
             plausibleInstruction.reverse();
-            // console.log(plausibleInstruction);
             
             const [itWasAScriptInstruction,interpretResult] = this.#interpretateInstruction(plausibleInstruction,true);
             if(itWasAScriptInstruction){

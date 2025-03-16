@@ -117,7 +117,14 @@ class Canvas extends React.Component<CanvasProps>{
     this.stopEngine = (x == 0) && !this.stopEngine; 
     this.interval = Math.floor(1000 / x); 
     if (!this.stopEngine) 
-      this.onResize({scale:this.scale,resolutionWidth:this.resolutionWidth,resolutionHeight:this.resolutionHeight,context:canvas.getContext("2d")}); 
+      this.onResize({
+        object:this,
+        context:canvas.getContext("2d"),
+        scale:this.scale,
+        resolutionWidth:this.resolutionWidth,
+        resolutionHeight:this.resolutionHeight,
+        fps:{}
+        }); 
   }
   
   componentDidUpdate(){
@@ -218,12 +225,12 @@ class Canvas extends React.Component<CanvasProps>{
       return;
     }
     if(this.element == null){
-      console.error("element reference error")
+      console.error("element reference error");
       this.element = React.createRef();
     }
     const canvas = this.element.current;
     if(canvas == null){
-      console.error("canvas reference error")
+      console.error("canvas reference error");
       return;
     }
     var context = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -235,7 +242,7 @@ class Canvas extends React.Component<CanvasProps>{
       } catch (error) {//!Kill engine
         this.stopEngine = true;
         this.engineKilled = true;
-        console.error("Engine killed due a error in the events logic");
+        console.error("Engine killed due an error in the events logic");
         console.error(error);
       }
     }
@@ -260,7 +267,7 @@ class Canvas extends React.Component<CanvasProps>{
         context.fillText("=============================================================================================================================",
                         5, 85*this.scale);
         const funcCode = error.stack.toString().split("\n");
-        funcCode.forEach((codeLine,index) => {
+        funcCode.forEach((codeLine:string,index:number) => {
           context.fillText(codeLine, 5, (100*this.scale)+(15*index));
         });
         context.fillText("============================================================================================================================", 

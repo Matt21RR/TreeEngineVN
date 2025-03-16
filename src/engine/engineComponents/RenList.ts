@@ -40,7 +40,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
 
   push(element:T){
     if(this.exist(element.id)){
-      console.warn("Element with "+ element.id + " id already exists");
+      console.warn(`Element with ${element.id} id already exists`);
       return;
     }
     if(this.objects.length == 0){

@@ -122,7 +122,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   setMouseOrigin: boolean;
   lambdaConverter: Function;
   noImageTexture: Shader;
-  constructor(props){
+  constructor(props: RenderEngineProps){
     super(props);
     this.id = "rengine" + String(window.performance.now()).replaceAll(".","");
     this.projectRoot = "";
@@ -227,7 +227,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
   }  
   componentDidMount(){
-    // console.clear();
     if (!this.mounted) {
       this.mounted = true;
       //* ASPECT RATIO
@@ -313,7 +312,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         // console.log(scriptData);
         //@ts-ignore
         var commands = scriptData[destination];
-        // commands = commands.join("");//TODO: remove Join operation
         const commandsF = new Function ("engine",commands);
         // console.log(commandsF);
         commandsF(self);
@@ -376,7 +374,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       const res = this.texturesList.get(id);
       return res;
     } catch (error) {
-      // console.error(id +" Texture or TextureAnim wasn't found")
+      // console.error(id +" Texture or TextureAnim wasn't found");
       // console.table(this.texturesList.objects); 
       // console.table(this.textureAnims.objects);
       return this.noImageTexture;
@@ -447,7 +445,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               console.error("===============================");
             });
           }else{
-            console.warn("No sounds in this file: "+indexPath);
+            console.warn(`No sounds in this file: ${indexPath}`);
               resolve(null);
           }
         })
@@ -942,7 +940,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         }}
         onResize={(canvas)=>{
           this.canvasRef = canvas;
-          console.warn("On Resize directive called");
+          // console.warn("On Resize directive called");
           //calc the perspective angle
           this.camera.position.angle = canvas.resolutionHeight/(this.camera.maxZ*canvas.resolutionWidth);
           //disable image smoothing

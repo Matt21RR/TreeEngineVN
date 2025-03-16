@@ -264,8 +264,8 @@ class Animation{
       this.#pendingTimersFix = true;
 
       if(typeof this.#onComplete == "function" && Object.keys(this.#keyframes).length == 0){
-        console.log(this.#keyframes);
-        console.log(this.#onComplete);
+        // console.log(this.#keyframes);
+        // console.log(this.#onComplete);
         this.#onComplete(engine);
       }
         
