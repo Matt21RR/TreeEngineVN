@@ -189,9 +189,7 @@ class GraphObject{
   get fontSize():number {return this.#fontSize;}
   set fontSize(x:string|number) {
     if(typeof x == "string"){
-      if(x.indexOf("px") != -1){
-        x = parseFloat(x);
-      }
+      x = parseFloat(x) || 0;
     }
     if(typeof x == "number"){
       if(x<0){
@@ -203,14 +201,14 @@ class GraphObject{
   }
 
   get fontSizeNumeric() {return this.#fontSize;}
-  set fontSizeNumeric(x:any) {this.#fontSize = parseFloat(x);}
+  set fontSizeNumeric(x:any) {this.#fontSize = parseFloat(x) || 0;}
 
   get boxColor() {return this.#boxColor}
   set boxColor(x) {this.#boxColor = typeof x == "string"? x : "black"}
     
     
   get margin() {return this.#margin;}
-  set margin(x:any) {this.#margin = parseFloat(x);}
+  set margin(x:any) {this.#margin = parseFloat(x) || 0;}
     
     
   get texture() { return this.#textureName; }
@@ -265,8 +263,8 @@ class GraphObject{
   get hueRotate() {return this.#hueRotate+"deg";}
   set hueRotate(x) {
     if(typeof x == "string"){
-      this.#hueRotate = parseFloat(x);
-    }else if(!isNaN(x)){
+      this.#hueRotate = parseFloat(x) || 0;
+    }else if(typeof x == "number"){
       this.#hueRotate = x;
     }
   }
@@ -275,7 +273,7 @@ class GraphObject{
 
   get blur() {return this.#blur;}
   get blurPX() {return this.#blur + "px";}
-  set blur(x:any) {this.#blur = parseFloat(x);}
+  set blur(x:any) {this.#blur = parseFloat(x) || 0;}
 
   get aberration() {return this.#aberration}
   set aberration(x) {
@@ -379,28 +377,28 @@ class GraphObject{
   }
 
   get y() {return this.#y;}
-  set y(x) {
-    this.#y = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);
+  set y(x:any) {
+    this.#y = parseFloat(x) || 0;
   }
 
   get x() {return this.#x;}
-  set x(x) {
-    this.#x = typeof x == "string" ? parseFloat(x) : (!isNaN(x)? x : 0);
+  set x(x:any) {
+    this.#x = parseFloat(x) || 0;
   }
 
   get scale() {return this.#scale;}
-  set scale(x) {
-    this.#scale = !isNaN(x)? (x >= 0 ? x : 1 ) : 1
+  set scale(x:any) {
+    this.#scale = parseFloat(x) || 0;
   }
 
   get rotate() {return (this.#rotate*180)/Math.PI;}
   set rotateRad(x) {this.#rotate = x}
   get rotateRad() {return this.#rotate;}
-  set rotate(x:any) {this.#rotate = parseFloat(x)*Math.PI/180;}
+  set rotate(x:any) {this.#rotate =( parseFloat(x) || 0)*Math.PI/180;}
 
   get z() {return this.#z;}
   set z(x:any) {
-    this.#z = parseFloat(x);
+    this.#z = parseFloat(x) || 0;
   }
 
   get ignoreParallax() {return this.#ignoreParallax;}
@@ -410,12 +408,12 @@ class GraphObject{
 
   get widthScale() {return this.#widthScale;}
   set widthScale(x:any) {
-    this.#widthScale = parseFloat(x);
+    this.#widthScale = parseFloat(x) || 0;
   }
 
   get heightScale() {return this.#heightScale;}
   set heightScale(x:any) {
-    this.#heightScale = parseFloat(x);
+    this.#heightScale = parseFloat(x) || 0;
   }
 
   get states(){return this.#states.states}

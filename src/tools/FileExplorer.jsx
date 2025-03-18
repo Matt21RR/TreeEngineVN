@@ -307,7 +307,7 @@ class FileExplorer extends React.Component{
           >
           <IconButton icon="file" style="flex-none h-6 w-6 m-1"/>
           <div className='mx-2 my-auto truncate'>{resInfo.name}</div>
-          <div className='mx-2 my-auto grow'></div>
+          <div className='mx-2 my-auto grow'/>
           <div className='mx-2 my-auto flex-none'>{byteSize(resInfo.size).toString()}</div>
         </div>
       );

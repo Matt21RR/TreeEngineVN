@@ -1,8 +1,7 @@
 import React from "react";
-import { Button1, IconButton, InputList, InputText } from "./components/Buttons";
-import Swal from "sweetalert2";
+import { Button1, IconButton, InputList, InputText } from "./components/Buttons.jsx";
 import { Chaos } from "../engine/renderCore/ChaosInterpreter.ts";
-class EngTools extends React.Component{
+class EngineTools extends React.Component{
   constructor(props){
     super(props);
     this.scripts = {};
@@ -29,14 +28,9 @@ class EngTools extends React.Component{
           options={Object.keys(this.scripts)}
           action={(e)=>{this.selectedScript = e;}}
           value={0}
-        ></InputList>
+        />
         <InputText style="bg-white text-black" defaultValue={"gameEntrypoint"} action={(value)=>{
-          if(value != ""){
-            this.sceneName = value;
-          }else{
-            this.sceneName = "gameEntrypoint";
-          }
-          
+            this.sceneName = value != "" ? value : "gameEntrypoint";
           }}/>
         <Button1 text={"Run!!"} action={()=>{
           engine.loadScript(this.scripts[Object.keys(this.scripts)[this.selectedScript]], this.sceneName);
@@ -66,7 +60,7 @@ class EngTools extends React.Component{
   fpsControls(){
     const engine = this.props.engine;
     if("object" in engine.canvasRef){
-      const canvas = engine.canvasRef.object;
+      const canvasObject = engine.canvasRef.object;
       const fps = canvas.fps;
       return (
         <div className="flex flex-row text-white">
@@ -79,10 +73,10 @@ class EngTools extends React.Component{
             step={1} 
             defaultValue={fps} 
             onChange={(e)=>{
-              var value = e.target.value;
-              value = isNaN(value) ? 24 : value;
-              value = value > 0 && value < 126 ? value : 24;
-              canvas.setFps(value);this.forceUpdate();
+              var value = parseFloat(e.target.value) || 24;
+              value = value > 0 ? value : 24;
+              canvasObject.setFps(value);
+              this.forceUpdate();
             }}/>
           <IconButton icon="plus" action={()=>{canvas.setFps(fps+1);this.forceUpdate();}}/>
           <span>Target FPS: {fps}</span>
@@ -92,27 +86,18 @@ class EngTools extends React.Component{
   }
   render(){
     const engine = this.props.engine;
+    const canvasObject = engine.canvasRef.object;
     return(<>
       <Button1 text="2DGrid" action={()=>{
         engine.showBounds = !engine.showBounds;
         this.forceUpdate();
       }}/>
-      <Button1 text={"Perspective: "+engine.camera.usePerspective} action={()=>{
+      <Button1 text={`Perspective: ${engine.camera.usePerspective}`} action={()=>{
         engine.camera.usePerspective = !engine.camera.usePerspective;
         this.forceUpdate();
       }}/>
       <Button1 text={"Restart canvas"} action={()=>{
-        const canvasObject = engine.canvasRef.object;
-        console.log(Object.keys(engine.canvasRef.object));
-        engine.canvasRef.object.stopEngine = false;
-        engine.canvasRef.object.engineKilled = false;
-        engine.canvasRef.object.resizeTimeout = 0;
-        engine.canvasRef.object.engineThreads = 0;
-        engine.canvasRef.object.resolutionHeight = Math.floor(canvasObject.props.displayResolution.height * canvasObject.scale *window.devicePixelRatio);
-        engine.canvasRef.object.resolutionWidth = Math.floor(canvasObject.props.displayResolution.width * canvasObject.scale *window.devicePixelRatio);
-        const fps = canvasObject.props.fps ? (canvasObject.props.fps > 0 ? canvasObject.props.fps : 24) : 24;//suggesed max fps = 24
-        engine.canvasRef.object.setFps(fps);
-        engine.canvasRef.object.engine();
+        canvasObject.resetEngine();
         this.forceUpdate();
       }}/>
       <Button1 text={"Draw triggers: "+engine.drawTriggers} action={()=>{
@@ -122,13 +107,9 @@ class EngTools extends React.Component{
       }}/>
       <Button1 text={"Show fps: "+engine.showFps} action={()=>{
         engine.showFps = !engine.showFps;
-        engine.canvasRef.object.showFps = !engine.canvasRef.object.showFps;
+        canvasObject.showFps = !canvasObject.showFps;
         this.forceUpdate();
-        engine.canvasRef.object.forceUpdate();
-      }}/>
-      <Button1 text="Show camera data" action={()=>{
-        Swal.fire({title:"cameraData",html:JSON.stringify(engine.camera).replaceAll(",","<br>")});
-        this.forceUpdate();
+        canvasObject.forceUpdate();
       }}/>
       {this.scriptSelector()}
       {this.speedControls()}
@@ -136,4 +117,4 @@ class EngTools extends React.Component{
     </>)
   }
 }
-export {EngTools}
+export {EngineTools}

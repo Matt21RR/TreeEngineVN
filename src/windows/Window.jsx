@@ -9,7 +9,7 @@ class Window extends React.Component {
   constructor(props){
     super(props);
     this.id = "window" + String(window.performance.now()).replaceAll(".","");
-    this.resizeBlocked = "resizeBlocked" in this.props ? this.props.resizeBlocked : false;
+    this.resizeBlocked = this.props.resizeBlocked ?? false;
     this.onResize = "onResize" in this.props ? this.props.onResize : ()=>{ };
     this.fullSized = false;
     this.unfullSizedData = {
@@ -42,10 +42,9 @@ class Window extends React.Component {
             action={()=>{this.props.minimize(); this.forceUpdate();}}/>
           <div 
             className='h-full grow text-[14px] my-auto cursor-default select-none relative flex'
-            id={this.id}
-            >
+            id={this.id}>
             <span className='ml-3 h-fit my-auto'>
-              {"title" in this.props? this.props.title : "Window title"}
+              {this.props.title ?? "Window title"}
             </span>
           </div>
         </div>
@@ -60,10 +59,10 @@ class Window extends React.Component {
     const coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",");
 
     this.unfullSizedData = {
-      width:w.style.width.replace("px","")*1,
-      height:w.style.height.replace("px","")*1,
-      left:w.style.left.replace("px","")*1,
-      top:w.style.top.replace("px","")*1
+      width: parseFloat(w.style.width) || 0,
+      height: parseFloat(w.style.height) || 0,
+      left: parseFloat(w.style.left) || 0,
+      top: parseFloat(w.style.top) || 0
     }
     
     gsap.to("#body"+this.id,{duration:.15,width:window.innerWidth,ease:"linear",
@@ -84,8 +83,6 @@ class Window extends React.Component {
       top:this.unfullSizedData.top,
       onComplete:()=>{this.onResize();}
     });
-
-    // this.onResize();
   }
   resize(border,ev){
     if(this.resizeBlocked){return;}
@@ -94,10 +91,8 @@ class Window extends React.Component {
     var mov = {x:e.movementX, y:e.movementY}
 
     var window = document.getElementById("body"+this.id);
-    var top = window.style.top;
-    top = top = "" ? 0 : top.replace("px","")*1;
-    var left = window.style.left;
-    left = left = "" ? 0 : left.replace("px","")*1;
+    var top = parseFloat(window.style.top) || 0;
+    var left = parseFloat(window.style.left) || 0;
     var width = window.offsetWidth;
     var height = window.offsetHeight;
     switch (border) {
@@ -229,17 +224,14 @@ class Window extends React.Component {
         }
         onStart={(e)=>{
           if(this.fullSized){
-            console.log(this.unfullSizedData);
             var w = document.getElementById("body"+this.id);
             this.unfullSizedData.width = this.unfullSizedData.width == 0 ? 550 : this.unfullSizedData.width;
             this.unfullSizedData.height = 450;
 
             const coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",");
 
-
             this.unfullSizedData.left = (+e.clientX - (coords[0]*1) - (this.unfullSizedData.width/2));
             this.unfullSizedData.top = (-e.clientY - (coords[1]*1) + 20);
-            console.log(this.unfullSizedData);
 
             this.reduceSize();
           }

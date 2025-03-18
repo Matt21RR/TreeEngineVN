@@ -219,6 +219,16 @@ class Canvas extends React.Component<CanvasProps>{
       }
     }
   }
+  resetEngine(){
+    this.stopEngine = false;
+    this.engineKilled = false;
+    this.engineThreads = 0;
+    this.resolutionHeight = Math.floor(this.props.displayResolution.height * this.scale *window.devicePixelRatio);
+    this.resolutionWidth = Math.floor(this.props.displayResolution.width * this.scale *window.devicePixelRatio);
+    const fps = this.props.fps ? (this.props.fps > 0 ? this.props.fps : 24) : 24;//suggesed max fps = 24
+    this.setFps(fps);
+    this.engine(this.loopId);
+  }
   // Engine starter
   engine(loopId:string) {
     if(loopId != this.loopId){

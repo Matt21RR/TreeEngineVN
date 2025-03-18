@@ -2,11 +2,12 @@ import React  from "react";
 import { WindowsEnvironment } from "./WindowsEnvironment";
 import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
 import { KeyboardTrigger } from "../engine/engineComponents/Trigger.ts";
-import { ObjectsE, TriggersE } from "../tools/SubTools";
-import { EngTools } from "../tools/EngTools";
+import { ObjectsE } from "../tools/SubTools";
+import { EngineTools } from "../tools/EngineTools";
 import { FileExplorer } from "../tools/FileExplorer";
 import { EditorKeys } from "../tools/EditorKeys";
 import { TexturesE } from "../tools/TexturesE";
+import { TriggersE } from "../tools/TriggersE.jsx";
 
 class Test extends React.Component{
   constructor(props){
@@ -24,12 +25,7 @@ class Test extends React.Component{
     kTDef.KeyP = {
       onPress:()=>{
         this.editing = !this.editing;
-        console.log("Perspectiva: "+this.editing);
-        if(this.editing){
-          this.engine.camera.usePerspective = true;
-        }else{
-          this.engine.camera.usePerspective = false;
-        }
+        this.engine.camera.usePerspective = this.editing;
       }
     };
     kTDef.KeyR = {
@@ -60,7 +56,6 @@ class Test extends React.Component{
 
     Object.keys(kTDef).forEach(keyDef => {
       kTDef[keyDef].keys = keyDef;
-      // console.log(kTDef[keyDef]);
       this.engine.keyboardTriggers.push(new KeyboardTrigger(kTDef[keyDef]));
     });
     this.forceUpdate();
@@ -95,7 +90,7 @@ class Test extends React.Component{
           },
           engTools:{
             title:"Herramientas del motor",
-            content:<EngTools engine={this.engine} reRender={()=>{env.forceUpdate()}}/>,
+            content:<EngineTools engine={this.engine} reRender={()=>{env.forceUpdate()}}/>,
             minimized:true
           },
           editorKeys:{

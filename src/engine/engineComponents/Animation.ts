@@ -180,7 +180,7 @@ class Animation{
     const frame = this.#keyframes[keyOfTheKeyFrame];
     this.#keyFrameNumber = frameNumber;
     this.#to = frame;
-    this.#duration = frameNumber == 0 ? keyOfTheKeyFrame*1: (keyOfTheKeyFrame)*1 - parseFloat(Object.keys(this.#keyframes)[frameNumber-1])*1;
+    this.#duration = frameNumber == 0 ? keyOfTheKeyFrame*1: (keyOfTheKeyFrame)*1 - parseFloat(Object.keys(this.#keyframes)[frameNumber-1]);
   }
   #executeOnCompleteKeyframe(engine:RenderEngine){
     if(typeof this.#to.onComplete == "function"){//add onComplete per keyframe

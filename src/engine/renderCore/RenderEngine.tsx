@@ -646,7 +646,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         height : objectHeight
       }
 
-      // Object.assign(this.dimentionsPack,{[gObject.id]:res});
       this.dimentionsPack[gObject.id] = res;
       gObject.pendingRenderingRecalculation = false;
 

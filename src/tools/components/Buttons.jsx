@@ -102,7 +102,7 @@ class Button2 extends React.Component{
   render(){
     return(
       <div 
-        className={" cursor-pointer p-1 bg-white w-fit h-fit text-[12px] " + ("style" in this.props ? this.props.style : "m-1") + ((this.props.hide) ? " hidden":"")} 
+        className={" cursor-pointer p-1 bg-white w-fit h-fit text-[12px] " + (this.props.style ?? "m-1") + ((this.props.hide) ? " hidden":"")} 
         onClick={()=>{this.props.action()}}
         onMouseEnter={()=>{if("enter" in this.props){this.props.enter();}}}
         onMouseLeave={()=>{if("leave" in this.props){this.props.leave();}}}>
@@ -365,7 +365,6 @@ class InputText extends React.Component{
   componentDidMount(){
     if(!this.mounted){
       this.mounted = true;
-      //SelfSet
       if("selfSet" in this.props){
         this.props.selfSet($("#"+this.id));
       }
@@ -411,7 +410,6 @@ class InputCheck extends React.Component{
     );
   }
 }
-
 class InputList extends React.Component {
   constructor(props) {
     super(props);
@@ -631,7 +629,6 @@ class MenuListButton extends React.Component {
 
     } else {
       boxHeight = optionsBox.scrollHeight;
-
     }
     //Calcuulate Max
     var offset = $("#"+this.boxOptionsId).offset();
@@ -694,7 +691,7 @@ class MenuListButton extends React.Component {
   preventDefault(e) {
     e.preventDefault();
   }
-  action(value,option) {
+  action(value) {
     if (!this.state.error && (typeof this.props.action == "function")) {
       this.props.action(value);
       this.unhover();
@@ -717,7 +714,7 @@ class MenuListButton extends React.Component {
                   style={{ backgroundColor: (selected == index ? "rgb(10, 67, 145)" : "") }}
                   key={index}
                   value={index}
-                  onClick={() => { this.action(index, option) }}>
+                  onClick={() => { this.action(index) }}>
                   <div className="my-auto w-fit h-fit whitespace-nowrap">
                     {option}
                   </div>
@@ -747,13 +744,12 @@ class MenuListButton extends React.Component {
 
     return (
       <div className={"h-auto flex w-auto relative"}>
-        {/* <div className=" fixed"> */}
+
           <div
             style={{ zIndex: this.state.zIndex }}
             className={"select-none z-[" + this.state.zIndex + "] focus:outline-none text-black h-fit w-full  overflow-x-hidden " + fatherStyle}
             ref={this.inputRef}
-            tabIndex={0}
-            >
+            tabIndex={0}>
             <div
               ref={this.buttonRef}
               className={"text-black h-auto flex w-fit px-2 border-b-[2px] border-transparent hover:border-black"}>
@@ -771,7 +767,6 @@ class MenuListButton extends React.Component {
             </div>
             <div
               className=" w-fit h-fit absolute bg-white opacity-0 border-[1px] translateTC left-0 top-[120%]"
-
               id={this.boxOptionsId}
               ref={this.optionsBoxRef}>
               <div className="absolute top-0 w-full h-0"/>
@@ -782,7 +777,6 @@ class MenuListButton extends React.Component {
               <div className="absolute bottom-0 w-full h-0"/>
             </div>
           </div>
-        {/* </div> */}
       </div>
     );
   }

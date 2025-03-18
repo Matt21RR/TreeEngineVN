@@ -75,13 +75,13 @@ class Multimedia extends React.Component{
   audio(src){
     return(
       <div className='mx-auto my-auto w-[30rem]'>
-        <AudioPlayer src={src}></AudioPlayer>
+        <AudioPlayer src={src} />
       </div>
     );
   }
   video(src){
     return(
-      <video src={src} controls={true} className='h-full mx-auto my-auto'></video>
+      <video src={src} controls={true} className='h-full mx-auto my-auto'/>
     );
   }
   image(src){

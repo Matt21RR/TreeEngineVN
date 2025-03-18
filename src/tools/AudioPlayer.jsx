@@ -93,7 +93,7 @@ class AudioPlayer extends React.Component{
         <div className='relative grow h-1 my-auto flex'>
           <div className='absolute w-full h-full px-2'>
             <div className='relative w-full h-full'>
-              <div className='absolute w-full h-full bg-white '></div>
+              <div className='absolute w-full h-full bg-white '/>
               <div id={this.id} className='relative w-0 h-full bg-gray-600 flex'>
                 <div className='h-5 w-2 bg-slate-500 top-1/2 right-0 absolute -translate-y-1/2 translate-x-1/2' />
               </div>
