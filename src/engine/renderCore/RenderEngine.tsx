@@ -21,6 +21,7 @@ import { generateCalculationOrder, arrayiseTree } from "./RenderingOrder.ts";
 import noImageTexture from "./no-image.png";
 
 import CollisionLayer, { engineRenderingDataCloner } from "../engineComponents/CollisionLayer.ts";
+import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
 
 type CalculationOrder = Array<{id:string,weight:number,z:number}>;
 
@@ -113,6 +114,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   calculationOrder: CalculationOrder;
   dimentionsPack: Record<string, any>;
   renderingOrderById: Array<string>;
+  sharedWebGLContext:WebGL2RenderingContext;
   mouseListener: number;
   mouse: { x: number; y: number; origin: any };
   noRenderedItemsCount: number;
@@ -122,6 +124,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   setMouseOrigin: boolean;
   lambdaConverter: Function;
   noImageTexture: Shader;
+
+
   constructor(props: RenderEngineProps){
     super(props);
     this.id = "rengine" + String(window.performance.now()).replaceAll(".","");
@@ -187,18 +191,34 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.narration = "";
 
     //Rendering-related stuff
-    this.camera = {
+    const self = this;
+    const handler = {
+      get(target, prop) {
+        return target[prop];
+      },
+      set(target, prop, value) {
+        target[prop] = value;
+        self.graphArray.objects.forEach(e=>{
+          e.pendingRenderingRecalculation = true;
+        });
+        return true;
+      }
+    };
+    
+    this.camera = new Proxy({
       id:"engineCamera",
       maxZ:10000,
       origin:{x:.5,y:.5},
       position:{x:.5,y:.5,z:0,angle:0},
       usePerspective:false
-    }
+    }, handler);
 
     this.calculationOrder = []; //for di
 
     this.dimentionsPack = {};
     this.renderingOrderById = [];
+
+    this.sharedWebGLContext = Shader.createSharedContext();
 
     //MOUSE
     this.mouseListener = 0;
@@ -222,7 +242,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     fallbackImage.crossOrigin = "Anonymous";
     fallbackImage.src = noImageTexture;
     fallbackImage.addEventListener('load',()=>{
-      this.noImageTexture = new Shader(fallbackImage,"engineNoImageTexture");
+      this.noImageTexture = new Shader(fallbackImage,"engineNoImageTexture",this.sharedWebGLContext);
     });
 
   }  
@@ -301,7 +321,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.loadScript(window.backendRoute + "/renderEngineBackend/game/main.txt");
   }
   loadScript(scriptRoute:string,destination = "gameEntrypoint"){
-    console.clear();
+    // console.clear();
     this.dataCleaner();
     const h = new Chaos();
     var self = this;
@@ -309,12 +329,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     $.get(scriptRoute).then(scriptFile=>{
       this.projectRoot = h.projectRoot;
       h.kreator(scriptFile).then(scriptData=>{
-        // console.log(scriptData);
+        console.log(scriptData);
         //@ts-ignore
         var commands = scriptData[destination];
-        const commandsF = new Function ("engine",commands);
-        // console.log(commandsF);
-        commandsF(self);
+        const commandsF = new Function ("engine","ExtendedObjects",commands);
+        console.log(commandsF);
+        commandsF(self,ExtendedObjects);
         self.isReady = true;
         self.forceUpdate();
         if("setEngine" in  self.props ){
@@ -460,7 +480,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         image.src = indexPath;
         image.addEventListener('load',()=>{
           // const res = new Object({[textureId]:image});
-          self.texturesList.push(new Shader(image,textureId))
+          self.texturesList.push(new Shader(image,textureId,self.sharedWebGLContext))
           resolve(null);
         });
       });
@@ -483,7 +503,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
                 image.src = self.projectRoot + "img/" + texturesData[textureName].replace("./","");
                 image.addEventListener('load',()=>{
                   const res = new Object({[textureName]:image});
-                  self.texturesList.push(new Shader(image,textureName))
+                  self.texturesList.push(new Shader(image,textureName,self.sharedWebGLContext))
                   resolveFile(res);
                 });
               })
@@ -508,13 +528,27 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.keyboardTriggers = new RenList();
     this.textureAnims = new RenList();
 
-    this.camera = {
+    const self = this;
+    const handler = {
+      get(target, prop) {
+        return typeof  target[prop] === 'object' &&  target[prop] !== null ? new Proxy(target[prop],handler) :  target[prop];
+      },
+      set(target, prop, value) {
+        self.graphArray.objects.forEach(e=>{
+          e.pendingRenderingRecalculation = true;
+        });
+        target[prop] = value;
+        return true;
+      }
+    };
+    
+    this.camera = new Proxy({
       id:"engineCamera",
-      maxZ:1000,
-      origin:{x:.5,y:.5},//position of the virtual engineDisplay
-      position:{x:.5,y:.5,z:0,angle:0},//position od the camera in the space.... angle? who knows (0_-)
-      usePerspective:false, //or use3D
-    }
+      maxZ:10000,
+      origin:{x:.5,y:.5},
+      position:{x:.5,y:.5,z:0,angle:0},
+      usePerspective:false
+    }, handler);
     this.dimentionsPack = {};
  
     this.codedRoutines = new RenList();

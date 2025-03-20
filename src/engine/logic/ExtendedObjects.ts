@@ -18,6 +18,33 @@ class ExtendedObjects{
     }
   }
   /**
+   * Modifica los valores de un objeto a partir de otro que posee la misma estructura a los valores que se quiere alterar
+   * @param {Object} Valores que se quieren cambiar
+   * @param {Object} Objetivo
+   */
+  static modify(value:Object,target:Object){
+
+    //Mapear value
+    //preguntar key por key o  indice por indice, si existe en el objetivo
+    //Si existe, descender
+    //Sino, asignar
+    const deepMap = (valueEl:any,targetEl:any)=>{
+
+      Object.keys(valueEl).forEach(depthKey => {
+        if(depthKey in targetEl && valueEl[depthKey] instanceof Object){
+          deepMap(valueEl[depthKey], targetEl[depthKey]);
+        }else{
+          targetEl[depthKey] = structuredClone(valueEl[depthKey]);
+        }
+      });
+      
+      return;
+    }
+
+    deepMap(value,target);
+  }
+
+  /**
    * Construye un objeto nuevo a partir de otro, en el cual todos los valores quedan asignados 
    * a la ruta en la cual estaban en el objeto original
    * ej: Antes

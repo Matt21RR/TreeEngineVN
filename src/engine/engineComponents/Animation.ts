@@ -1,4 +1,4 @@
-import { ExtendedObjects } from "../logic/ExtendedObjects";
+import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 import { GraphObject } from "./GraphObject.ts";
 

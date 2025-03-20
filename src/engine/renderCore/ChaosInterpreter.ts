@@ -1,5 +1,11 @@
 import { arrayFlatter } from "../logic/Misc.ts";
 
+declare global{
+  interface Window{
+    backendRoute:string
+  }
+}
+
 class Token{
   _value:any
   _type:string
@@ -330,7 +336,7 @@ class ChaosInterpreter {
     }
   }
   #isSetInstruction(instruction){
-    const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger"];
+    const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger","Engine"];
     const getToken = (idx)=>{return instruction[idx];}
 
     if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "set"){
@@ -617,10 +623,26 @@ class ChaosInterpreter {
     res.push(
       `var ${dynaVarName} = ${value};`
     );
-    res.push(
-      `Object.keys(${dynaVarName}).forEach(key=>{`
-    );
+    if(setBranch != "Engine")
+      res.push(
+        `Object.keys(${dynaVarName}).forEach(key=>{`
+      );
     switch(setBranch){
+      case "Engine":
+        res.push(
+          `
+            if('${id}' in engine){
+              if(${dynaVarName} instanceof Object && engine['${id}'] instanceof Object){
+                ExtendedObjects.modify(${dynaVarName},engine['${id}']);
+              }else{
+                engine['${id}'] = ${dynaVarName};
+              }
+            }else{
+              console.error("${id} don't exists in RenderEngine Class");
+            }
+          `
+        );
+        break;
       case "GraphObject":
         res.push(
           `engine.graphArray.get('${id}')[key] = ${dynaVarName}[key];`
@@ -653,6 +675,7 @@ class ChaosInterpreter {
         break;
       //TODO: add throw error on default
     }
+    if(setBranch != "Engine")
     res.push(
       "});",
     );

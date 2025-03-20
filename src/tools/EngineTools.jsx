@@ -1,5 +1,5 @@
 import React from "react";
-import { Button1, IconButton, InputList, InputText } from "./components/Buttons.jsx";
+import { Button1, IconButton, InputCheck, InputList, InputText } from "./components/Buttons.jsx";
 import { Chaos } from "../engine/renderCore/ChaosInterpreter.ts";
 class EngineTools extends React.Component{
   constructor(props){
@@ -57,19 +57,45 @@ class EngineTools extends React.Component{
       </div>
     );
   }
+  cameraControls(){
+    
+    const engine = this.props.engine;
+    return (
+      <div className="flex flex-col text-white">
+        {JSON.stringify(engine.camera.position)}
+        <InputCheck label="Use perspective" checked={engine.camera.usePerspective} action={(res)=>{engine.camera.usePerspective = res}}/>
+        <div className="flex ">
+          X
+          <IconButton icon="minus" action={()=>{engine.camera.position.x-= 0.1;this.forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{engine.camera.position.x+= 0.1;this.forceUpdate();}}/>
+        </div>
+        <div className="flex ">
+          Y
+          <IconButton icon="minus" action={()=>{engine.camera.position.y-= 0.1;this.forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{engine.camera.position.y+= 0.1;this.forceUpdate();}}/>
+        </div>
+        <div className="flex ">
+          Z
+          <IconButton icon="minus" action={()=>{engine.camera.position.z-= 0.1;this.forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{engine.camera.position.z+= 0.1;this.forceUpdate();}}/>
+        </div>
+
+      </div>
+    );
+  }
   fpsControls(){
     const engine = this.props.engine;
     if("object" in engine.canvasRef){
       const canvasObject = engine.canvasRef.object;
-      const fps = canvas.fps;
+      const fps = canvasObject.fps;
       return (
         <div className="flex flex-row text-white">
-          <IconButton icon="minus" action={()=>{canvas.setFps(fps-1);this.forceUpdate();}}/>
+          <IconButton icon="minus" action={()=>{canvasObject.setFps(fps-1);this.forceUpdate();}}/>
           <input 
             className="bg-transparent" 
             type="number" 
             min={1} 
-            max={125} 
+            max={300} 
             step={1} 
             defaultValue={fps} 
             onChange={(e)=>{
@@ -78,7 +104,7 @@ class EngineTools extends React.Component{
               canvasObject.setFps(value);
               this.forceUpdate();
             }}/>
-          <IconButton icon="plus" action={()=>{canvas.setFps(fps+1);this.forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{canvasObject.setFps(fps+1);this.forceUpdate();}}/>
           <span>Target FPS: {fps}</span>
         </div>
       );
@@ -113,6 +139,7 @@ class EngineTools extends React.Component{
       }}/>
       {this.scriptSelector()}
       {this.speedControls()}
+      {this.cameraControls()}
       {this.fpsControls()}
     </>)
   }

@@ -121,6 +121,9 @@ function createAndSetupTexture(gl:WebGL2RenderingContext,image:HTMLImageElement)
  * @param {number} blurAmount 
  */
 function applyBlur(gl:WebGL2RenderingContext, programH:WebGLProgram, programV:WebGLProgram, textures:WebGLTexture, width:number, height:number, blurAmount:number) {
+  gl.canvas.width = width;
+  gl.canvas.height = height;
+  
   // Create framebuffers
   const fbos = [gl.createFramebuffer(), gl.createFramebuffer()]
 
@@ -188,12 +191,23 @@ function applyBlur(gl:WebGL2RenderingContext, programH:WebGLProgram, programV:We
 }
 
 class Shader{
+  static createSharedContext(){
+    var canvas = document.createElement('canvas');
+    var gl = canvas.getContext('webgl2', { 
+      premultipliedAlpha: true, 
+      antialias:false, 
+      preserveDrawingBuffer: false, 
+      depth: false, 
+      stencil: false}) as WebGL2RenderingContext;
+    return gl;
+  }
+
   #renData;
-  #image;
-  #id;
-  #canvas;
+  #image: HTMLImageElement;
+  #id:string;
+  #gl:WebGL2RenderingContext;
   #renderedTree;
-  constructor(image: HTMLImageElement,id:string,widthArg = null, heightArg = null){
+  constructor(image: HTMLImageElement,id:string, sharedShaderContext:WebGL2RenderingContext){
     this.#image = image;
     this.#renData = [];
     this.#id = id;
@@ -201,22 +215,16 @@ class Shader{
       blur:{}
     }
     
-    const width = widthArg == null ?  image.naturalWidth : widthArg;
-    const height = heightArg == null ? image.naturalHeight : heightArg;
+    const width = image.naturalWidth;
+    const height = image.naturalHeight;
 
-    const canvas = document.createElement('canvas');
-    this.#canvas = canvas;
-    canvas.width = width;// image.width;
-    canvas.height = height; //image.height;
+    var gl = sharedShaderContext;
+    
+    this.#gl = gl;
 
-
-
-    const gl = canvas.getContext('webgl2', { 
-      premultipliedAlpha: true, 
-      antialias:false, 
-      preserveDrawingBuffer: false, 
-      depth: false, 
-      stencil: false}) as WebGL2RenderingContext;
+    gl.canvas.width = width;// image.width;
+    gl.canvas.height = height; //image.height;
+  
 
     //*Set fragmentShaders blur quality
     fragmentShaderSourceH = fragmentShaderSourceH.replace('%sampleRange',"6.0");
@@ -233,7 +241,7 @@ class Shader{
     const programV = createProgram(gl, vertexShader, fragmentShaderV);
     const textures = [createAndSetupTexture(gl,image),createAndSetupTexture(gl,image)]
 
-    this.#renData = [gl, programH, programV, textures, canvas.width, canvas.height];
+    this.#renData = [gl, programH, programV, textures, width, height];
   }
   get id(){return this.#id;}
   get texture(){return this.#image;}
@@ -259,9 +267,9 @@ class Shader{
    * @param {GraphObject} graphObject 
    */
   getTexture(graphObject:GraphObject){
-    if (Math.round(graphObject.blur)!=0){
+    if (Math.round(graphObject.blur*10)!=0){
       applyBlur(this.#renData[0], this.#renData[1], this.#renData[2], this.#renData[3], this.#renData[4], this.#renData[5], graphObject.blur);
-      return this.#canvas;
+      return this.#gl.canvas;
     }
     else{
       return this.#image;

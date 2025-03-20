@@ -123,7 +123,6 @@ const game = (engine = new RenderEngine) => {
         const dist = Math.sqrt((player.x-enemy.x)**2 + (player.y-enemy.y)**2);
         //Si los enemigos están muy lejos eliminarlos
         if(dist > 4){
-          //TODO: Implementar el borrado de loas instancias de la clase shader
           delete engine.gameVars.enemyDirectory.splice(idx,1);
           engine.graphArray.remove(enemyId);
         }
