@@ -15,7 +15,7 @@ function generateCalculationOrder(graphArray:RenList<GraphObject>){
       if(dictionary.indexOf(id) == -1){
         const gObject = graphArray.get(id);
         const parent = gObject.parent;
-        if(parent == ""){
+        if(parent == "" || !graphArray.exist(parent)){
           order.push({id:id,weight:0,z:gObject.z});
           gObject.accomulatedZ = gObject.z;
           dictionary.push(id);

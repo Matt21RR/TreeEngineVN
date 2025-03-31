@@ -11,7 +11,7 @@ function mobileCheck() {
 // @param maxWidth - la medida del ancho maximo del lugar donde se quiere agregar el texto.
 // @param lineHeight - altura entre linea y linea.
 // @returns an array of [ lineText, x, y ] for all lines
-function wrapText(ctx:CanvasRenderingContext2D, text:string, x:number, y:number, maxWidth:number, lineHeight:number,center = false) {
+function wrapText(ctx:CanvasRenderingContext2D, text:string, x:number, y:number, maxWidth:number, lineHeight:number,center = false): Array<[string,number,number]> {
   // First, start by splitting all of our text into words, but splitting it into an array split by spaces
   let words = text.replaceAll('\n',()=>{return ' \n \n '}).split(' ');
   let line = ''; // This will store the text of the current line
@@ -137,4 +137,7 @@ function arrayFlatter(list:Array<any>){
   }
   return list;
 }
-export {mobileCheck,wrapText,random,lambdaConverter,degToRad,rad2Deg,getAttribs,arrayFlatter}
+function sortByReference(arr:Array<any>, order:Array<any>) {
+  return arr.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+}
+export {mobileCheck,wrapText,random,lambdaConverter,degToRad,rad2Deg,getAttribs,arrayFlatter, sortByReference}

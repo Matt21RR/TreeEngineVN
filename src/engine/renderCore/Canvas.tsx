@@ -334,7 +334,6 @@ class Canvas extends React.Component<CanvasProps>{
         drawingTime,
         debugTime,
         objectsToRender,
-        dimsTimers,
         updateColsTime
       ] = this.props.renderGraphics({
         object:this,
@@ -372,12 +371,11 @@ class Canvas extends React.Component<CanvasProps>{
           "GPU: "+(this.renderingElapsed).toFixed(2) + "ms" ,
           "CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,
           "cycle:"+(this.renderingElapsed+this.animatingElapsed).toFixed(2) + "ms" ,
-          "OrdeGrap: "+(orderingTime.map((d)=>{return d.toFixed(2)})) + "ms" ,
+          "OrdeGrap: "+(orderingTime).toFixed(2) + "ms" ,
           "AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,
           "DrawTime: "+(drawingTime).toFixed(2) + "ms" ,
           "DebuTime: "+(debugTime).toFixed(2) + "ms" ,
           "",
-          dimsTimers,
           "",
           "UpdColsT: "+(updateColsTime).toFixed(2) + "ms",
           "Objects: "+ objectsToRender
@@ -404,7 +402,6 @@ class Canvas extends React.Component<CanvasProps>{
       if(this.engineThreads >1)
         return;
       
-
       drawnFrames++;
 
       if(performance.now()-startTimer >1000){

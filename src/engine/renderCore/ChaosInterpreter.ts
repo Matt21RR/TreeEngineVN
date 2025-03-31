@@ -311,12 +311,12 @@ class ChaosInterpreter {
     const getToken = (idx)=>{return instruction[idx];}
 
     try {
-      if(getToken(0).type == "word"){
+      if(getToken(0).type == "word" || getToken(0).type == "text"){
         if(getToken(1).type == "operator" && getToken(1).value == "="){
           if(getToken(2).type == "word" && getToken(2).value == "new"){
             if(getToken(3).type == "word" && creatableObjects.includes(getToken(3).value)){
               if(getToken(4).constructor.name == "Array"){
-                return [true, getToken(3).value, getToken(0).value];
+                return [true, getToken(3).value, getToken(0).type == "word" ? '"'+getToken(0).value+'"' : getToken(0).value];
               }
             }
           }
@@ -546,7 +546,7 @@ class ChaosInterpreter {
     switch(createBranch){
       case "GraphObject":
         res.push(
-          `Object.assign(${dynaVarName} ,{id:"${id}"});
+          `Object.assign(${dynaVarName} ,{id:${id}});
           engine.graphArray.push(new engine.constructors.graphObject(${dynaVarName}))`
         );
         break;
@@ -554,7 +554,7 @@ class ChaosInterpreter {
         res.push(
           `var data${dynaVarName} = {
               list:${dynaVarName}[0],
-              id:"${id}"
+              id:${id}
           };
           Object.assign(data${dynaVarName},${dynaVarName}[1]);
 
@@ -564,7 +564,7 @@ class ChaosInterpreter {
       case "Trigger":
         res.push(
           `var data${dynaVarName} = {
-             id:"${id}",
+             id:${id},
              relatedTo:${dynaVarName}[0],
           };
           Object.assign(data${dynaVarName},${dynaVarName}[1]);
@@ -585,7 +585,7 @@ class ChaosInterpreter {
       case "Animation":
         res.push(
           `var data${dynaVarName} = {
-             id:"${id}",
+             id:${id},
              relatedTo:${dynaVarName}[0],
              keyframes:${dynaVarName}[1],
           };
@@ -596,7 +596,7 @@ class ChaosInterpreter {
         break;
       case "CodedRoutine":
         res.push(
-          `Object.assign(${dynaVarName},{id:"${id}"});
+          `Object.assign(${dynaVarName},{id:${id}});
 
           engine.codedRoutines.push(new engine.constructors.codedRoutine(${dynaVarName}));`
         );

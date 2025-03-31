@@ -8,9 +8,9 @@ class ExtendedObjects{
    * @param {object} objRouteRef Objeto en el cual hacer el cambio
    * @param {*} newVar Valor nuevo
    */
-  static setValueWithRoute(route,objRouteRef,newVar){
+  static setValueWithRoute(route:string,objRouteRef,newVar:any){
     const k = route.split("/"); 
-    const key =k.shift();
+    const key = k.shift() as string;
     if(k.length>0){
       this.setValueWithRoute(k.join("/"),objRouteRef[key],newVar);
     }else{

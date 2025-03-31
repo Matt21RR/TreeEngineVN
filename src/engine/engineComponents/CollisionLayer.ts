@@ -1,4 +1,4 @@
-type RenderingData = {
+type ObjectRenderingData = {
   x:number, 
   y:number, 
   z:number, 
@@ -8,12 +8,16 @@ type RenderingData = {
   /** corner is the top left coords of the rendered object */
   corner:{x:number, y:number},
   /** base data is unused by the collision system */
-  base:Object,
+  base:{
+    x: any;
+    y: any;
+    z: any;
+  },
   id:string
 }
 
 type EngineRenderingData = {
-  [key:string]:RenderingData
+  [key:string]:ObjectRenderingData
 };
 
 type Tuple = [number, number];
@@ -45,15 +49,15 @@ class CollisionLayer {
       const data = renderingData[key];
       //Horizontal boundaries
       const x = Math.floor( 10 * (data.corner.x / displayWidth));
-      const xD = Math.floor( (10 * (data.width/displayWidth)) + 1);
+      const xEnd = Math.ceil( (10 * ((data.corner.x + data.width)/displayWidth)));
 
     
       //Vertical boundaries
       const y = Math.floor( 10 * (data.corner.y / displayHeight));
-      const yD = Math.floor( (10 * (data.height/displayHeight)) + 1);
+      const yEnd = Math.ceil( (10 * ((data.corner.y + data.height)/displayHeight)));
 
-      for(let i = x; i < x + xD; i++) {
-        for(let j = y; j < y + yD; j++) {
+      for(let i = x; i < xEnd; i++) {
+        for(let j = y; j < yEnd; j++) {
           if(!this.collisionMatrix[i]) {
             this.collisionMatrix[i] = [];
           }
@@ -69,7 +73,7 @@ class CollisionLayer {
       }
     }
   }
-  #isColliding(a:RenderingData, b:RenderingData) {
+  #isColliding(a:ObjectRenderingData, b:ObjectRenderingData) {
     let aX = a.corner.x;
     let aY = a.corner.y;
     let aW = a.width;
@@ -90,7 +94,23 @@ class CollisionLayer {
       }
     }
     return false;
+  }
+  #isMouseColliding(mouseX:number, mouseY:number, object:ObjectRenderingData) {
+    let aX = object.corner.x;
+    let aY = object.corner.y;
+    let aW = object.width;
+    let aH = object.height;
 
+    if(aX < mouseX){
+      if(aX + aW > mouseX){
+        if(aY < mouseY){
+          if(aY + aH > mouseY){
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   /**
@@ -135,6 +155,29 @@ class CollisionLayer {
     }
     return collisions;
   }
+  checkMouse(mouseX:number, mouseY:number, resolution:{width:number, height:number}) {
+    const mouseIndexX = Math.floor( 10 * (mouseX));
+    const mouseIndexY = Math.floor( 10 * (mouseY));
+    
+    try {
+      let collisionsToCheck:Array<string>  = this.collisionMatrix[mouseIndexX][mouseIndexY];
+      console.log(mouseIndexX, mouseIndexY, collisionsToCheck);
+      if(collisionsToCheck.length === 0) {
+        return [];
+      }
+      let collisions:Array<string> = [];
+      for(let target of collisionsToCheck) {
+        let targetData = this.#renderingData[target];
+        if(this.#isMouseColliding(mouseX*resolution.width, mouseY*resolution.height, targetData)) {
+          collisions.push(target);
+        }
+      }
+      return collisions;
+    } catch (error) {
+      console.log("Error checking mouse collision", error);
+      return [];
+    }
+  }
 }
 export default CollisionLayer;
-export {engineRenderingDataCloner}
+export {engineRenderingDataCloner, ObjectRenderingData}
