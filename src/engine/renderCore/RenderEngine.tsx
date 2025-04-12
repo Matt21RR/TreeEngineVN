@@ -98,7 +98,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   routines: Array<Function>;
   flags: Record<string, any>;
   routineNumber: number;
-  continue: boolean;
+  resume: boolean;
   voiceFrom: string;
   paragraphNumber: number;
   paragraph: string;
@@ -115,7 +115,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   calculationOrder: CalculationOrder;
   dimentionsPack: Record<string, ObjectRenderingData>;
   renderingOrderById: Array<string>;
-  sharedWebGLContext:WebGL2RenderingContext;
   mouseListener: number;
   mouse: { x: number; y: number; origin: any };
   noRenderedItemsCount: number;
@@ -123,9 +122,11 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   drawCollisionsMatrix: boolean;
   drawTriggers: boolean;
   objectsToDebug: Array<string>;
-  setMouseOrigin: boolean;
+
   lambdaConverter: Function;
   noImageTexture: Shader;
+
+  displayObserver: ResizeObserver;
 
 
   constructor(props: RenderEngineProps){
@@ -183,7 +184,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.routines = new Array();
     this.flags = new Object();
     this.routineNumber = -1;
-    this.continue = true;
+    this.resume = true;
     //Dialogs
     this.voiceFrom = "";
     this.paragraphNumber = 0;
@@ -220,8 +221,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.dimentionsPack = {};
     this.renderingOrderById = [];
 
-    this.sharedWebGLContext = Shader.createSharedContext();
-
     //MOUSE
     this.mouseListener = 0;
     this.mouse = {x:0,y:0,origin:null};
@@ -234,7 +233,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.drawTriggers = false;
 
     this.objectsToDebug = [];//id of the object
-    this.setMouseOrigin = false;
 
     window.engineRef = this;
 
@@ -244,7 +242,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     fallbackImage.crossOrigin = "Anonymous";
     fallbackImage.src = noImageTexture;
     fallbackImage.addEventListener('load',()=>{
-      this.noImageTexture = new Shader(fallbackImage,"engineNoImageTexture",this.sharedWebGLContext);
+      this.noImageTexture = new Shader(fallbackImage,"engineNoImageTexture");
     });
 
   }  
@@ -256,21 +254,27 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         this.aspectRatioCalc();
       }, 200);
 
-      new ResizeObserver(() => {
+      this.displayObserver = new ResizeObserver(() => {
         if(!("avoidResizeBlackout" in this.props)){
           gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 0 });
         }
         clearTimeout(this.resizeTimeout);
         this.resizeTimeout = window.setTimeout(
           () => {
-            this.aspectRatioCalc();
+            try {
+              this.aspectRatioCalc();
+            } catch (error) {
+              this.displayObserver.disconnect();
+            }
+
             if(!("avoidResizeBlackout" in this.props)){
               gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 1 });
             }
 
           }, 800);
-      })
-      .observe(document.getElementById("display"+this.id) as Element);
+      });
+
+      this.displayObserver.observe(document.getElementById("display"+this.id) as Element,)
 
       //*LOAD GAME
       if(!("clientSideResources" in this.props)){
@@ -286,7 +290,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       //*TECLADO
       const self = this as RenderEngine;
       document.body.addEventListener("keydown",function(e){
-        const keyCode = e.code;
+        const keyCode = e.code;  
         if(self.pressedKeys.indexOf(keyCode) == -1){
           self.pressedKeys.push(keyCode);
           const mix = self.pressedKeys.join(" ");
@@ -493,7 +497,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         image.src = indexPath;
         image.addEventListener('load',()=>{
           // const res = new Object({[textureId]:image});
-          self.texturesList.push(new Shader(image,textureId,self.sharedWebGLContext))
+          self.texturesList.push(new Shader(image,textureId))
           resolve(null);
         });
       });
@@ -516,7 +520,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
                 image.src = self.projectRoot + "img/" + texturesData[textureName].replace("./","");
                 image.addEventListener('load',()=>{
                   const res = new Object({[textureName]:image});
-                  self.texturesList.push(new Shader(image,textureName,self.sharedWebGLContext))
+                  self.texturesList.push(new Shader(image,textureName))
                   resolveFile(res);
                 });
               })
@@ -568,7 +572,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.routines = new Array();
     this.flags = new Object();
     this.routineNumber = -1;
-    this.continue = true;
+    this.resume = true;
     //Dialogs
     this.voiceFrom = "";
     this.paragraphNumber = 0;
@@ -673,6 +677,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           objectHeight = texRef.texture.naturalHeight*objectScale*gObject.heightScale*(resolution.height/this.developmentDeviceHeight);
         }else{
           objectHeight = (texRef.texture.naturalHeight/texRef.texture.naturalWidth)*resolution.width*objectScale*gObject.heightScale;
+        }
+      }else{
+        if(gObject.useEngineUnits){
+          objectWidth = resolution.height*objectScale*gObject.widthScale;
         }
       }
 
@@ -898,11 +906,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
                 RenderMisc.drawObjectLimits(canvas.context,objectRenderingData,resolution,this.camera.position.z);
               }
             }
-            //* DRAW COLLISION LAYER
-            if(this.drawCollisionsMatrix){
-              RenderMisc.drawCollisionsMatrix(canvas.context,resolution);
-            }
-
             //* DRAW TRIGGERS
             if(this.drawTriggers){
               if(this.triggers.objects.filter(e=>{return e.enabled}).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
@@ -910,6 +913,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               }
             }
             debugTime += performance.now()-debugTimePre;
+          }
+          //* DRAW COLLISION LAYER
+          if(this.drawCollisionsMatrix){
+            RenderMisc.drawCollisionsMatrix(canvas.context,resolution);
           }
           // console.warn("Objects excluded: ",this.noRenderedItemsCount);
 
@@ -965,7 +972,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
             }
           }  
 
-          if(this.continue){
+          if(this.resume){
             if((this.routineNumber+1)<this.routines.length){
               this.routineNumber++;
               this.routines[this.routineNumber](this);
@@ -1026,7 +1033,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     for(const collisionedObjectId of sortByReference(collisionedTriggers,reversedRenderOrderList)){
       if(collisionedObjectId in objectsWithTriggersList){
         objectsWithTriggersList[collisionedObjectId].forEach(triggerId => {
-          console.log("collisionedWith: ",collisionedObjectId);
           try {
             //@ts-ignore
             this.triggers.get(triggerId).check(this,action);
@@ -1034,9 +1040,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
             console.log("Error on trigger execution:",error,this.triggers.get(triggerId))
           }
         });
-      }
-      if(this.setMouseOrigin){
-        this.mouse.origin = targetGraphObjectId;
       }
       break;
     }
@@ -1085,6 +1088,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       return (
         <div className="absolute w-full h-full"
           id={"triggersTarget"+this.id}
+          onContextMenu={(e)=>{
+            e.preventDefault();
+            this.checkTriggers(e,"onContextMenu");
+          }}
           onWheel={(e)=>{this.checkTriggers(e,"onWheel")}}
           onMouseDown={(e)=>this.checkTriggers(e,"onHold")}
           onMouseUp={(e)=>{e.preventDefault();this.checkTriggers(e,"onRelease")}}
@@ -1114,7 +1121,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       <div className="relative w-full h-full mx-auto my-auto" id={'display'+this.id}>
         <div className="bg-black absolute w-full h-full flex">
           <div className="relative w-full h-full mx-auto my-auto" id={'engineDisplay'+this.id}>
-            <div className="absolute w-full h-full">
+            <div className="absolute w-full h-full bg-gradient-to-b from-gray-900 to-gray-700">
               {this.engineDisplay()}
               {this.triggersTarget()}
             </div>

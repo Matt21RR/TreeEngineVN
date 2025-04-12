@@ -211,7 +211,7 @@ class InputTextArea extends React.Component {
               className: 'text-[#A18649]'
             },
             {
-              highlight: [/^\s*(set){1}(\W)/gm,/^\s*(run){1}(\W)/gm,/^\s*(wait){1}(\W)/gm,/^\s*(show){1}(\W)/gm,/^\s*(load){1}(\W)/gm,/^\s*(\$){1}(\W)/gm,/^\s*(narration){1}(\W)/gm],
+              highlight: [/^\s*(set){1}(\W)/gm,/^\s*(run){1}(\W)/gm,/^\s*(play){1}(\W)/gm,/^\s*(wait){1}(\W)/gm,/^\s*(resume){1}(\W)/gm,/^\s*(show){1}(\W)/gm,/^\s*(load){1}(\W)/gm,/^\s*(speak){1}(\W)/gm,/^\s*(narration){1}(\W)/gm],
               className: 'text-green-600'
             }
         ]

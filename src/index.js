@@ -10,9 +10,8 @@ import { RenderEngine } from './engine/renderCore/RenderEngine.tsx';
 
 import { game } from './game/js.js';
 import Swal from 'sweetalert2';
-import { ExtendedObjects } from './engine/logic/ExtendedObjects.ts';
 
-window.backendRoute = "http://192.168.101.76"
+window.backendRoute = "http://192.168.101.78"
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
@@ -28,7 +27,7 @@ root.render(
         clientSideResources 
         showFps
         cyclesPerSecond={24}
-        setEngine={(engine = new RenderEngine)=>{
+        setEngine={(engine)=>{
 
           Swal.fire("Controles",`
             Ajustar zoom: Y, U

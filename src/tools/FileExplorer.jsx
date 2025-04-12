@@ -60,7 +60,8 @@ class FileExplorer extends React.Component{
 
     const self = this;
     const uploadRequests = [];
-    const uploader = (uploadRequest)=>{$.ajax({
+    const uploader = (uploadRequest)=>{
+      $.ajax({
         url : window.backendRoute+'/renderEngineBackend/index.php',
         type : 'POST',
         data : uploadRequest[0],
@@ -84,7 +85,7 @@ class FileExplorer extends React.Component{
       .then((res) => {
         uploadRequest.shift();
         if(uploadRequest.length > 0){
-          uploader();
+          uploader(uploadRequest);
         }
         if(!res){
           Swal.fire("Error","Check input data","error");

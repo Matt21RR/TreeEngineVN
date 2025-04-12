@@ -160,9 +160,12 @@ class CollisionLayer {
     const mouseIndexY = Math.floor( 10 * (mouseY));
     
     try {
-      let collisionsToCheck:Array<string>  = this.collisionMatrix[mouseIndexX][mouseIndexY];
-      console.log(mouseIndexX, mouseIndexY, collisionsToCheck);
-      if(collisionsToCheck.length === 0) {
+      let collisionsToCheck:Array<string>;
+      if(!(mouseIndexX in this.collisionMatrix) || !(mouseIndexY in this.collisionMatrix[mouseIndexX])){
+        return [];
+      }
+      collisionsToCheck = this.collisionMatrix[mouseIndexX][mouseIndexY];
+      if(!collisionsToCheck || collisionsToCheck.length === 0) {
         return [];
       }
       let collisions:Array<string> = [];

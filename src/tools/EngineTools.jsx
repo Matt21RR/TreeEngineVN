@@ -131,6 +131,11 @@ class EngineTools extends React.Component{
         engine.forceUpdate();
         this.forceUpdate();
       }}/>
+      <Button1 text={"Draw collisions matrix: "+engine.drawCollisionsMatrix} action={()=>{
+        engine.drawCollisionsMatrix = !engine.drawCollisionsMatrix;
+        engine.forceUpdate();
+        this.forceUpdate();
+      }}/>
       <Button1 text={"Show fps: "+engine.showFps} action={()=>{
         engine.showFps = !engine.showFps;
         canvasObject.showFps = !canvasObject.showFps;

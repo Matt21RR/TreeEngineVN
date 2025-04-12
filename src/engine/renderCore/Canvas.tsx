@@ -348,23 +348,15 @@ class Canvas extends React.Component<CanvasProps>{
       const actualGlobalAlpha = context.globalAlpha;
 
       if(this.showFps){
-        var mOrigin = this.renderEngine.mouse.origin;
-        if(mOrigin != null){
-          if(!(mOrigin in this.renderEngine.dimentionsPack)){
-            this.renderEngine.mouse.origin = null;
-            console.log("that mouse origin don't exists anymore: "+mOrigin);
-            mOrigin = null;
-          }
-        }
         var mouse = {
-          x : mOrigin == null ? this.renderEngine.mouse.x : this.renderEngine.mouse.x - this.renderEngine.dimentionsPack[mOrigin].x/this.resolutionHeight,
-          y : mOrigin == null ? this.renderEngine.mouse.y : this.renderEngine.mouse.y - (this.renderEngine.dimentionsPack[mOrigin].y/this.resolutionHeight),
+          x : this.renderEngine.mouse.x,
+          y : this.renderEngine.mouse.y
         };
 
         const fpsData: Array<string> = [
           "CPS: "+fps.promedio.cps + "/ FPS: "+fps.promedio.fps,
           "Interval: "+fps.elapsed.toFixed(4),
-          "Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2)+" ,origin:"+mOrigin,
+          "Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2),
           "Res: "+this.resolutionWidth+"x"+this.resolutionHeight,
           "EngTime: "+this.totalEngineElapsedTime.toFixed(2) + "ms",
           "Keys: "+this.renderEngine.pressedKeys.join(" "),

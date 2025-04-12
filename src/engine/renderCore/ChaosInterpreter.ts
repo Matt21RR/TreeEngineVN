@@ -1,4 +1,17 @@
 import { arrayFlatter } from "../logic/Misc.ts";
+import CreateInstruction from "./interpretators/CreateInstruction.ts";
+import DialogInstruction from "./interpretators/DialogInstruction.ts";
+import InstructionInterface from "./interpretators/InstructionInterface.ts";
+import LoadInstruction from "./interpretators/LoadInstruction.ts";
+import ModuleDefinitionInstruction from "./interpretators/ModuleDefinitionInstruction.ts";
+import NarrationInstruction from "./interpretators/NarrationInstruction.ts";
+import PlayInstruction from "./interpretators/PlayInstruction.ts";
+import ResumeInstruction from "./interpretators/ResumeInstruction.ts";
+import RunInstruction from "./interpretators/RunInstruction.ts";
+import SceneDefinitionInstruction from "./interpretators/SceneDefinitionInstruction.ts";
+import SetInstruction from "./interpretators/SetInstruction.ts";
+import WaitInstruction from "./interpretators/WaitInstruction.ts";
+
 
 declare global{
   interface Window{
@@ -14,6 +27,9 @@ class Token{
     this._value = value;
     this._type = type;
     this._index = index;
+    // if(index == 49){
+    //   debugger
+    // }
   }
   get value(){return this._value;}
   set value(value){this._value = value;}
@@ -129,6 +145,7 @@ class ChaosInterpreter {
     
       if(instruction instanceof Array){
         const interpreted = this.#interpretateInstruction(instruction as Instruction);
+        //@ts-ignore
         if(interpreted[0]){
           collection.push(interpreted as [boolean,Object|string]);
         }
@@ -147,7 +164,7 @@ class ChaosInterpreter {
 
   #lexer(script:string){
     // Regular expression to match words, punctuation, and special characters
-    const regex = /((\d+\.?\d*)|(\.\d*)|"([^"]*)"|'([^']*)'|`([^´]*)`|([^\w\s])|(\s{1,})|(\w+)|[=();,{}"'`])/g;
+    const regex = /((\d+\.?\d*)|(\.\d*)|"([^"]*)"|'([^']*)'|`([^`]*)`|([^\w\s])|(\s{1,})|(\w+)|[=();,{}"'`])/g;
 
     // Apply regex to split the string
     const result = script.match(regex);
@@ -155,7 +172,7 @@ class ChaosInterpreter {
           let symbol;
           if(val.match(/\n{1,}/)){
             symbol="lineBreak";
-          }else if(val.match(/"([^"]*)"|'([^']*)'|`([^´]*)`/)){
+          }else if(val.match(/"([^"]*)"|'([^']*)'|`([^`]*)`/)){
             symbol="text";
           }else if(val.match(/[+\-*/%^=!<>&|]/)){
             symbol="operator";
@@ -213,6 +230,7 @@ class ChaosInterpreter {
             bracketCounter--;
             if(bracketCounter == 0){
               //TODO: Preventive check if the acum have script instructions
+              // console.log(acum,loops);
               return [acum,loops];
             }
           }else{
@@ -226,7 +244,10 @@ class ChaosInterpreter {
       }
       if(token.type == "lineBreak" && bracketCounter == 0){
         if(isJsCode){
-          abs.push(new Token(this.#tokenListToText(acum),"jsCode",acum[0].index));
+          if(this.#tokenListToText(acum).length != 0){
+            // console.log(this.#tokenListToText(acum));
+            abs.push(new Token(this.#tokenListToText(acum),"jsCode",acum[0].index));
+          }
         }else{//* If is not a js code, then it is a script instruction
           abs.push(acum);
         }
@@ -263,16 +284,23 @@ class ChaosInterpreter {
           }
           if(prevLineBreakFound){
             plausibleInstruction.reverse();
-            
-            const [itWasAScriptInstruction,interpretResult] = this.#interpretateInstruction(plausibleInstruction,true);
+            //@ts-ignore
+            const [itWasAScriptInstruction,interpretedResult] = this.#interpretateInstruction(plausibleInstruction,true);
             if(itWasAScriptInstruction){
               acum.splice((acum.length-1)-plausibleInstruction.length);
               acum.push(
-                new Token( interpretResult, "jsCode", plausibleInstruction[0].index)
+                new Token( interpretedResult, "jsCode", plausibleInstruction[0].index)
               );
-              acum.push(
-                new Token( "\n", "lineBreak", plausibleInstruction[1].index)
-              )
+              if(plausibleInstruction.length>1){
+                acum.push(
+                  new Token( "\n", "lineBreak", plausibleInstruction[1].index)
+                )
+              }else{
+                acum.push(
+                  new Token( "\n", "lineBreak", plausibleInstruction[0].index)
+                )
+              }
+
             }
           }
         }
@@ -281,8 +309,9 @@ class ChaosInterpreter {
     }
     return abs;
   }
+
   //*instruction:Array<Token|Array<any>>
-  #isSceneDefinitionInstruction(instruction:Instruction){
+  #isSceneDefinitionInstruction(instruction){
     const getToken = (idx:number)=>{return instruction[idx];}
     //@ts-ignore
     if(getToken(0) instanceof Token && getToken(0).type == "word" && getToken(0).value == "scene"){
@@ -294,7 +323,7 @@ class ChaosInterpreter {
     }
     return [false, null];
   }
-  #isModuleDefinitionInstruction(instruction:Instruction){
+  #isModuleDefinitionInstruction(instruction){
     const getToken = (idx)=>{return instruction[idx];}
     //@ts-ignore
     if(getToken(0) instanceof Token && getToken(0).type == "word" && getToken(0).value == "module"){
@@ -387,9 +416,9 @@ class ChaosInterpreter {
     }
     return [false,null]
   }
-  #isContinueInstruction(instruction){
+  #isResumeInstruction(instruction){
     const getToken = (idx)=>{return instruction[idx];}
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "continue"){
+    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "resume"){
       return [true];
     }
     return [false];
@@ -406,7 +435,7 @@ class ChaosInterpreter {
   }
   #isDialogInstruction(instruction){
     const getToken = (idx)=>{return instruction[idx];}
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "$"){
+    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "speak"){
       if(getToken(1).constructor.name == "Array"){
         return [true,"..."];
       }else if(getToken(1).type == "word"){
@@ -417,11 +446,23 @@ class ChaosInterpreter {
     }
     return [false,null]
   }
+  #isPlayInstruction(instruction){
+    const getToken = (idx:number)=>{return instruction[idx];}
+    //@ts-ignore
+    if(getToken(0) instanceof Token && getToken(0).type == "word" && getToken(0).value.toLowerCase() == "play"){
+      //@ts-ignore
+      if(getToken(1).type == "text"){
+        //@ts-ignore
+        return [true, getToken(1).value];
+      }
+    }
+    return [false, null];
+  }
+
   #getStrParamsFromTokenList(instruction){
     const plainTokenListOfParams = arrayFlatter(instruction.at(-1).flat())
     var strParams = plainTokenListOfParams.map(token=>token.value).join("");
 
-    let valParams;
     if(strParams.indexOf("(") == 0){
       strParams = strParams.substring(1,strParams.length-1);
     }
@@ -442,64 +483,27 @@ class ChaosInterpreter {
     }
     const instruction = _instruction.filter(tk=>{return (tk.constructor.name == "Array")||((tk as Token).type != "space")});
 
-    let strParams;
+    const supportedInstructions = [
+      new CreateInstruction(),
+      new DialogInstruction(),
+      new LoadInstruction(),
+      new ModuleDefinitionInstruction(),
+      new NarrationInstruction(),
+      new PlayInstruction(),
+      new ResumeInstruction(),
+      new RunInstruction(),
+      new SceneDefinitionInstruction(),
+      new SetInstruction(),
+      new WaitInstruction()
+    ];
 
-    const [isSceneDefinitionInstruction,sceneId] = this.#isSceneDefinitionInstruction(instruction as Instruction);
-    if(isSceneDefinitionInstruction){
-      itWasAScriptInstruction = true;
-      result = {define:"scene",id:sceneId};
+    for (const supportedInstruction of supportedInstructions) {
+      const res = (supportedInstruction).check(instruction,this,!recursiveMode);
+      if(res.match){
+        result = res.result;
+        return [true,result];
+      }
     }
-    const [isModuleDefinitionInstruction,moduleId] = this.#isModuleDefinitionInstruction(instruction as Instruction);
-    if(isModuleDefinitionInstruction){
-      itWasAScriptInstruction = true;
-      result = {define:"module",id:moduleId};
-    }
-
-    const [isCreateInstruction,createBranch,createElementId] = this.#isCreateInstruction(instruction);
-    if(isCreateInstruction){
-      itWasAScriptInstruction = true
-      strParams = this.#getStrParamsFromTokenList(instruction);
-      result = this.#interpretateCreateInstruction(createBranch,createElementId,strParams,!recursiveMode);
-    }
-    const [isSetInstruction,setBranch,setElementId] = this.#isSetInstruction(instruction);
-    if(isSetInstruction){
-      itWasAScriptInstruction = true;
-      strParams = this.#getStrParamsFromTokenList(instruction);
-      result = this.#interpretateSetInstruction(setBranch,setElementId,strParams,!recursiveMode);
-    }
-    const [isRunInstruction,runBranch,runElementId] = this.#isRunInstruction(instruction);
-    if(isRunInstruction){
-      itWasAScriptInstruction = true;
-      result = this.#interpretateRunInstruction(runBranch,runElementId,!recursiveMode);
-    }
-    const [isLoadInstruction,loadBranch,loadElementId] = this.#isLoadInstruction(instruction);
-    if(isLoadInstruction){
-      itWasAScriptInstruction = true;
-      result = this.#interpretateLoadInstruction(loadBranch,loadElementId,!recursiveMode);
-    }
-    const [isWaitInstruction,waitTime] = this.#isWaitInstruction(instruction);
-    if(isWaitInstruction){
-      itWasAScriptInstruction = true;
-      result = this.#interpretateWaitInstruction(waitTime,!recursiveMode);
-    }
-    const [isContinueInstruction] = this.#isContinueInstruction(instruction);
-    if(isContinueInstruction){
-      itWasAScriptInstruction = true;
-      result = this.#interpretateContinueInstruction(!recursiveMode);
-    }
-    const [isNarrationInstruction] = this.#isNarrationInstruction(instruction);
-    if(isNarrationInstruction){
-      itWasAScriptInstruction = true;
-      strParams = this.#getStrParamsFromTokenList(instruction);
-      result = this.#interpretateNarrationInstruction(strParams,!recursiveMode);
-    }
-    const [isDialogInstruction,actor] = this.#isDialogInstruction(instruction);
-    if(isDialogInstruction){
-      itWasAScriptInstruction = true;
-      strParams = this.#getStrParamsFromTokenList(instruction);
-      result = this.#interpretateDialogInstruction(actor,strParams,!recursiveMode);
-    }
-
     return [itWasAScriptInstruction,result]
   }
   #haveSceneOrModuleDefinition(processedInstructions){
@@ -530,241 +534,5 @@ class ChaosInterpreter {
 
     return scenes;
   }
-  #interpretateCreateInstruction(createBranch:string,id:string,value:string,routine=true){
-    let res:Array<string> = [];
-
-    var dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
-
-    if(routine){
-      res.push(
-        "engine.routines.push((engine)=>{"
-      );
-    }
-    res.push(
-      `var ${dynaVarName} = ${value};`
-    );
-    switch(createBranch){
-      case "GraphObject":
-        res.push(
-          `Object.assign(${dynaVarName} ,{id:${id}});
-          engine.graphArray.push(new engine.constructors.graphObject(${dynaVarName}))`
-        );
-        break;
-      case "TextureAnim":
-        res.push(
-          `var data${dynaVarName} = {
-              list:${dynaVarName}[0],
-              id:${id}
-          };
-          Object.assign(data${dynaVarName},${dynaVarName}[1]);
-
-          engine.textureAnims.push(new engine.constructors.textureAnim(data${dynaVarName}));`
-        );
-        break;
-      case "Trigger":
-        res.push(
-          `var data${dynaVarName} = {
-             id:${id},
-             relatedTo:${dynaVarName}[0],
-          };
-          Object.assign(data${dynaVarName},${dynaVarName}[1]);
-
-          engine.triggers.push(new engine.constructors.trigger(data${dynaVarName}));`
-        );
-        break;
-      case "KeyboardTrigger":
-        res.push(
-          `var data${dynaVarName} = {
-              keys:${dynaVarName}[0]
-          };
-          Object.assign(data${dynaVarName},${dynaVarName}[1]);
-
-          engine.keyboardTriggers.push(new engine.constructors.keyboardTrigger(data${dynaVarName}));`
-        );
-        break;
-      case "Animation":
-        res.push(
-          `var data${dynaVarName} = {
-             id:${id},
-             relatedTo:${dynaVarName}[0],
-             keyframes:${dynaVarName}[1],
-          };
-          Object.assign(data${dynaVarName},${dynaVarName}[2]);
-          
-          engine.anims.push(new engine.constructors.animation(data${dynaVarName}));`
-        );
-        break;
-      case "CodedRoutine":
-        res.push(
-          `Object.assign(${dynaVarName},{id:${id}});
-
-          engine.codedRoutines.push(new engine.constructors.codedRoutine(${dynaVarName}));`
-        );
-        break;
-    }
-    if(routine){
-      res.push(
-        "});"
-      );
-    }
-    return res.join(" \n ");
-
-  }
-  #interpretateSetInstruction(setBranch:string,id:string,value:string,routine=true){
-    let res:Array<string> = [];
-
-    var dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
-
-    if(routine){
-      res.push(
-        "engine.routines.push((engine)=>{"
-      );
-    }
-    res.push(
-      `var ${dynaVarName} = ${value};`
-    );
-    if(setBranch != "Engine")
-      res.push(
-        `Object.keys(${dynaVarName}).forEach(key=>{`
-      );
-    switch(setBranch){
-      case "Engine":
-        res.push(
-          `
-            if('${id}' in engine){
-              if(${dynaVarName} instanceof Object && engine['${id}'] instanceof Object){
-                ExtendedObjects.modify(${dynaVarName},engine['${id}']);
-              }else{
-                engine['${id}'] = ${dynaVarName};
-              }
-            }else{
-              console.error("${id} don't exists in RenderEngine Class");
-            }
-          `
-        );
-        break;
-      case "GraphObject":
-        res.push(
-          `engine.graphArray.get('${id}')[key] = ${dynaVarName}[key];`
-        );
-        break;
-      case "TextureAnim":
-        res.push(
-          `engine.textureAnims.get('${id}')[key] = ${dynaVarName}[key];`
-        );
-        break;
-      case "Trigger":
-        res.push(
-          `engine.triggers.get('${id}')[key] = ${dynaVarName}[key];`
-        );
-        break;
-      case "KeyboardTrigger":
-        res.push(
-          `engine.keyboardTriggers.get('${id}')[key] = ${dynaVarName}[key];`
-        );
-        break;
-      case "Animation":
-        res.push(
-          `engine.anims.get('${id}')[key] = ${dynaVarName}[key];`
-        );
-        break;
-      case "CodedRoutine":
-        res.push(
-          `engine.codedRoutines.get('${id}')[key] = ${dynaVarName}[key];`
-        );
-        break;
-      //TODO: add throw error on default
-    }
-    if(setBranch != "Engine")
-    res.push(
-      "});",
-    );
-    if(routine){
-      res.push(
-        "});"
-      );
-    }
-    return res.join(" \n ");
-  }
-  #interpretateRunInstruction(runBranch,id,routine=true){
-    let res = "";
-
-    switch (runBranch) {
-      case "script":
-        res =
-          `engine.routines.push((engine)=>{
-            engine.loadScript('${this.scriptsUrls[id.replaceAll('"',"")]}',${id})
-          });`;
-        break;
-    }
-    return res;
-  }
-  #interpretateLoadInstruction(runBranch:string,id:string,routine=true){
-    let res:string = "";
-
-    switch (runBranch) {
-      case "script":
-        const sceneOrModuleId = id.replaceAll('"',"");
-        if(!(sceneOrModuleId in this.scripts)){
-          console.error("List of scripts and modules:",Object.keys(this.scripts));
-          throw new Error("Scene or module "+sceneOrModuleId+" not found or don't exists.");
-        }
-        res = this.scripts[sceneOrModuleId];
-        break;
-    }
-    return res;
-  }
-  #interpretateWaitInstruction(waitTime=null,routine=true){
-    let res:Array<string> = [];
-
-    res.push("engine.routines.push((engine)=>{");
-    if(waitTime != null){
-      res.push(`engine.continue = false; setTimeout(()=>{engine.continue = true;},${waitTime});`);
-    }else{
-      res.push("engine.continue = false;");
-    }
-    res.push("});");
-
-    return res.join(" \n ");
-  }
-  #interpretateContinueInstruction(routine=true){
-    const res = `
-      engine.routines.push((engine)=>{
-        engine.continue = true;
-      });
-    `;
-    return res;
-  }
-  #interpretateNarrationInstruction(value:string,routine=true){
-    const res =
-      `engine.routines.push((engine)=>{
-        engine.triggers.get('avanzarNarracion').enabled = true;
-        engine.paragraphNumber = 0;
-        engine.voiceFrom = 'nobody';
-        engine.narration = ${value};
-        engine.paragraph += engine.getStr(engine.lambdaConverter(engine.narration[0]));
-        engine.graphArray.get('narrationBox').text = '';
-        engine.graphArray.get('narrationBox').enabled = true;
-        engine.continue = false;
-      });`;
-
-    return res;
-  }
-  #interpretateDialogInstruction(actor:string,dialogs:string,routine=true){
-    const res =
-      `engine.routines.push((engine)=>{
-        engine.dialogNumber = 0;
-        engine.voiceFrom = '${actor}';
-        engine.dialog = ${dialogs};
-
-        engine.graphArray.get('dialogbox').text = '';
-        engine.graphArray.get('dialogbox').enabled = true;
-
-        engine.graphArray.get('voiceByName').enabled = true;
-
-        engine.continue = false;
-      });`;
-    return res;
-  }
 }
-export {ChaosInterpreter as Chaos};
+export {ChaosInterpreter as Chaos,Token,Instruction};

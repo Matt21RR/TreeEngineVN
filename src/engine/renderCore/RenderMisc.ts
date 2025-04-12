@@ -31,7 +31,7 @@ class RenderMisc{
   }
   static drawCollisionsMatrix(ctx:CanvasRenderingContext2D, resolution:{width:number, height:number}){
     ctx.strokeStyle = "blue";
-    ctx.globalAlpha = .3;
+    ctx.globalAlpha = 1;
     ctx.lineWidth = 3;
     ctx.setLineDash([4, 4]);
     

@@ -97,7 +97,7 @@ class Multimedia extends React.Component{
     );
   }
   switcher(src){
-    if(this.props.show && this.mime != "" && this.activateSwitch==true){
+    if(this.props.show && this.mime != "" && this.mime != "application" && this.activateSwitch==true){
       return (this[this.mime](src));
     }
   }

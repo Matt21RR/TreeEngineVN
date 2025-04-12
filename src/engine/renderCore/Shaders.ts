@@ -1,4 +1,5 @@
 import {GraphObject} from "../engineComponents/GraphObject.ts"
+import { ShaderCanvas } from "./ShaderCanvas.ts";
 const vertexShaderSource = /*glsl*/`
   attribute vec2 a_position;
   attribute vec2 a_texCoord;
@@ -207,7 +208,7 @@ class Shader{
   #id:string;
   #gl:WebGL2RenderingContext;
   #renderedTree;
-  constructor(image: HTMLImageElement,id:string, sharedShaderContext:WebGL2RenderingContext){
+  constructor(image: HTMLImageElement,id:string){
     this.#image = image;
     this.#renData = [];
     this.#id = id;
@@ -218,8 +219,9 @@ class Shader{
     const width = image.naturalWidth;
     const height = image.naturalHeight;
 
-    var gl = sharedShaderContext;
+    const shaderSharedCanvas = new ShaderCanvas();
     
+    var gl = shaderSharedCanvas.context;
     this.#gl = gl;
 
     gl.canvas.width = width;// image.width;
