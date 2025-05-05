@@ -1,17 +1,20 @@
 import { lambdaConverter } from "../logic/Misc.ts"
-import { RenderEngine } from "../renderCore/RenderEngine.jsx"
+import { RenderEngine } from "../renderCore/RenderEngine.js"
 
 
 class GraphObject{
   #enabled:boolean //TODO: use I'T
 
   #text:Function|string|null
+  #fitContent:boolean
   #center:boolean
+  #verticalCenter:boolean
   #color:string
   #font:string
   #fontSize:number
   #boxColor:string
-  #margin:number
+  #horizontalMargin:number
+  #verticalMargin:number
 
   #textureName:string|null
 
@@ -63,12 +66,15 @@ class GraphObject{
     enabled : "boolean",
 
     text : ["function","string","null"],
+    fitContent: "boolean",
     center : "boolean",
+    verticalCenter: "boolean",
     color : "string",
     font : "string",
     fontSize : "number",
     boxColor : "string",
-    margin : "number",
+    horizontalMargin : "number",
+    verticalMargin : "number",
 
     texture: ["string","null"],
 
@@ -104,12 +110,15 @@ class GraphObject{
     this.#enabled =         graphInfo.enabled ?? false;//exclude from calculation and renderin
 
     this.#text =            "text" in graphInfo ? graphInfo.text : null;
+    this.#fitContent =      graphInfo.fitContent ?? false;
     this.#center =          graphInfo.center ?? false;
+    this.#verticalCenter =  graphInfo.verticalCenter ?? false;
     this.#color =           graphInfo.color ?? "gray";
     this.#font =            graphInfo.font ?? "Arial";
     this.#fontSize =        "fontSize" in graphInfo ? parseFloat(graphInfo.fontSize):18;
     this.#boxColor =        graphInfo.boxColor ?? "transparent";
-    this.#margin =          graphInfo.margin ?? 0;
+    this.#horizontalMargin =     graphInfo.horizontalMargin ?? 0;
+    this.#verticalMargin =     graphInfo.verticalMargin ?? 0;
 
     this.#textureName =     graphInfo.texture ?? null;
     //Properties of the graph
@@ -176,8 +185,14 @@ class GraphObject{
     this.#text = lambdaConverter(x);
   }
 
+  set fitContent(x:boolean){this.#fitContent = x;}
+  get fitContent(){return this.#fitContent;}
+
   get center() {return this.#center}
-  set center(x) {this.#center = typeof x == "boolean"? x : false}
+  set center(x:boolean) {this.#center = x}
+
+  get verticalCenter() {return this.#verticalCenter}
+  set verticalCenter(x:boolean) {this.#verticalCenter = x}
 
   get color() {return this.#color}
   set color(x) {this.#color = typeof x == "string"? x : "gray"}
@@ -207,8 +222,11 @@ class GraphObject{
   set boxColor(x) {this.#boxColor = typeof x == "string"? x : "black"}
     
     
-  get margin() {return this.#margin;}
-  set margin(x:any) {this.#margin = parseFloat(x) || 0;}
+  get horizontalMargin() {return this.#horizontalMargin;}
+  set horizontalMargin(x:any) {this.#horizontalMargin = parseFloat(x) || 0;}
+
+  get verticalMargin() {return this.#verticalMargin;}
+  set verticalMargin(x:any) {this.#verticalMargin = parseFloat(x) || 0;}
     
     
   get texture() { return this.#textureName; }

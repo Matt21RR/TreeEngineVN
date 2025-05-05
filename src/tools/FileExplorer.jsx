@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import { Loading } from './components/alerts';
 import byteSize from 'byte-size';
 import { Multimedia } from './Multimedia';
+import download from 'downloadjs';
 
 
 class FileExplorer extends React.Component{
@@ -29,13 +30,19 @@ class FileExplorer extends React.Component{
     }
   }
   backendRequest(data){
-    $.post(window.backendRoute + "/renderEngineBackend/index.php", data)
-    .then((res) => {
-      if(!res){
-        Swal.fire("Error","Check input data","error");
-      }
-      this.getHierarchy();
-    });
+    return new Promise((resolve,reject)=>{
+      $.post(window.backendRoute + "/renderEngineBackend/index.php", data)
+      .then((res) => {
+        if(!res){
+          Swal.fire("Error","Check input data","error");
+          reject(res);
+          return;
+        }
+        this.getHierarchy();
+        resolve(res);
+      });
+    })
+
   }
   getHierarchy(){
     $.post(window.backendRoute + "/renderEngineBackend/index.php", {action: "getHierarchy"})
@@ -124,6 +131,17 @@ class FileExplorer extends React.Component{
   }
   delete(dir,type){
     this.backendRequest({action: "delete", dir:dir, type:type})
+  }
+  download(dir,type){
+
+      this.backendRequest({action: "download", dir, type}).then((res)=>{
+        download(JSON.parse(res).dataUrl,dir.split("/").at(-1));
+      },(error)=>{
+        console.error(error);
+      });
+      
+      // 
+    
   }
   createFile(dir,filename){
     this.backendRequest({action: "createFile", dir:dir, filename:filename})
@@ -251,6 +269,11 @@ class FileExplorer extends React.Component{
               }}/>
             <MenuButton text={"Copy"}/>
             <MenuButton text={"Cut"}/>
+            <MenuButton text="Donwload"
+              action={()=>{
+                this.download(info.route,info.type);
+              }}
+            />
             <MenuButton text={"Delete"}
             action={()=>{
               Swal.fire({

@@ -1,4 +1,4 @@
-import InstructionInterface from "./InstructionInterface.ts";
+import InstructionInterface from "../InstructionInterface.ts";
 
 
 class CreateInstruction extends InstructionInterface{

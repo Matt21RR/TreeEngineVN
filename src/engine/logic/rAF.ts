@@ -16,12 +16,8 @@ declare global {
 			var nextTime = interval - (now - prevCycleStartedAt);
 
       if(nextTime < 0){
-        return setTimeout(
-          function() { 
-            const engDelta = window.performance.now() - prevCycleStartedAt;
-            callback((now - prevCycleStartedAt),engDelta,loopId);
-          }, 1   
-        );
+        const engDelta = now - prevCycleStartedAt;
+        return callback((now - prevCycleStartedAt),engDelta,loopId);
       }else{
         return setTimeout(
           function() { 
@@ -30,6 +26,27 @@ declare global {
           }, 
           nextTime-1
         ); 
+      }
+    }
+
+    static modelFour(callback:Function, interval = 16, prevCycleStartedAt:number, loopId:string){
+      if(loopId != window.loopId){
+        return;
+      }
+
+      var now = window.performance.now();
+      var nextTime = interval - (now - prevCycleStartedAt);
+
+      if(nextTime < 0){
+        const engDelta = now - prevCycleStartedAt;
+        return callback((now - prevCycleStartedAt),engDelta,loopId);
+      }else{
+        requestAnimationFrame(
+          function() { 
+            const engDelta = window.performance.now() - prevCycleStartedAt;
+            callback(interval,engDelta,loopId);
+          }
+        )
       }
     }
   }

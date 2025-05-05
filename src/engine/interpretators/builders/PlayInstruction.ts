@@ -1,5 +1,5 @@
 import { Token } from "../ChaosInterpreter.ts";
-import InstructionInterface from "./InstructionInterface.ts";
+import InstructionInterface from "../InstructionInterface.ts";
 
 class PlayInstruction extends InstructionInterface{
   isOfThisType(instruction){

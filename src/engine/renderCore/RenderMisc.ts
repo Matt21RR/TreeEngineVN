@@ -70,6 +70,25 @@ class RenderMisc{
     ctx.setLineDash([]);
     ctx.fillStyle = "";
   }
+  static displayResolutionCalc(aspectRatio:string, w:HTMLElement, engDisplay:HTMLElement){
+    let engineDisplayRes;
+
+    if (aspectRatio != "undefined") {
+      let newWidth = Math.floor((w.offsetHeight / parseInt(aspectRatio.split(":")[1])) * parseInt(aspectRatio.split(":")[0]));
+      let newHeight = Math.floor((w.offsetWidth / parseInt(aspectRatio.split(":")[0])) * parseInt(aspectRatio.split(":")[1]));
+      if (newWidth <= w.offsetWidth) {
+        newHeight = w.offsetHeight;
+      } else {
+        newWidth = w.offsetWidth;
+      }
+
+      engineDisplayRes = {width:newWidth,height:newHeight};
+    } else {
+      engineDisplayRes = {width:w.offsetWidth,height:w.offsetHeight};
+    }
+
+    return engineDisplayRes;
+  }
 }
 
 export {RenderMisc}

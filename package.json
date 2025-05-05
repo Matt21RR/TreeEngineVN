@@ -5,6 +5,7 @@
   "dependencies": {
     "@testing-library/react": "13.4.0",
     "byte-size": "^9.0.0",
+    "downloadjs": "^1.4.7",
     "ease-component": "^1.0.0",
     "howler": "^2.2.4",
     "jquery": "^3.7.1",
@@ -42,6 +43,7 @@
     ]
   },
   "devDependencies": {
+    "@types/downloadjs": "^1.4.6",
     "@types/jquery": "^3.5.32",
     "gsap": "^3.11.4",
     "tailwindcss": "3.2.7"

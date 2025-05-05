@@ -1,21 +1,23 @@
 import { arrayFlatter } from "../logic/Misc.ts";
-import CreateInstruction from "./interpretators/CreateInstruction.ts";
-import DialogInstruction from "./interpretators/DialogInstruction.ts";
-import InstructionInterface from "./interpretators/InstructionInterface.ts";
-import LoadInstruction from "./interpretators/LoadInstruction.ts";
-import ModuleDefinitionInstruction from "./interpretators/ModuleDefinitionInstruction.ts";
-import NarrationInstruction from "./interpretators/NarrationInstruction.ts";
-import PlayInstruction from "./interpretators/PlayInstruction.ts";
-import ResumeInstruction from "./interpretators/ResumeInstruction.ts";
-import RunInstruction from "./interpretators/RunInstruction.ts";
-import SceneDefinitionInstruction from "./interpretators/SceneDefinitionInstruction.ts";
-import SetInstruction from "./interpretators/SetInstruction.ts";
-import WaitInstruction from "./interpretators/WaitInstruction.ts";
+import CreateInstruction from "./builders/CreateInstruction.ts";
+import DialogInstruction from "./builders/DialogInstruction.ts";
+import InstructionInterface from "./InstructionInterface.ts";
+import LoadInstruction from "./builders/LoadInstruction.ts";
+import ModuleDefinitionInstruction from "./builders/ModuleDefinitionInstruction.ts";
+import NarrationInstruction from "./builders/NarrationInstruction.ts";
+import PlayInstruction from "./builders/PlayInstruction.ts";
+import ResumeInstruction from "./builders/ResumeInstruction.ts";
+import RunInstruction from "./builders/RunInstruction.ts";
+import SceneDefinitionInstruction from "./builders/SceneDefinitionInstruction.ts";
+import SetInstruction from "./builders/SetInstruction.ts";
+import WaitInstruction from "./builders/WaitInstruction.ts";
 
 
 declare global{
   interface Window{
-    backendRoute:string
+    backendRoute:string,
+    workRoute:string,
+    projectRoute:string
   }
 }
 
@@ -71,7 +73,7 @@ class ChaosInterpreter {
     this.textures = {};
     this.scripts = {};
     this.scriptsUrls = {};
-    this.projectRoot = window.backendRoute + "/renderEngineBackend/game/";
+    this.projectRoot = window.projectRoute;
     this.listScripts();
   }
   getSound(){
@@ -89,7 +91,7 @@ class ChaosInterpreter {
         Object.keys(scriptsData).forEach((scriptId)=>{
           scriptsData[scriptId] = this.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
         })
-        Object.assign(scriptsData,{"gameEntrypoint":window.backendRoute + "/renderEngineBackend/game/main.txt"})
+        Object.assign(scriptsData,{"gameEntrypoint": this.projectRoot + "main.txt"})
         this.scriptsUrls = scriptsData
         resolve(scriptsData);
       });
@@ -498,6 +500,7 @@ class ChaosInterpreter {
     ];
 
     for (const supportedInstruction of supportedInstructions) {
+      //@ts-ignore
       const res = (supportedInstruction).check(instruction,this,!recursiveMode);
       if(res.match){
         result = res.result;

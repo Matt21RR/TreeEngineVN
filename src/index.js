@@ -11,7 +11,9 @@ import { RenderEngine } from './engine/renderCore/RenderEngine.tsx';
 import { game } from './game/js.js';
 import Swal from 'sweetalert2';
 
-window.backendRoute = "http://192.168.101.78"
+window.backendRoute = "http://127.0.0.1"
+window.workRoute = window.backendRoute + "/renderEngineBackend/";
+window.projectRoute = window.workRoute + "game/";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
@@ -26,7 +28,7 @@ root.render(
         avoidResizeBlackout
         clientSideResources 
         showFps
-        cyclesPerSecond={24}
+        cyclesPerSecond={60}
         setEngine={(engine)=>{
 
           Swal.fire("Controles",`

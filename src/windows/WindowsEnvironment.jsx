@@ -10,8 +10,16 @@ class WindowsEnvironment extends React.Component{
     this.executionTable = {};
     this.minimizedTable = [];
     this.previewTable = [];
-    Object.keys(this.windowsContent).map(windowId=>{Object.assign(this.executionTable, {[windowId]:true})});
-    Object.keys(this.windowsContent).map(windowId=>{if("minimized" in this.windowsContent[windowId]){this.minimizedTable.push(windowId);}});
+    Object.keys(this.windowsContent).map(windowId=>{
+      Object.assign(this.executionTable, 
+        {[windowId]:!(this.windowsContent[windowId].disabled ?? true)}
+      );
+    });
+    Object.keys(this.windowsContent).map(windowId=>{
+      if("minimized" in this.windowsContent[windowId]){
+        this.minimizedTable.push(windowId);
+      }
+    });
     this.renderingOrder = Object.keys(this.windowsContent);
   }
   clickWindow(windowId){
@@ -27,8 +35,8 @@ class WindowsEnvironment extends React.Component{
   renderWindows(){
     const windowsContent = this.props.content;
     return(
-      Object.keys(this.executionTable).filter(
-        windowId=>{return this.executionTable[windowId]}
+      Object.keys(windowsContent).filter(
+        windowId=>{return !(windowsContent[windowId].disabled ?? true)}
       ).map((contentId)=>(
         <div 
           className="relative" 

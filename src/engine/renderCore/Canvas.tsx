@@ -10,7 +10,6 @@ declare global{
 }
 
 interface CanvasProps{
-  halfFps?:boolean;
   fps?:number;
   scale?:number;
   showFps?: boolean;
@@ -40,7 +39,6 @@ class Canvas extends React.Component<CanvasProps>{
 
   windowHasFocus:boolean;
 
-  halfFps:boolean;
   targetFps:number;
   fpsCounter:number;
   scale:number;
@@ -70,7 +68,6 @@ class Canvas extends React.Component<CanvasProps>{
     super(props);
 
     if(props){
-      this.halfFps = props.halfFps ?? false; //*Unused
       this.targetFps = props.fps ? (props.fps > 0 ? props.fps : 24) : 24;//suggesed max fps = 24
       this.scale = props.scale ?? 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
 
@@ -213,7 +210,6 @@ class Canvas extends React.Component<CanvasProps>{
             (origin.y+(index*lineHeight))*this.scale
           );
         });
-
         context.closePath();
         context.fill();
       }
@@ -265,25 +261,20 @@ class Canvas extends React.Component<CanvasProps>{
         this.animatingElapsed = performance.now()-animateStartAt;
       } catch (error) {//!KILL ENGINE
         context.clearRect(0, 0, canvas.width, canvas.height);//cleanning window
-        context.filter = 'none';
-        context.globalAlpha = 1;
-        context.beginPath();
-        context.fillStyle = "orange";
-        context.font = (12*this.scale)+"px Terminal";
-        context.fillText("Engine Killed due fatal error during animating process in line: "+error.lineNumber, 5, 15*this.scale);
-        context.fillText("-error message:", 5, 35*this.scale);
-        context.fillText("  "+error, 5, 50*this.scale);
-        context.fillText("-function executed when the engine crashed:", 5, 70*this.scale);
-        context.fillText("=============================================================================================================================",
-                        5, 85*this.scale);
-        const funcCode = error.stack.toString().split("\n");
-        funcCode.forEach((codeLine:string,index:number) => {
-          context.fillText(codeLine, 5, (100*this.scale)+(15*index));
-        });
-        context.fillText("============================================================================================================================", 
-                        5, (100*this.scale)+(funcCode.length*15));
-        context.closePath();
-        context.fill();
+
+        var errorData: Array<string> = [
+          "Engine Killed due fatal error during animating process in line: "+error.lineNumber,
+          "-error message:",
+          "  "+error,
+          "-function executed when the engine crashed:",
+          "============================================================================================================================="
+        ];
+
+        errorData = errorData.concat(error.stack.toString().split("\n"));
+        errorData.push("=============================================================================================================================");
+
+        this.canvasWriter(errorData,{x:5,y:15},15);
+
         this.stopEngine = true;
         this.engineKilled = true;
         console.error("Engine Killed due fatal error during animating process process",error);
@@ -291,8 +282,6 @@ class Canvas extends React.Component<CanvasProps>{
       }
       //*RENDER
       try {
-        // this.halfCycle = !this.halfCycle;
-        // if(this.halfCycle && this.windowHasFocus){
         if(this.windowHasFocus){
           renderer(fps);
           this.fpsCounter++;
@@ -300,23 +289,19 @@ class Canvas extends React.Component<CanvasProps>{
       }
       catch (error) {//!KILL ENGINE
         context.clearRect(0, 0, canvas.width, canvas.height);//cleanning window
-        context.filter = 'none';
-        context.globalAlpha = 1;
-        context.beginPath();
-        context.fillStyle = "white";
-        context.font = (12*this.scale)+"px Terminal";
-        context.fillText("Engine Killed due fatal error during rendering process in line: "+error.lineNumber, 5, 15*this.scale);
-        context.fillText("-error message:", 5, 35*this.scale);
-        context.fillText("  "+error, 5, 50*this.scale);
-        context.fillText("-function executed when the engine crashed:", 5, 70*this.scale);
-        context.fillText("=============================================================================================================================", 5, 85*this.scale);
-        const funcCode = error.stack.toString().split("\n");
-        funcCode.forEach((codeLine,index) => {
-          context.fillText(codeLine, 5, (100*this.scale)+(15*index));
-        });
-        context.fillText("=============================================================================================================================", 5, (100*this.scale)+(funcCode.length*15));
-        context.closePath();
-        context.fill();
+
+        var errorData: Array<string> = [
+          "Engine Killed due fatal error during rendering process in line: "+error.lineNumber,
+          "-error message:",
+          "  "+error,
+          "-function executed when the engine crashed:",
+          "============================================================================================================================="
+        ];
+        errorData = errorData.concat(error.stack.toString().split("\n"));
+        errorData.push("=============================================================================================================================");
+
+        this.canvasWriter(errorData,{x:5,y:15},15);
+
         this.stopEngine = true;
         this.engineKilled = true;
         console.error("Engine Killed due fatal error during rendering process");
@@ -342,7 +327,6 @@ class Canvas extends React.Component<CanvasProps>{
         resolutionWidth:this.resolutionWidth,
         resolutionHeight:this.resolutionHeight,
         fps:fps});
-
       this.renderingElapsed = performance.now()-renderingStartAt;
 
       const actualGlobalAlpha = context.globalAlpha;
@@ -368,7 +352,6 @@ class Canvas extends React.Component<CanvasProps>{
           "DrawTime: "+(drawingTime).toFixed(2) + "ms" ,
           "DebuTime: "+(debugTime).toFixed(2) + "ms" ,
           "",
-          "",
           "UpdColsT: "+(updateColsTime).toFixed(2) + "ms",
           "Objects: "+ objectsToRender
         ];
@@ -387,12 +370,10 @@ class Canvas extends React.Component<CanvasProps>{
       }
 
       const operativeTimeStartedAt = performance.now();
-      if(this.stopEngine){
+      if(this.stopEngine || this.engineThreads >1){
         this.engineThreads--;
         return;
       }
-      if(this.engineThreads >1)
-        return;
       
       drawnFrames++;
 
@@ -414,7 +395,7 @@ class Canvas extends React.Component<CanvasProps>{
       
 
       if(lId == this.loopId){
-        rAF.modelThree(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
+        rAF.modelFour(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
       }
     }
 

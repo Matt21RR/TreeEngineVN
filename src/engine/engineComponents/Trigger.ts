@@ -1,5 +1,5 @@
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
-import { GraphObject } from "./GraphObject";
+import { GraphObject } from "./GraphObject.ts";
 
 class Trigger{
   #id:string

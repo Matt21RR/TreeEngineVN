@@ -1,5 +1,5 @@
 import { Chaos } from "../ChaosInterpreter";
-import InstructionInterface from "./InstructionInterface.ts";
+import InstructionInterface from "../InstructionInterface.ts";
 
 class RunInstruction extends InstructionInterface{
   isOfThisType(instruction){

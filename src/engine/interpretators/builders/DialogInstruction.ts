@@ -1,4 +1,4 @@
-import InstructionInterface from "./InstructionInterface.ts";
+import InstructionInterface from "../InstructionInterface.ts";
 
 class DialogInstruction extends InstructionInterface{
   isOfThisType(instruction){
@@ -17,20 +17,33 @@ class DialogInstruction extends InstructionInterface{
   interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}) {
     const actor:string  = extractedData.actor;
     const dialogs:string = extractedData.value;
-    const res =
-      `engine.routines.push((engine)=>{
-        engine.dialogNumber = 0;
-        engine.voiceFrom = '${actor}';
-        engine.dialog = ${dialogs};
 
-        engine.graphArray.get('dialogbox').text = '';
-        engine.graphArray.get('dialogbox').enabled = true;
+    let res :Array<string> = [];
 
-        engine.graphArray.get('voiceByName').enabled = true;
+    if(isInRoutineMode){
+      res.push(
+        "engine.routines.push((engine)=>{"
+      );
+    }
 
-        engine.resume = false;
-      });`;
-    return res;
+    res.push(
+     `engine.dialogNumber = 0;
+      engine.voiceFrom = '${actor}';
+      engine.dialog = ${dialogs};
+
+      engine.graphArray.get('dialogbox').text = '';
+      engine.graphArray.get('dialogbox').enabled = true;
+
+      engine.graphArray.get('voiceByName').enabled = true;
+
+      engine.resume = false;`
+    );
+    if(isInRoutineMode){
+      res.push(
+        "});"
+      );
+    }
+    return res.join(" \n ");
   }
 }
 

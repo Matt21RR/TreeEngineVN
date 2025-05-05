@@ -1,6 +1,6 @@
 import React from "react";
 import { Button1, IconButton, InputCheck, InputList, InputText } from "./components/Buttons.jsx";
-import { Chaos } from "../engine/renderCore/ChaosInterpreter.ts";
+import { Chaos } from "../engine/interpretators/ChaosInterpreter.ts";
 class EngineTools extends React.Component{
   constructor(props){
     super(props);

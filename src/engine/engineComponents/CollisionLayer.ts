@@ -13,7 +13,9 @@ type ObjectRenderingData = {
     y: any;
     z: any;
   },
-  id:string
+  id:string,
+  text?:Array<[string,number,number]>,
+  margin?:{horizontal:number,vertical:number}
 }
 
 type EngineRenderingData = {

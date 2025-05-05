@@ -1,7 +1,7 @@
 import React from 'react';
 import $ from "jquery";
 import { AudioPlayer } from './AudioPlayer';
-import { Chaos } from '../engine/renderCore/ChaosInterpreter.ts';
+import { Chaos } from '../engine/interpretators/ChaosInterpreter.ts';
 import { Button1, IconButton, InputTextArea } from './components/Buttons.jsx';
 import Swal from 'sweetalert2';
 

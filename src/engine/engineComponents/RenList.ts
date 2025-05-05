@@ -81,7 +81,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
    * @returns 
    */
   exist(objectId: string){
-    return this.#_ids.indexOf(objectId) != -1;
+    return this.#_ids.includes(objectId);
   }
   ids(includeDisabled = false){
     if(!this.#dummy.hasEnabled || includeDisabled){

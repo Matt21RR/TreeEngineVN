@@ -104,9 +104,9 @@ class ObjectsE extends React.Component {
         <Button1 text={graphObject.id} 
           color={graphObject.enabled ? undefined : "bg-orange-400"}
           action={()=>{
-            this.selectedObject = graphObject.id;
             engine.objectsToDebug = [graphObject.id];
             reRender();
+            this.selectedObject = graphObject.id;
             this.forceUpdate();
           }}
           enter={()=>{
@@ -135,11 +135,12 @@ class ObjectsE extends React.Component {
       }
       const obj = engine.graphArray.get(this.selectedObject);
       const objInfo = obj.dump();
-      
+
       return(
         Object.keys(objInfo).map(key=>(
             <Property
               object={obj}
+              key={Math.random()+window.performance.now()}
               keyd={key}
               type={types[key]}
               defaultValue={objInfo[key]}

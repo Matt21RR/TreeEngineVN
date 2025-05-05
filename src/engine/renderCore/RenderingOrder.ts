@@ -1,3 +1,4 @@
+import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { GraphObject } from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList";
 
@@ -15,7 +16,7 @@ function generateCalculationOrder(graphArray:RenList<GraphObject>){
       if(dictionary.indexOf(id) == -1){
         const gObject = graphArray.get(id);
         const parent = gObject.parent;
-        if(parent == "" || !graphArray.exist(parent)){
+        if(parent == "" || !graphArray.exist(parent) || (parent != "" && !graphArray.get(parent).enabled)){
           order.push({id:id,weight:0,z:gObject.z});
           gObject.accomulatedZ = gObject.z;
           dictionary.push(id);
@@ -52,5 +53,26 @@ function arrayiseTree(calculationOrder:CalculationOrder){
   return arr;
 }
 
+function generateRenderingOrder(dimentionsPack:Record<string,ObjectRenderingData>){
+  var zRefs = {};
+  var zetas:Array<number> = [];
+  var renderingOrderById:Array<string> = [];
+  Object.keys(dimentionsPack).forEach(id=>{
+    const z:string = dimentionsPack[id].z.toString(); 
+      if(Object.keys(zRefs).indexOf(z) == -1){
+        Object.assign(zRefs,{[z]:[id]});
+        zetas.push(parseFloat(z))
+      }else{
+        zRefs[z].push(id);
+      }
+  });
+  zetas.sort((a, b) => a - b).reverse().forEach(zIndex => {
+    zRefs[zIndex.toString()].forEach((id:string) => {
+      renderingOrderById.push(id);
+    });
+  });
+  return renderingOrderById;
+}
 
-export {generateCalculationOrder, arrayiseTree}
+
+export {generateCalculationOrder, arrayiseTree, generateRenderingOrder}
