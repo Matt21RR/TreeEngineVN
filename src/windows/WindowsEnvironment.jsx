@@ -1,6 +1,6 @@
 import React from "react";
 import { BaseButton } from "../tools/components/Buttons";
-import { Window } from "./Window";
+import { Window } from "./Window.tsx";
 
 class WindowsEnvironment extends React.Component{
   constructor(props){
@@ -45,7 +45,7 @@ class WindowsEnvironment extends React.Component{
             filter:"opacity("+(this.renderingOrder.indexOf(contentId)+1 == this.renderingOrder.length ? 1 : .9)+") "+(this.renderingOrder.indexOf(contentId)+1 != this.renderingOrder.length ? "grayscale(.3)" : "")}}
         >
           <Window 
-            content={()=>windowsContent[contentId].content} 
+            content={windowsContent[contentId].content} 
             minimize={()=>{this.minimizedTable.push(contentId);this.previewTable.splice(this.previewTable.indexOf(contentId),1);this.forceUpdate();}}
             minimized={this.minimizedTable.indexOf(contentId) != -1}
             preview={this.previewTable.indexOf(contentId) != -1}

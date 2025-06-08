@@ -363,7 +363,7 @@ class Canvas extends React.Component<CanvasProps>{
     }
     var promedio = {cps:this.targetFps,fps:this.targetFps};
     var drawnFrames = 0, startTimer = window.performance.now(),maxCps = 0;
-    var draw = (elapsed:number,engDelta:number,lId:string) => {       
+    var draw = (engDelta:number,lId:string) => {       
 
       if(engDelta <0){
         debugger;
@@ -401,7 +401,7 @@ class Canvas extends React.Component<CanvasProps>{
 
     try { 
       this.engineThreads++;
-      draw(0,0,loopId);
+      draw(0,loopId);
     } catch (error) {
       console.log("in line:"+ error.lineNumber);
       console.log(error);

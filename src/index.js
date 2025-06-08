@@ -20,15 +20,16 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 document.title = "RenderEngine";
 
 root.render(
-  <>
+<>
     <Test/>
-    {/* <div className='absolute h-full w-full'>
+  
+{/* <div className='absolute h-full w-full'>
       <RenderEngine 
         aspectRatio="undefined"
         avoidResizeBlackout
         clientSideResources 
         showFps
-        cyclesPerSecond={60}
+        cyclesPerSecond={24}
         setEngine={(engine)=>{
 
           Swal.fire("Controles",`
@@ -44,4 +45,5 @@ root.render(
     </div> */}
   </>
 );
+
 

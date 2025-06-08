@@ -10,6 +10,7 @@ import ResumeInstruction from "./builders/ResumeInstruction.ts";
 import RunInstruction from "./builders/RunInstruction.ts";
 import SceneDefinitionInstruction from "./builders/SceneDefinitionInstruction.ts";
 import SetInstruction from "./builders/SetInstruction.ts";
+import DeleteInstruction from "./builders/DeleteInstruction.ts";
 import WaitInstruction from "./builders/WaitInstruction.ts";
 
 
@@ -75,6 +76,8 @@ class ChaosInterpreter {
     this.scriptsUrls = {};
     this.projectRoot = window.projectRoute;
     this.listScripts();
+    //@ts-ignore
+    window.chaos = this;
   }
   getSound(){
     return this.projectRoot + "snd/sounds.json";
@@ -129,13 +132,18 @@ class ChaosInterpreter {
       //TODO: add textures and sounds js exists check
       this.loadScripts(!loadAudioVisual).then(()=>{
         //TODO: ignore lines with no content
-        var scenes = this.instructionsDesintegrator(script);
+        var scenes = this.#instructionsDesintegrator(script);
 
         resolve(scenes);
       })
     });
   }
-  instructionsDesintegrator(script:string){
+
+  directKreator(script:string){
+    return this.#instructionsDesintegrator(script,true,true) as string;
+  }
+
+  #instructionsDesintegrator(script:string, ignoreSceneOrModuleDefinitionCheck = false, recursiveMode=false){
     script += "\n"; //To avoid the last line to be ignored
     var tokenList = this.#lexer(script);
     var abs = this.#preParser(tokenList);
@@ -146,7 +154,7 @@ class ChaosInterpreter {
       const instruction = abs[index] as Instruction|Token;
     
       if(instruction instanceof Array){
-        const interpreted = this.#interpretateInstruction(instruction as Instruction);
+        const interpreted = this.#interpretateInstruction(instruction as Instruction,recursiveMode);
         //@ts-ignore
         if(interpreted[0]){
           collection.push(interpreted as [boolean,Object|string]);
@@ -160,8 +168,11 @@ class ChaosInterpreter {
       }
       console.warn("Un-understandable or unsupported instruction",instruction);
     }
-    return this.#haveSceneOrModuleDefinition(collection);
-
+    if(ignoreSceneOrModuleDefinitionCheck){
+      return collection.map(inst=>inst[1]).join("\n");
+    }else{
+      return this.#haveSceneOrModuleDefinition(collection);
+    }
   }
 
   #lexer(script:string){
@@ -312,171 +323,6 @@ class ChaosInterpreter {
     return abs;
   }
 
-  //*instruction:Array<Token|Array<any>>
-  #isSceneDefinitionInstruction(instruction){
-    const getToken = (idx:number)=>{return instruction[idx];}
-    //@ts-ignore
-    if(getToken(0) instanceof Token && getToken(0).type == "word" && getToken(0).value == "scene"){
-      //@ts-ignore
-      if(getToken(1) instanceof Token && getToken(1).type == "word"){
-        //@ts-ignore
-        return [true, getToken(1).value];
-      }
-    }
-    return [false, null];
-  }
-  #isModuleDefinitionInstruction(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-    //@ts-ignore
-    if(getToken(0) instanceof Token && getToken(0).type == "word" && getToken(0).value == "module"){
-      //@ts-ignore
-      if(getToken(1) instanceof Token && getToken(1).type == "word"){
-        //@ts-ignore
-        return [true, getToken(1).value];
-      }
-    }
-    return [false, null];
-  }
-  #isCreateInstruction(instruction){
-    const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger"];
-    const getToken = (idx)=>{return instruction[idx];}
-
-    try {
-      if(getToken(0).type == "word" || getToken(0).type == "text"){
-        if(getToken(1).type == "operator" && getToken(1).value == "="){
-          if(getToken(2).type == "word" && getToken(2).value == "new"){
-            if(getToken(3).type == "word" && creatableObjects.includes(getToken(3).value)){
-              if(getToken(4).constructor.name == "Array"){
-                return [true, getToken(3).value, getToken(0).type == "word" ? '"'+getToken(0).value+'"' : getToken(0).value];
-              }
-            }
-          }
-        }
-      }
-      //*OR
-      if(getToken(0).type == "word" && getToken(0).value == "new"){
-        if(getToken(1).type == "word" && getToken(1).value == "KeyboardTrigger"){
-          if(getToken(2).constructor.name == "Array"){
-            return [true, getToken(1).value, null];
-          }
-        }
-      }
-      return [false,null]; 
-    } catch (error) {
-      return [false,null];
-    }
-  }
-  #isSetInstruction(instruction){
-    const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger","Engine"];
-    const getToken = (idx)=>{return instruction[idx];}
-
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "set"){
-      if(getToken(1).type == "word" && creatableObjects.includes(getToken(1).value)){
-        if(getToken(2).type == "word"){
-          return [true,getToken(1).value,getToken(2).value];
-
-        }
-      }
-    }
-    return [false,null]
-  }
-  #isRunInstruction(instruction){
-    const runableObjects = ["script"];
-    const getToken = (idx)=>{return instruction[idx];}
-
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "run"){
-      if(getToken(1).type == "word" && runableObjects.includes(getToken(1).value)){
-        if(getToken(2).type == "text"){
-          return [true,getToken(1).value,getToken(2).value];
-        }
-      }
-    }
-    return [false,null]
-  }
-  #isLoadInstruction(instruction){
-    const runableObjects = ["script"];
-    const getToken = (idx)=>{return instruction[idx];}
-
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "load"){
-      if(getToken(1).type == "word" && runableObjects.includes(getToken(1).value)){
-        if(getToken(2).type == "text"){
-          return [true,getToken(1).value,getToken(2).value];
-        }
-      }
-    }
-    return [false,null]
-  }
-  #isWaitInstruction(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "wait"){
-      if(getToken(1).type == "number"){
-        return [true,getToken(1).value];
-      }else{
-        return [true,null];
-      }
-    }
-    return [false,null]
-  }
-  #isResumeInstruction(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "resume"){
-      return [true];
-    }
-    return [false];
-  }
-  #isNarrationInstruction(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "narration"){
-      if(getToken(1).constructor.name == "Array"){
-        return [true];
-      }
-    }
-    return [false]
-  }
-  #isDialogInstruction(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "speak"){
-      if(getToken(1).constructor.name == "Array"){
-        return [true,"..."];
-      }else if(getToken(1).type == "word"){
-        if(getToken(2).constructor.name == "Array"){
-          return [true,getToken(1).value];
-        }
-      }
-    }
-    return [false,null]
-  }
-  #isPlayInstruction(instruction){
-    const getToken = (idx:number)=>{return instruction[idx];}
-    //@ts-ignore
-    if(getToken(0) instanceof Token && getToken(0).type == "word" && getToken(0).value.toLowerCase() == "play"){
-      //@ts-ignore
-      if(getToken(1).type == "text"){
-        //@ts-ignore
-        return [true, getToken(1).value];
-      }
-    }
-    return [false, null];
-  }
-
-  #getStrParamsFromTokenList(instruction){
-    const plainTokenListOfParams = arrayFlatter(instruction.at(-1).flat())
-    var strParams = plainTokenListOfParams.map(token=>token.value).join("");
-
-    if(strParams.indexOf("(") == 0){
-      strParams = strParams.substring(1,strParams.length-1);
-    }
-    if(
-      strParams[0] == "[" && strParams.at(-1) == "]"
-      || strParams[0] == "{" && strParams.at(-1) == "}"
-    ){
-      return strParams;
-    }else{
-      return "["+strParams+"]";
-    }
-  }
   #interpretateInstruction(_instruction:Instruction,recursiveMode = false){
     var itWasAScriptInstruction = false;
     let result:Object|string|Instruction = _instruction;
@@ -484,6 +330,9 @@ class ChaosInterpreter {
       return [false,result];
     }
     const instruction = _instruction.filter(tk=>{return (tk.constructor.name == "Array")||((tk as Token).type != "space")});
+
+    //@ts-ignore
+    //console.log(instruction.map(e=>e.value).join(" "));
 
     const supportedInstructions = [
       new CreateInstruction(),
@@ -496,6 +345,7 @@ class ChaosInterpreter {
       new RunInstruction(),
       new SceneDefinitionInstruction(),
       new SetInstruction(),
+      new DeleteInstruction(),
       new WaitInstruction()
     ];
 

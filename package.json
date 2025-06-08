@@ -4,13 +4,15 @@
   "private": true,
   "dependencies": {
     "@testing-library/react": "13.4.0",
+    "babel-cli": "^6.26.0",
     "byte-size": "^9.0.0",
+    "create-component-lib": "^0.1.6",
+    "d3-random": "^3.0.1",
     "downloadjs": "^1.4.7",
     "ease-component": "^1.0.0",
     "howler": "^2.2.4",
     "jquery": "^3.7.1",
     "react": "18.3.1",
-    "react-app-polyfill": "^3.0.0",
     "react-dom": "18.3.1",
     "react-draggable": "^4.4.6",
     "react-scripts": "5.0.1",
@@ -19,7 +21,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "startNodemon": "nodemon server.js -e ejs,js,css,html,jpg,png,scss",
+    "startNodemon": "rm -rf dist && NODE_ENV=production babel src --out-dir dist --copy-files --ignore __tests__,spec.js,test.js,__snapshots__",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -43,9 +45,11 @@
     ]
   },
   "devDependencies": {
+    "@types/d3-random": "^3.0.3",
     "@types/downloadjs": "^1.4.6",
     "@types/jquery": "^3.5.32",
     "gsap": "^3.11.4",
-    "tailwindcss": "3.2.7"
+    "tailwindcss": "3.2.7",
+    "typescript": "^5.8.3"
   }
 }

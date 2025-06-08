@@ -240,7 +240,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     //Debug values
     this.noRenderedItemsCount = 0;
 
-    this.drawObjectLimits = true;
+    this.drawObjectLimits = false;
     this.drawCollisionsMatrix = false;
     this.drawTriggers = false;
 
@@ -563,10 +563,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
       if(texRef != null){
         if(gObject.useEngineUnits){
-          objectWidth = texRef.texture.naturalWidth*objectScale*gObject.widthScale*(resolution.height/this.developmentDeviceHeight);
-          objectHeight = texRef.texture.naturalHeight*objectScale*gObject.heightScale*(resolution.height/this.developmentDeviceHeight);
+          objectWidth = texRef.resolution.width*objectScale*gObject.widthScale*(resolution.height/this.developmentDeviceHeight);
+          objectHeight = texRef.resolution.height*objectScale*gObject.heightScale*(resolution.height/this.developmentDeviceHeight);
         }else{
-          objectHeight = (texRef.texture.naturalHeight/texRef.texture.naturalWidth)*resolution.width*objectScale*gObject.heightScale;
+          objectHeight = (texRef.resolution.height/texRef.resolution.width)*resolution.width*objectScale*gObject.heightScale;
         }
       }else{
         if(gObject.useEngineUnits){
@@ -827,6 +827,9 @@ class RenderEngine extends React.Component<RenderEngineProps>{
                 RenderMisc.drawObjectLimits(canvas.context,objectRenderingData,resolution,this.camera.position.z);
               }
             }
+            if(this.drawCollisionsMatrix){
+              RenderMisc.drawCollisionBox(canvas.context,objectRenderingData);
+            }
             //* DRAW TRIGGERS
             if(this.drawTriggers){
               if(this.triggers.objects.filter(e=>{return e.enabled}).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
@@ -839,6 +842,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           if(this.drawCollisionsMatrix){
             RenderMisc.drawCollisionsMatrix(canvas.context,resolution);
           }
+
           // console.warn("Objects excluded: ",this.noRenderedItemsCount);
 
           var updatingColsTime = performance.now();

@@ -205,19 +205,26 @@ class Shader{
 
   #renData;
   #image: HTMLImageElement;
+  #resolution: {width:number,height:number};
   #id:string;
   #gl:WebGL2RenderingContext;
-  #renderedTree;
+  convertImageToCanvas(image: HTMLImageElement){
+    console.log("calling")
+    const imageC = new OffscreenCanvas(image.naturalWidth,image.naturalHeight);
+    const context = imageC.getContext("2d");
+    context?.drawImage(image,0,0);
+    return imageC;
+  }
   constructor(image: HTMLImageElement,id:string){
+    // this.#image = this.convertImageToCanvas(image);
     this.#image = image;
     this.#renData = [];
     this.#id = id;
-    this.#renderedTree = {
-      blur:{}
-    }
     
     const width = image.naturalWidth;
     const height = image.naturalHeight;
+
+    this.#resolution = {width,height};
 
     const shaderSharedCanvas = new ShaderCanvas();
     
@@ -246,7 +253,8 @@ class Shader{
     this.#renData = [gl, programH, programV, textures, width, height];
   }
   get id(){return this.#id;}
-  get texture(){return this.#image;}
+  // get texture(){return this.#image;}
+  get resolution(){return this.#resolution}
 
   /**
    * copyCanvas returns a canvas containing the same image as the given canvas.

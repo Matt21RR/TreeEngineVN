@@ -114,10 +114,10 @@ class EngineTools extends React.Component{
     const engine = this.props.engine;
     const canvasObject = engine.canvasRef.object;
     return(<>
-      <Button1 text="2DGrid" action={()=>{
+      {/* <Button1 text="2DGrid" action={()=>{
         engine.showBounds = !engine.showBounds;
         this.forceUpdate();
-      }}/>
+      }}/> */}
       <Button1 text={`Perspective: ${engine.camera.usePerspective}`} action={()=>{
         engine.camera.usePerspective = !engine.camera.usePerspective;
         this.forceUpdate();

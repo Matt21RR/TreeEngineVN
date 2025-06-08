@@ -19,8 +19,8 @@ class Actor{
   constructor(data:ActorType){
     this.#active = data.active ?? false
     this.#name = data.name;
-    this.#body = data.body // reeplace the bodyId with the reference to the graphobject in the interpretation phase
-    this.#emotions = data.emotions ?? {}// reeplace the emotions maskId with the reference to the graphobject in the interpretation phase
+    this.#body = data.body // replace the bodyId with the reference to the graphobject in the interpretation phase
+    this.#emotions = data.emotions ?? {}// replace the emotions maskId with the reference to the graphobject in the interpretation phase
     this.#activeEmotionLayer = null;
     // this.#emotion = data.emotion ?? null
   }

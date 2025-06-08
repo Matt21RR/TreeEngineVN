@@ -2,7 +2,8 @@ import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 import { GraphObject } from "./GraphObject.ts";
 
-var ease = require("ease-component"); 
+import * as ease from "ease-component";
+
 
 class Animation{
   #id:string

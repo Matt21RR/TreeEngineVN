@@ -4,13 +4,35 @@ import Draggable from 'react-draggable';
 import { IconButton } from "../tools/components/Buttons";
 import gsap from 'gsap';
 
+interface WindowProps{
+  content:JSX.Element,
+  minimize:Function,
+  minimized:boolean,
+  preview:boolean,
+  title?:string,
+  onResize?:Function,
+  minRes:{width:number,height:number},
+  resizeBlocked?:boolean,
+  clicked:Function,
+  reRender:Function
+}
 
-class Window extends React.Component {
+class Window extends React.Component<WindowProps> {
+  id:string;
+  resizeBlocked:boolean;
+  onResize:Function;
+  fullSized:boolean;
+  unfullSizedData:{
+      top:number,
+      left:number,
+      width:number,
+      height:number
+    };
   constructor(props){
     super(props);
     this.id = "window" + String(window.performance.now()).replaceAll(".","");
-    this.resizeBlocked = this.props.resizeBlocked ?? false;
-    this.onResize = "onResize" in this.props ? this.props.onResize : ()=>{ };
+    this.resizeBlocked = props.resizeBlocked ?? false;
+    this.onResize = props.onResize ?? ( ()=>{ } );
     this.fullSized = false;
     this.unfullSizedData = {
       top:0,
@@ -18,9 +40,9 @@ class Window extends React.Component {
       width:0,
       height:0
     };
-    this.resizingFrom = "";
   }
   renderWindowTop(){
+    const props = this.props;
     return(
       <div className='relative top-0 h-8 w-full flex flex-col'>
         <div className='relative h-full bg-gray-900 text-white flex flex-row-reverse border-b-[1px] border-gray-700'>
@@ -28,7 +50,8 @@ class Window extends React.Component {
             icon="cross" 
             style={" hover:bg-red-600 w-11 h-8 min-w-[3rem]"} 
             iconStyle={"w-3 h-3 my-auto mx-auto"}
-            action={()=>{this.props.exit();}}/>
+            // action={()=>{props.exit();}}
+            />
           <IconButton 
             icon={this.fullSized?"squares":"square"}
             style={" hover:bg-gray-600 w-11 h-8 min-w-[3rem]"}
@@ -39,24 +62,32 @@ class Window extends React.Component {
             icon="minus" 
             style={" hover:bg-gray-600 w-11 h-8 min-w-[3rem]"}
             iconStyle={"w-3 h-3 my-auto mx-auto"}
-            action={()=>{this.props.minimize(); this.forceUpdate();}}/>
+            action={()=>{props.minimize(); this.forceUpdate();}}/>
           <div 
             className='h-full grow text-[14px] my-auto cursor-default select-none relative flex'
             id={this.id}>
             <span className='ml-3 h-fit my-auto'>
-              {this.props.title ?? "Window title"}
+              {props.title ?? "Window title"}
             </span>
           </div>
         </div>
       </div>
     );
   }
+  #coordsExtractor(){
+    var w = document.getElementById("body"+this.id) as HTMLDivElement;
+    var coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",").map(el=>parseFloat(el)*-1);
+    if(coords.length == 0){
+      coords = [0,0];
+    }
+    return coords;
+  }
   fulSize(){
     this.fullSized = true;
     this.forceUpdate();
 
-    var w = document.getElementById("body"+this.id);
-    const coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",");
+    var w = document.getElementById("body"+this.id) as HTMLDivElement;
+    const coords = this.#coordsExtractor();
 
     this.unfullSizedData = {
       width: parseFloat(w.style.width) || 0,
@@ -67,8 +98,8 @@ class Window extends React.Component {
     
     gsap.to("#body"+this.id,{duration:.15,width:window.innerWidth,ease:"linear",
       height:window.innerHeight,
-      left:(coords[0]*-1),
-      top:(coords[1].replace(" ","")*-1),
+      left:coords[0],
+      top:coords[1],
       onComplete:()=>{this.onResize();}
     }); 
   }
@@ -90,7 +121,7 @@ class Window extends React.Component {
     const e = ev.originalEvent;
     var mov = {x:e.movementX, y:e.movementY}
 
-    var window = document.getElementById("body"+this.id);
+    var window = document.getElementById("body"+this.id) as HTMLDivElement;
     var top = parseFloat(window.style.top) || 0;
     var left = parseFloat(window.style.left) || 0;
     var width = window.offsetWidth;
@@ -223,22 +254,22 @@ class Window extends React.Component {
           }
         }
         onStart={(e)=>{
+          const m = e as React.MouseEvent;
           if(this.fullSized){
-            var w = document.getElementById("body"+this.id);
             this.unfullSizedData.width = this.unfullSizedData.width == 0 ? 550 : this.unfullSizedData.width;
             this.unfullSizedData.height = 450;
 
-            const coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",");
-
-            this.unfullSizedData.left = (+e.clientX - (coords[0]*1) - (this.unfullSizedData.width/2));
-            this.unfullSizedData.top = (-e.clientY - (coords[1]*1) + 20);
+            const coords = this.#coordsExtractor();
+            this.unfullSizedData.left = (+m.clientX - (coords[0]*1) - (this.unfullSizedData.width/2));
+            this.unfullSizedData.top = (-m.clientY - (coords[1]*1) + 20);
 
             this.reduceSize();
           }
         }}
         onDrag={(e)=>{
+          const m = e as React.MouseEvent;
           //Check if windowTop are outside the browserWindow
-          if(e.clientY < 0){
+          if(m.clientY < 0){
             e.preventDefault();
           }
         }}
@@ -257,7 +288,7 @@ class Window extends React.Component {
             <div className='relative w-full h-full min-w-full max-h-full border-[1px] border-gray-700 flex flex-col'>
               {this.renderWindowTop()}
               <div className='relative w-full h-full bg-[rgba(0,0,0,0.80)] flex flex-col overflow-y-auto text-base'>
-                {"content" in  this.props ? this.props.content() : <div className='text-white'>Content</div>}
+                {this.props.content ?? <div className='text-white'>Content</div>}
               </div>
             </div>
 

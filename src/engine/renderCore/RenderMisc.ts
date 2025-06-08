@@ -32,7 +32,7 @@ class RenderMisc{
   static drawCollisionsMatrix(ctx:CanvasRenderingContext2D, resolution:{width:number, height:number}){
     ctx.strokeStyle = "blue";
     ctx.globalAlpha = 1;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
     
     //draw collision layer
@@ -45,6 +45,26 @@ class RenderMisc{
           resolution.height/10);
       }
     }
+    ctx.setLineDash([]);
+    ctx.fillStyle = "";
+  }
+  static drawCollisionBox(ctx:CanvasRenderingContext2D, object: ObjectRenderingData){
+    ctx.strokeStyle = "red";
+    ctx.fillStyle = "red";
+    ctx.globalAlpha = .3;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([4, 4]);
+    ctx.fillRect(
+      object.corner.x,
+      object.corner.y,
+      object.width,
+      object.height);
+    ctx.globalAlpha = 1;
+    ctx.strokeRect(
+      object.corner.x,
+      object.corner.y,
+      object.width,
+      object.height);
     ctx.setLineDash([]);
     ctx.fillStyle = "";
   }

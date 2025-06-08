@@ -5,6 +5,7 @@ import { KeyboardTrigger } from "../engine/engineComponents/Trigger.ts"
 import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx"
 import arrow from "./resources/next8.png"
 import { degToRad } from "../engine/logic/Misc.ts"
+import { randomNormal } from "d3-random"
 
 const game = (engine = new RenderEngine) => {
   engine.loadTexture(arrow,"arrow").then(()=>{
@@ -73,7 +74,7 @@ const game = (engine = new RenderEngine) => {
 
     const bulletCreator = (agreggator=0)=>{
       if(!player.vivo){return;}
-      const newBulletId = "bul"+performance.now();
+      const newBulletId = "bul"+performance.now()+Math.random();
       const graphBullet =  new GraphObject({id:newBulletId,texture:"arrow",invert:1,scale:0.5,enabled:true})
       engine.graphArray.push(graphBullet);
       const bullet = new Bullet(graphBullet,player,agreggator);
@@ -100,7 +101,9 @@ const game = (engine = new RenderEngine) => {
     engine.keyboardTriggers.push(new KeyboardTrigger({
       keys:"Space",
       onPress:()=>{
+        bulletCreator(-0.2);
         bulletCreator();
+        bulletCreator(0.2);
       }
     }))
 
@@ -118,30 +121,31 @@ const game = (engine = new RenderEngine) => {
     engine.codedRoutines.push(new CodedRoutine({id:"checkEnemies",continious:true,enabled:true,code:()=>{
       const enemyDirectory = engine.gameVars.enemyDirectory;
       enemyDirectory.forEach((enemyId,idx)=>{
-        var displacementConstant = .027;
+        var displacementConstant = .009;
         const enemy = engine.getObject(enemyId);
         const dist = Math.sqrt((player.x-enemy.x)**2 + (player.y-enemy.y)**2);
         //Si los enemigos están muy lejos eliminarlos
         if(dist > 4){
           delete engine.gameVars.enemyDirectory.splice(idx,1);
           engine.graphArray.remove(enemyId);
+          console.info("remove done")
         }
-        //Hacer que los enemigos se muevan hacia el jugador
+        // //Hacer que los enemigos se muevan hacia el jugador
         else if (dist > 0.06){
           if(dist > 0.5){
-            displacementConstant = .032
+            displacementConstant = .011
           }
           if(dist > 0.7){
-            displacementConstant = .03
+            displacementConstant = .01
           }
           if(dist > 0.9){
-            displacementConstant = .028
+            displacementConstant = .009333
           }
           if(dist > 1.1){
-            displacementConstant = .026
+            displacementConstant = .0086666666
           }
           if(dist > 1.5){
-            displacementConstant = .023
+            displacementConstant = .00566666
           }
           const angle = Math.acos((player.x-enemy.x)/dist);
           enemy.rotateRad = angle
@@ -153,18 +157,26 @@ const game = (engine = new RenderEngine) => {
             enemy.y -= displacementConstant*Math.sin(angle);
           }
           enemy.x += displacementConstant*Math.cos(angle);
-        }else if(player.vivo){
-          setTimeout(()=>{
-            Swal.fire("Has muerto","Volver a intentarlo?","question").then(v=>{
-              if(v.isConfirmed){
-                window.location.reload();
-              }
-            })
-          },500);
-          player.vivo = false;
-          player.graph.opacity = 0;
         }
-      })
+      });
+      // return;
+      const collisions = engine.collisionLayer.check("player",enemyDirectory);
+      if(collisions.length>0){
+        engine.codedRoutines.remove("checkEnemies");
+        engine.codedRoutines.remove("poblateEnemies");
+        const enemyId = collisions[0];
+        delete engine.gameVars.enemyDirectory.splice(enemyDirectory.indexOf(enemyId),1);
+        engine.graphArray.remove(enemyId);
+        player.vivo = false;
+        player.graph.opacity = 0;
+        setTimeout(()=>{
+          Swal.fire("Has muerto","Volver a intentarlo?","question").then(v=>{
+            if(v.isConfirmed){
+              window.location.reload();
+            }
+          })
+        },500);
+      }
     }})) 
 
     const enemyGenerator = ()=>{
@@ -178,9 +190,9 @@ const game = (engine = new RenderEngine) => {
         var max = 2.5
         var min = 1.3
         if(player.movementType == "foward"){
-          playerAngle = (player.graph.rotate +(Math.random()*100)- 50) % 360 ;
+          playerAngle = (player.graph.rotate +(randomNormal(100))- 50) % 360 ;
         }else{
-          playerAngle = (player.graph.rotate +(Math.random()*100)- 50 - 180) % 360 ;
+          playerAngle = (player.graph.rotate +(randomNormal(100))- 50 - 180) % 360 ;
         }
       }
       const radAngle = degToRad(playerAngle)
@@ -214,27 +226,27 @@ class Player{
     if(this.vivo && !this.won){
       this.movimiento = true;
       this.movementType = "foward"
-      this.graph.x = this.x += 0.05*Math.cos(this.graph.rotateRad)
-      this.graph.y = this.y += 0.05*Math.sin(this.graph.rotateRad)
+      this.graph.x = this.x += 0.02*Math.cos(this.graph.rotateRad)
+      this.graph.y = this.y += 0.02*Math.sin(this.graph.rotateRad)
     }
   }
   retroceder(){
     if(this.vivo && !this.won){
       this.movimiento = true;
       this.movementType = "backward"
-      this.graph.x = this.x -= 0.05*Math.cos(this.graph.rotateRad)
-      this.graph.y = this.y -= 0.05*Math.sin(this.graph.rotateRad)
+      this.graph.x = this.x -= 0.02*Math.cos(this.graph.rotateRad)
+      this.graph.y = this.y -= 0.02*Math.sin(this.graph.rotateRad)
     }
   }
   girarIzq(){
     if(!this.won){
-      this.graph.rotate -= 10;
+      this.graph.rotate -= 5;
       this.direccion = this.graph.rotate;
     }
   }
   girarDer(){
     if(!this.won){
-      this.graph.rotate += 10;
+      this.graph.rotate += 5;
       this.direccion = this.graph.rotate;
     }
   }
@@ -243,14 +255,14 @@ class Player{
 class Bullet{
   constructor(grafRef = new GraphObject, player = new Player, agreggator = 0){
     this.graph = grafRef
-    this.x = this.graph.x = player.x + agreggator*Math.cos(player.graph.rotateRad)
-    this.y = this.graph.y = player.y + agreggator*Math.sin(player.graph.rotateRad)
-    this.timer = 75;
+    this.x = this.graph.x = player.x + agreggator*Math.cos(player.graph.rotateRad + Math.PI/2)
+    this.y = this.graph.y = player.y + agreggator*Math.sin(player.graph.rotateRad + Math.PI/2)
+    this.timer = 80;
     this.direccion = this.graph.rotate = player.direccion
   }
   displacement(){
-    this.graph.x = this.x += 0.085*Math.cos(this.graph.rotateRad)
-    this.graph.y = this.y += 0.085*Math.sin(this.graph.rotateRad)
+    this.graph.x = this.x += 0.045*Math.cos(this.graph.rotateRad)
+    this.graph.y = this.y += 0.045*Math.sin(this.graph.rotateRad)
     this.timer -= 1;
 
     return this.timer < 0;

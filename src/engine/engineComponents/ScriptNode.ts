@@ -2,7 +2,6 @@ import DialogInstruction from "../interpretators/builders/DialogInstruction"
 import NarrationInstruction from "../interpretators/builders/NarrationInstruction"
 import { RenderEngine } from "../renderCore/RenderEngine"
 import Actor from "./Actor"
-import { GraphObject } from "./GraphObject"
 
 type Desicion = {
   label:string,

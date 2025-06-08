@@ -149,15 +149,9 @@ class ObjectsE extends React.Component {
       );
     }
   }
-  render(){
-    const eng = this.props.engine;
-      return(
-        <div className='text-white flex flex-row h-full'>
-          <div className="flex flex-col max-h-full p-2">
-            <div>
-              Objects List
-            </div>
-            <Button1 
+  creationButton(){
+        const eng = this.props.engine;
+    return <Button1 
               text="create"
               action={()=>{
                 Swal.fire({
@@ -174,9 +168,106 @@ class ObjectsE extends React.Component {
                     eng.graphArray.push(new GraphObject({id:result.value, enabled:true}));
                   }
                 });
-
               }}
               />
+  }
+  cloneButton(){
+    const eng = this.props.engine;
+    return <Button1 
+              text="clone"
+              action={()=>{
+                Swal.fire({
+                  text: "GraphObject id to clone: ",
+                  showDenyButton: false,
+                  showConfirmButton: true,
+                  confirmButtonColor:"green",
+                  showCancelButton: true,
+                  confirmButtonText: "Clonar",
+                  cancelButtonText: "Cancelar",
+                  input:"text"
+                }).then((targetId) => {
+                  if (targetId.isConfirmed && targetId.value != "") {
+                    if(!eng.graphArray.exist(targetId.value)){
+                      Swal.fire({
+                        title: 'Error!',
+                        text: 'No existe un GraphObject con tal id',
+                        icon: 'error',
+                        confirmButtonText: 'Cool'
+                      })
+                    }else{
+                      Swal.fire({
+                        text: "GraphObject id for the clone: ",
+                        showDenyButton: false,
+                        showConfirmButton: true,
+                        confirmButtonColor:"green",
+                        showCancelButton: true,
+                        confirmButtonText: "Clonar",
+                        cancelButtonText: "Cancelar",
+                        input:"text"
+                      }).then((cloneId) => {
+                        if (cloneId.isConfirmed && cloneId.value != "") {
+                          if(eng.graphArray.exist(cloneId.value)){
+                            Swal.fire({
+                              title: 'Error!',
+                              text: 'Ya existe un GraphObject con tal id',
+                              icon: 'error',
+                              confirmButtonText: 'Cool'
+                            })
+                          }else{
+                            eng.graphArray.push(eng.graphArray.get(targetId.value).clone(cloneId.value));
+                          }
+                        }
+                      });
+                    }
+                    
+                  }
+                });
+              }}
+              />
+  }
+  cloneSelectedButton(){
+    const eng = this.props.engine;
+    return <Button1 
+          text="clone"
+          action={()=>{
+            Swal.fire({
+              text: "GraphObject id for the clone: ",
+              showDenyButton: false,
+              showConfirmButton: true,
+              confirmButtonColor:"green",
+              showCancelButton: true,
+              confirmButtonText: "Clonar",
+              cancelButtonText: "Cancelar",
+              input:"text"
+            }).then((cloneId) => {
+              if (cloneId.isConfirmed && cloneId.value != "") {
+                if(eng.graphArray.exist(cloneId.value)){
+                  Swal.fire({
+                    title: 'Error!',
+                    text: 'Ya existe un GraphObject con tal id',
+                    icon: 'error',
+                    confirmButtonText: 'Cool'
+                  })
+                }else{
+                  eng.graphArray.push(eng.graphArray.get(this.selectedObject).clone(cloneId.value));
+                }
+              }
+            }
+          );
+        }
+      }
+    />
+  }
+  render(){
+    const eng = this.props.engine;
+      return(
+        <div className='text-white flex flex-row h-full'>
+          <div className="flex flex-col max-h-full p-2">
+            <div>
+              Objects List
+            </div>
+            {this.creationButton()}
+            {this.cloneButton()}
             <MenuButton text="Unselect" action={()=>{eng.objectsToDebug = [];this.selectedObject=""; this.forceUpdate();}}/>
             <div className="relative w-full overflow-auto">
               {this.objectsList()}
@@ -189,6 +280,7 @@ class ObjectsE extends React.Component {
 
             <div className="relative h-full w-full overflow-hidden text-sm px-2 flex flex-col">
               <div className='grow overflow-auto'>
+                {this.selectedObject == "" ? null : this.cloneSelectedButton()}
                 {this.listProperties()}
               </div>
             </div>

@@ -457,7 +457,7 @@ class GraphObject{
    * @param {object} graphObject The graphObject that you want to be cloned
    * @param {string} cloneId The id for the clone of the original object
    */
-  clone(cloneId){
+  clone(cloneId:string){
     if(cloneId == null)
       throw new Error("the id for the clonning operation that uses the object with id '"+this.#id+"' is not defined");
 
@@ -467,7 +467,7 @@ class GraphObject{
     atributesNames.forEach(element => {
         Object.assign(graphData,{[element] : this[element]});
     });
-    Object.assign(graphData,{"id":cloneId});
+    Object.assign(graphData,{id:cloneId});
     return new GraphObject(graphData);
   }
   /**
