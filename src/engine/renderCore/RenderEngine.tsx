@@ -1,8 +1,7 @@
 import React from "react";
-import * as $ from "jquery";
-import {Howl} from 'howler';
+import $ from "jquery";
 
-import { Canvas } from "./Canvas.tsx";
+import { Canvas } from "./Canvas.jsx";
 
 import { Animation } from "../engineComponents/Animation.ts"
 import { GraphObject } from "../engineComponents/GraphObject.ts";
@@ -11,7 +10,6 @@ import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger.ts";
 
 import { lambdaConverter, getStr, mobileCheck, sortByReference, wrapText } from "../logic/Misc.ts";
 import { Shader } from "./Shaders.ts";
-import gsap from "gsap";
 import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
 import { Chaos } from "../interpretators/ChaosInterpreter.ts";
@@ -25,6 +23,8 @@ import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
 import { RenderMisc } from "./RenderMisc.ts";
 import ResourceLoader from "./ResourceLoader.ts";
 import PointerCalculation from "./PointerCalculation.ts";
+//@ts-ignore
+import gsap from "gsap";
 
 type CalculationOrder = Array<{id:string,weight:number,z:number}>;
 
@@ -51,7 +51,7 @@ interface RenderEngineProps {
   cyclesPerSecond?: number;
   developmentDeviceHeight?: number;
   avoidResizeBlackout?: boolean;
-  setEngine?: (engine: RenderEngine) => void;
+  setEngine?: (engine: RenderEngine,ExtendedObjects?:ExtendedObjects) => void;
 }
 
 class RenderEngine extends React.Component<RenderEngineProps>{
@@ -240,7 +240,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     //Debug values
     this.noRenderedItemsCount = 0;
 
-    this.drawObjectLimits = false;
+    this.drawObjectLimits = true;
     this.drawCollisionsMatrix = false;
     this.drawTriggers = false;
 
@@ -260,6 +260,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   }  
   componentDidMount(){
     if (!this.mounted) {
+      RenderEngine.instance = this;
+
       this.mounted = true;
       //* ASPECT RATIO
       window.setTimeout(() => {
@@ -293,15 +295,24 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         this.entryPoint();
       }else{
         if("setEngine" in  this.props){
-          if(typeof this.props.setEngine == "function"){
-            this.props.setEngine(this);
+          this.dataCleaner();
+          this.isReady = true;
+          this.forceUpdate();
+          if(this.props.setEngine){
+            const numberOfArguments = this.props.setEngine.length;
+            if(numberOfArguments == 1){
+              this.props.setEngine(this);
+            }else if(numberOfArguments == 2){
+              this.props.setEngine(this,ExtendedObjects);
+            }
           }
         }
       }
-      
+
       //*TECLADO
       const self = this as RenderEngine;
-      document.body.addEventListener("keydown",function(e){
+
+      const keydownFunc = (e)=>{
         const keyCode = e.code;  
         if(self.pressedKeys.indexOf(keyCode) == -1){
           self.pressedKeys.push(keyCode);
@@ -316,9 +327,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               self.keyboardTriggers.get(keyCode).check(self,"onPress");
             }
           }
-        }
-      });  
-      document.body.addEventListener("keyup", function(e){
+        }  
+      };
+
+      const keyupFunc = (e)=>{
         const keyCode = e.code;
         const mix = self.pressedKeys.join(" ");
         self.pressedKeys.splice(self.pressedKeys.indexOf(keyCode),1);
@@ -331,9 +343,29 @@ class RenderEngine extends React.Component<RenderEngineProps>{
             // @ts-ignore
             self.keyboardTriggers.get(keyCode).check(self,"onRelease");
           }
-        }
-      });
+        } 
+      };
+
+      document.body.removeEventListener("keydown",keydownFunc); 
+      document.body.removeEventListener("keyup", keyupFunc); 
+      document.body.addEventListener("keydown",keydownFunc);  
+      document.body.addEventListener("keyup", keyupFunc);
     }
+  }
+  setEngineClientSideResources(fun:Function){
+    this.dataCleaner();
+    this.isReady = true;
+    this.forceUpdate();
+
+    const numberOfArguments = fun.length;
+    if(numberOfArguments == 1){
+      fun(this);
+    }else if(numberOfArguments == 2){
+      fun(this,ExtendedObjects);
+    }
+  }
+  componentDidUpdate(prevProps: Readonly<RenderEngineProps>, prevState: Readonly<{}>, snapshot?: any): void {
+      
   }
   entryPoint(){
     this.loadScript(window.projectRoute + "main.txt");
@@ -351,9 +383,14 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         commandsF(self,ExtendedObjects);
         self.isReady = true;
         self.forceUpdate();
-        if("setEngine" in  self.props ){
+        if(self.props.setEngine){
           // @ts-ignore
-          self.props.setEngine(self);
+          const numberOfArguments = self.props.setEngine.length;
+          if(numberOfArguments == 1){
+            self.props.setEngine(self);
+          }else if(numberOfArguments == 2){
+            self.props.setEngine(self,ExtendedObjects);
+          }
         }
       })
     })
@@ -422,8 +459,13 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   loadTexture(indexPath:string, textureId=""){
     const self = this;
     const areClientSideResources = "clientSideResources" in this.props;
+    if(areClientSideResources && this.texturesList.exist(textureId)){
+      console.warn(`Textura de nombre ${textureId} ya existe. Saltando...`);
+      return new Promise(function (resolve, reject) {resolve(null);});
+    }
     return new Promise(function (resolve, reject) {
       ResourceLoader.loadTexture(indexPath,textureId,areClientSideResources,self.texturesList.ids()).then((shaderList)=>{
+        //TODO:Posible optimizacion: primero preguntar si ya existe una textura con ese nombre, en ese caso ignorar y saltar a la siguente
         (shaderList as Array<any>).forEach(shaderExtructure => {
           self.texturesList.push(shaderExtructure)
         });
