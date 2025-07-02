@@ -3,10 +3,6 @@
   src: url("../Terminal.ttf");
 }
 @font-face {
-  font-family: 'Lucida Console';
-  src: url("../Lucida.ttf");
-}
-@font-face {
   font-family: 'Harry';
   src: url("../HarryPlain.otf");
 }
@@ -15,12 +11,6 @@
   src: url("../HarryThin.otf");
 }
 .loadIconAlter{
-  /* position: absolute; 
-  border-radius: 25px;
-  width: 25px;
-  height: 25px;
-  bottom:6px;
-  z-index: 5; */
   transform-origin: 50% 50%;
   animation: loadIcon 0.5s linear 0s infinite;
 }

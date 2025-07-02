@@ -42,8 +42,6 @@ class Token{
   set index(index){this._index = index;}
 }
 
-type ProcesedInstruction = Array<[boolean,string|Instruction]>;
-
 class Instruction extends Array<Token | Instruction>{
   get(index:number){
     this.at(index);

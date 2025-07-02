@@ -1,5 +1,5 @@
 import { lambdaConverter } from "../logic/Misc.ts"
-import { RenderEngine } from "../renderCore/RenderEngine.js"
+import { RenderEngine } from "../renderCore/RenderEngine.tsx"
 
 
 class GraphObject{
@@ -543,13 +543,13 @@ class State{
 
   setThisState(referenceToObject){
     if(this.#beforeChange != null){
-      this.#beforeChange(window.engineRef);
+      this.#beforeChange(RenderEngine.getInstance());
     }
     Object.keys(this.#data).forEach(key =>{
       referenceToObject[key] = this.#data[key];
     });
     if(this.#afterChange != null){
-      this.#afterChange(window.engineRef);
+      this.#afterChange(RenderEngine.getInstance());
     }
   }
 

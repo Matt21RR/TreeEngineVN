@@ -16,20 +16,19 @@ class Test extends React.Component{
     this.hide = false;
 
     this.ObjectsERef = {};
-    this.windowsEnvironment = new WindowsEnvironment(); 
+    this.windowsEnvironment = null; 
     this.mounted = false;
   }
   render(){
-    const env = this.windowsEnvironment;
     return(<>
       <WindowsEnvironment 
-        setEnvironment={(env)=>{this.windowsEnvironment = env;}}
+        refAssigner={(env)=>{this.windowsEnvironment = env;}}
         mainContent={
           <RenderEngine
             showFps
             developmentDeviceHeight={1080}
             cyclesPerSecond={60}
-            setEngine={(engine)=>{this.engine=engine; env.forceUpdate(); this.forceUpdate();}}/>
+            setEngine={(engine)=>{console.log(engine); this.engine=engine; this.windowsEnvironment.renderSecondaryContent = true; this.windowsEnvironment.forceUpdate(); this.forceUpdate();}}/>
         }
         content={{
           fileExplorer:{
@@ -40,19 +39,19 @@ class Test extends React.Component{
           },
           triggers:{
             title:"Triggers en escena",
-            content:<TriggersE  engine={this.engine} objectsERef={this.ObjectsERef} reRender={()=>{env.forceUpdate();}} />,
+            content:<TriggersE  engine={this.engine} objectsERef={this.ObjectsERef} reRender={()=>{this.windowsEnvironment.forceUpdate();}} />,
             minimized:true,
             disabled:this.engine == null
           },
           objectsInfo:{
             title:"Objetos en escena",
-            content:<ObjectsE engine={this.engine} reRender={()=>{env.forceUpdate()}} selfRef={(ref)=>{this.ObjectsERef = ref; env.forceUpdate();}}/>,
+            content:<ObjectsE engine={this.engine} reRender={()=>{this.windowsEnvironment.forceUpdate()}} selfRef={(ref)=>{this.ObjectsERef = ref; this.windowsEnvironment.forceUpdate();}}/>,
             minimized:true,
             disabled:this.engine == null
           },
           engTools:{
             title:"Herramientas del motor",
-            content:<EngineTools engine={this.engine} reRender={()=>{env.forceUpdate()}}/>,
+            content:<EngineTools engine={this.engine} reRender={()=>{this.windowsEnvironment.forceUpdate()}}/>,
             minimized:true,
             disabled:this.engine == null
           },

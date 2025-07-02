@@ -9,6 +9,13 @@ declare global{
   }
 }
 
+type CanvasData = {
+  object:Canvas,
+  context:CanvasRenderingContext2D,
+  resolution:{width:number,height:number,scale:number},
+  fps:{promedio:{cps:number,fps:number},elapsed:number} | {}
+}
+
 interface CanvasProps{
   fps?:number;
   scale?:number;
@@ -16,10 +23,10 @@ interface CanvasProps{
 
   engine:RenderEngine;
 
-  renderGraphics:Function;
-  animateGraphics:Function;
-  onLoad?:Function;
-  onResize?:Function;
+  renderGraphics : (canvasData: CanvasData) => Array<number>;
+  animateGraphics : (deltaData: {promedio:{cps:number,fps:number},elapsed:number}) => void;
+  onLoad? : (canvasData: CanvasData) => void;
+  onResize? : (canvasData: CanvasData) => void;
   afterEffects?:Function;
 
   events:Function;
@@ -54,9 +61,8 @@ class Canvas extends React.Component<CanvasProps>{
   engineThreads:number;
   engineKilled:boolean;
 
-  onLoad : Function;
-  onResize : Function;
-  afterEffects : Function;
+  onLoad : (canvasData: CanvasData) => void;
+  onResize : (canvasData: CanvasData) => void;
 
   showFps: boolean;
   animatingElapsed: number;
@@ -64,7 +70,7 @@ class Canvas extends React.Component<CanvasProps>{
   totalEngineElapsedTime: number;
    
 
-  constructor(props){
+  constructor(props: CanvasProps){
     super(props);
 
     if(props){
@@ -73,8 +79,8 @@ class Canvas extends React.Component<CanvasProps>{
 
       this.renderEngine = props.engine;
 
-      this.onLoad = props.onLoad ?? ((canvas)=>{})//Do something after the canvas params have been set
-      this.onResize = props.onResize ?? ((canvas)=>{})//Do something after the canvas have been resized
+      this.onLoad = props.onLoad ?? ((canvas:CanvasData)=>{})//Do something after the canvas params have been set
+      this.onResize = props.onResize ?? ((canvas:CanvasData)=>{})//Do something after the canvas have been resized
 
       this.showFps = props.showFps ?? false;
     }
@@ -116,12 +122,10 @@ class Canvas extends React.Component<CanvasProps>{
     if (!this.stopEngine) 
       this.onResize({
         object:this,
-        context:canvas.getContext("2d"),
-        scale:this.scale,
-        resolutionWidth:this.resolutionWidth,
-        resolutionHeight:this.resolutionHeight,
+        context:canvas.getContext("2d") as CanvasRenderingContext2D,
+        resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
         fps:{}
-        }); 
+      });
   }
   
   componentDidUpdate(){
@@ -140,10 +144,8 @@ class Canvas extends React.Component<CanvasProps>{
           //set the reset function
           this.onResize({
             object:this,
-            context:canvas.getContext("2d"),
-            scale:this.scale,
-            resolutionWidth:this.resolutionWidth,
-            resolutionHeight:this.resolutionHeight,
+            context:canvas.getContext("2d") as CanvasRenderingContext2D,
+            resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
             fps:{}});
         }
       }
@@ -180,10 +182,8 @@ class Canvas extends React.Component<CanvasProps>{
       if(canvas){
         this.onLoad({
           object:this,
-          context:canvas.getContext("2d"),
-          scale:this.scale,
-          resolutionWidth:this.resolutionWidth,
-          resolutionHeight:this.resolutionHeight,
+          context:canvas.getContext("2d") as CanvasRenderingContext2D,
+          resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
           fps:{}});
       }else{
         console.error("Error on the canvas reference");
@@ -241,7 +241,7 @@ class Canvas extends React.Component<CanvasProps>{
     }
     var context = canvas.getContext("2d") as CanvasRenderingContext2D;
 
-    var checkEvents = (fps) => {
+    var checkEvents = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
       try {
         this.props.events();
         animator(fps);
@@ -253,7 +253,7 @@ class Canvas extends React.Component<CanvasProps>{
       }
     }
 
-    var animator = (fps) => {
+    var animator = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
       //*ANIMATE
       try {
         const animateStartAt = performance.now();
@@ -278,6 +278,7 @@ class Canvas extends React.Component<CanvasProps>{
         this.stopEngine = true;
         this.engineKilled = true;
         console.error("Engine Killed due fatal error during animating process process",error);
+        debugger;
         return;
       }
       //*RENDER
@@ -306,9 +307,10 @@ class Canvas extends React.Component<CanvasProps>{
         this.engineKilled = true;
         console.error("Engine Killed due fatal error during rendering process");
         console.log(error);
+        debugger;
       }
     }
-    var renderer = (fps) => {
+    var renderer = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
 
       context.filter = 'none';
       
@@ -323,9 +325,7 @@ class Canvas extends React.Component<CanvasProps>{
       ] = this.props.renderGraphics({
         object:this,
         context:context,
-        scale:this.scale,
-        resolutionWidth:this.resolutionWidth,
-        resolutionHeight:this.resolutionHeight,
+        resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
         fps:fps});
       this.renderingElapsed = performance.now()-renderingStartAt;
 
@@ -386,16 +386,15 @@ class Canvas extends React.Component<CanvasProps>{
         this.fpsCounter = 0;
       }
 
+      if(lId == this.loopId){
+        rAF.modelFour(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
+      }
+
       if(this.windowHasFocus){
         this.totalEngineElapsedTime += engDelta;   
         checkEvents({promedio:promedio,elapsed:engDelta});
       }else{
         checkEvents({promedio:promedio,elapsed:0});
-      }
-      
-
-      if(lId == this.loopId){
-        rAF.modelFour(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
       }
     }
 
@@ -419,4 +418,4 @@ class Canvas extends React.Component<CanvasProps>{
     );
   }
 }
-export {Canvas}
+export {Canvas,CanvasData}

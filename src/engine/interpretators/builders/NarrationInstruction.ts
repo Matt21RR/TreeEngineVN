@@ -1,3 +1,4 @@
+import { RenderMisc } from "../../renderCore/RenderMisc.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
 class NarrationInstruction extends InstructionInterface{

@@ -28,7 +28,7 @@ class Window extends React.Component<WindowProps> {
       width:number,
       height:number
     };
-  constructor(props){
+  constructor(props:WindowProps){
     super(props);
     this.id = "window" + String(window.performance.now()).replaceAll(".","");
     this.resizeBlocked = props.resizeBlocked ?? false;

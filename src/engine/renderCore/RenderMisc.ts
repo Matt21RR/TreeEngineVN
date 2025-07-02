@@ -1,5 +1,4 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer";
-import { GraphObject } from "../engineComponents/GraphObject";
 
 class RenderMisc{
   static drawObjectLimits(ctx:CanvasRenderingContext2D, object: ObjectRenderingData, canvasResolution: {width:number, height:number}, cameraZ:number){
@@ -90,8 +89,8 @@ class RenderMisc{
     ctx.setLineDash([]);
     ctx.fillStyle = "";
   }
-  static displayResolutionCalc(aspectRatio:string, w:HTMLElement, engDisplay:HTMLElement){
-    let engineDisplayRes;
+  static displayResolutionCalc(aspectRatio:string, w:HTMLElement){
+    let engineDisplayRes:{width:number, height:number};
 
     if (aspectRatio != "undefined") {
       let newWidth = Math.floor((w.offsetHeight / parseInt(aspectRatio.split(":")[1])) * parseInt(aspectRatio.split(":")[0]));

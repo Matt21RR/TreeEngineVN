@@ -37,7 +37,6 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     }
     return this.objects.length;
   }
-
   push(element:T){
     if(this.exist(element.id)){
       console.warn(`Element with ${element.id} id already exists`);
@@ -59,15 +58,14 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     this.#_ids.push(element.id);
     this.objects.push(element);
   }
-
-  remove(objectId = new String()){
+  remove(objectId:string){
     const numId = this.#_ids.indexOf(objectId);
     if(numId != -1){
       this.objects.splice(numId,1);
       this.#_ids.splice(numId,1);
     }
   }
-  get(objectId = new String()){
+  get(objectId:string){
     const numId = this.#_ids.indexOf(objectId);
     if(numId != -1){
       return this.objects[numId];
@@ -75,11 +73,6 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
       throw new Error(objectId +" don't exists in this list");
     }
   }
-  /**
-   * Verify if exists a object with the provided id
-   * @param {*} objectId 
-   * @returns 
-   */
   exist(objectId: string){
     return this.#_ids.includes(objectId);
   }
@@ -93,6 +86,9 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
   }
   relatedToList(){
     return this.objects.map(e => {return {[e.id]:e.relatedTo};});
+  }
+  enabledList(){
+    return this.objects.filter(e =>{return e.enabled;})
   }
 
   #verifyRelatedToInClass(this: RenList<T>){

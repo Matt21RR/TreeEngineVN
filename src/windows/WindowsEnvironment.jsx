@@ -5,7 +5,11 @@ import { Window } from "./Window.tsx";
 class WindowsEnvironment extends React.Component{
   constructor(props){
     super(props);
+    if(props.refAssigner){
+      props.refAssigner(this);
+    }
     if(!(this.props)){return;}
+    this.renderSecondaryContent = false;
     this.windowsContent = "content" in this.props ? this.props.content : {};
     this.executionTable = {};
     this.minimizedTable = [];
@@ -33,6 +37,7 @@ class WindowsEnvironment extends React.Component{
     this.forceUpdate();
   }
   renderWindows(){
+    if(!this.renderSecondaryContent){return;}
     const windowsContent = this.props.content;
     return(
       Object.keys(windowsContent).filter(
