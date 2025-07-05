@@ -7,7 +7,7 @@ type RenElement = {
   [key: string]: any
 };
 type UnrelatedRenElement = {
-  enabled:boolean,
+  enabled?:boolean,
   id:string,
   [key: string]: any
 };

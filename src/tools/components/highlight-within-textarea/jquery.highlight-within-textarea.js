@@ -4,8 +4,8 @@
  * @author  Will Boyd
  * @github  https://github.com/lonekorean/highlight-within-textarea
  */
-import jQuery from 'jquery'
-(function($) {
+import $ from 'jquery'
+// (function() {
 	let ID = 'hwt';
 
 	let HighlightWithinTextarea = function($el, config) {
@@ -379,4 +379,4 @@ import jQuery from 'jquery'
 			}
 		});
 	};
-})(jQuery);
+// })();

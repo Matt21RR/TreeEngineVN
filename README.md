@@ -1,21 +1,12 @@
-## TreeDialog
+# React + Vite
 
-This project was bootstrapped using [Create React App](https://github.com/facebook/create-react-app).
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-The engine have two modes: the backend mode, and the frontend mode. Simplifying, that determine were the resources of your game are.
+Currently, two official plugins are available:
 
-The frontend mode is used for general prupose game development
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-The backend mode is intended for specific visual novel development (include some development tools)(requires use of a backend server that will be included with a game example soon).
+## Expanding the ESLint configuration
 
-It uses vectors and icons by <a href="https://www.svgrepo.com" target="_blank">SVG Repo</a>
-
-## Why this project exists
-
-This project aims to provide a base engine for it's use in visual novel video games, but not limited to that.
-
-Since it's written in javascript, you can see the results of changes in your game script in real time.
-
-## Aspect to improve
-
-The engine code is not very well documented (or commented, whatever). 
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

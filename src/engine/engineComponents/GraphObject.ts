@@ -1,60 +1,58 @@
 import { lambdaConverter } from "../logic/Misc.ts"
-import { RenderEngine } from "../renderCore/RenderEngine.tsx"
 
 
 class GraphObject{
-  #enabled:boolean //TODO: use I'T
+  _enabled:boolean //TODO: use I'T
 
-  #text:Function|string|null
-  #fitContent:boolean
-  #center:boolean
-  #verticalCenter:boolean
-  #color:string
-  #font:string
-  #fontSize:number
-  #boxColor:string
-  #horizontalMargin:number
-  #verticalMargin:number
+  _text:Function|string|null
+  _fitContent:boolean
+  _center:boolean
+  _verticalCenter:boolean
+  _color:string
+  _font:string
+  _fontSize:number
+  _boxColor:string
+  _horizontalMargin:number
+  _verticalMargin:number
 
-  #textureName:string|null
+  _textureName:string|null
 
-  #id:string
-  #brightness:number
-  #contrast:number
-  #grayscale:number
-  #hueRotate:number
+  _id:string
+  _brightness:number
+  _contrast:number
+  _grayscale:number
+  _hueRotate:number
 
-  #blur:number
-  #aberration:number
-  #aberrationType:string
+  _blur:number
+  _aberration:number
+  _aberrationType:string
 
-  #invert:number
-  #saturate:number
-  #sepia:number
+  _invert:number
+  _saturate:number
+  _sepia:number
 
-  #opacity:number
+  _opacity:number
 
-  #x:number
-  #y:number
-  #z:number
+  _x:number
+  _y:number
+  _z:number
 
-  #scale:number
-  #widthScale:number
-  #heightScale:number
-  #rotate:number
+  _scale:number
+  _widthScale:number
+  _heightScale:number
+  _rotate:number
 
-  #ignoreParallax:boolean
+  _ignoreParallax:boolean
 
-  #states:States;
-  #pendingRenderingRecalculation:boolean = true;
+  _pendingRenderingRecalculation:boolean = true;
 
-  #useEngineUnits:boolean
+  _useEngineUnits:boolean
 
-  #parent
+  _parent
   
-  #accomulatedZ //Engine related var, dont changeit through a gamescript
+  _accomulatedZ //Engine related var, dont changeit through a gamescript
 
-  #getAtribs(){// ? Could be a global function ?
+  _getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
     const propertyNames = Object.keys(this.dataType);
     const atributesNames = propertyNames.filter(key =>{return "get" in propertyDescriptors[key]});
@@ -106,61 +104,59 @@ class GraphObject{
   }
 
   constructor(graphInfo:{[key:string]:any} = {}){
-    this.#id =              graphInfo.id ?? "error";
-    this.#enabled =         graphInfo.enabled ?? false;//exclude from calculation and renderin
+    this._id =              graphInfo.id ?? "error";
+    this._enabled =         graphInfo.enabled ?? false;//exclude from calculation and renderin
 
-    this.#text =            "text" in graphInfo ? graphInfo.text : null;
-    this.#fitContent =      graphInfo.fitContent ?? false;
-    this.#center =          graphInfo.center ?? false;
-    this.#verticalCenter =  graphInfo.verticalCenter ?? false;
-    this.#color =           graphInfo.color ?? "gray";
-    this.#font =            graphInfo.font ?? "Arial";
-    this.#fontSize =        "fontSize" in graphInfo ? parseFloat(graphInfo.fontSize):18;
-    this.#boxColor =        graphInfo.boxColor ?? "transparent";
-    this.#horizontalMargin =     graphInfo.horizontalMargin ?? 0;
-    this.#verticalMargin =     graphInfo.verticalMargin ?? 0;
+    this._text =            "text" in graphInfo ? graphInfo.text : null;
+    this._fitContent =      graphInfo.fitContent ?? false;
+    this._center =          graphInfo.center ?? false;
+    this._verticalCenter =  graphInfo.verticalCenter ?? false;
+    this._color =           graphInfo.color ?? "gray";
+    this._font =            graphInfo.font ?? "Arial";
+    this._fontSize =        "fontSize" in graphInfo ? parseFloat(graphInfo.fontSize):18;
+    this._boxColor =        graphInfo.boxColor ?? "transparent";
+    this._horizontalMargin =     graphInfo.horizontalMargin ?? 0;
+    this._verticalMargin =     graphInfo.verticalMargin ?? 0;
 
-    this.#textureName =     graphInfo.texture ?? null;
+    this._textureName =     graphInfo.texture ?? null;
     //Properties of the graph
-    this.#brightness =      graphInfo.brightness ?? 1;
-    this.#contrast =        graphInfo.contrast ?? 1;
-    this.#grayscale =       graphInfo.grayscale ?? 0;
-    this.#hueRotate =       "hueRotate" in graphInfo ? parseFloat(graphInfo.hueRotate): 0;//deg
+    this._brightness =      graphInfo.brightness ?? 1;
+    this._contrast =        graphInfo.contrast ?? 1;
+    this._grayscale =       graphInfo.grayscale ?? 0;
+    this._hueRotate =       "hueRotate" in graphInfo ? parseFloat(graphInfo.hueRotate): 0;//deg
     //***SHADERS
-    this.#blur =            "blur" in graphInfo ? parseFloat(graphInfo.blur): 0;//px
-    this.#aberration =      "aberration" in graphInfo ? parseFloat(graphInfo.aberration): 0;
-    this.#aberrationType =  graphInfo.aberrationType ?? "static";
+    this._blur =            "blur" in graphInfo ? parseFloat(graphInfo.blur): 0;//px
+    this._aberration =      "aberration" in graphInfo ? parseFloat(graphInfo.aberration): 0;
+    this._aberrationType =  graphInfo.aberrationType ?? "static";
     //static or shaky
     // _dither:graphInfo.dither != undefined ? graphInfo.dither : 1,
     //***END SHADERS
-    this.#invert =          graphInfo.invert ?? 0;
-    this.#saturate =        graphInfo.saturate ?? 1;
-    this.#sepia =           graphInfo.sepia ?? 0;
+    this._invert =          graphInfo.invert ?? 0;
+    this._saturate =        graphInfo.saturate ?? 1;
+    this._sepia =           graphInfo.sepia ?? 0;
 
-    this.#opacity =         graphInfo.opacity ?? 1;
+    this._opacity =         graphInfo.opacity ?? 1;
 
-    this.#parent =          graphInfo.parent ?? "";
+    this._parent =          graphInfo.parent ?? "";
 
-    this.#x =               graphInfo.x ?? 0;
-    this.#y =               graphInfo.y ?? 0;
-    this.#z =               graphInfo.z ?? 0;
+    this._x =               graphInfo.x ?? 0;
+    this._y =               graphInfo.y ?? 0;
+    this._z =               graphInfo.z ?? 0;
     //multipliers of canvasResolution
     //Resets the width and height scales
-    this.#scale =           graphInfo.scale ?? 1;
+    this._scale =           graphInfo.scale ?? 1;
     //imageRotation
-    this.#rotate =          "rotate" in graphInfo ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0;
+    this._rotate =          "rotate" in graphInfo ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0;
 
     //ignoreParallax forces the object to ignore the camera parallax movement
-    this.#ignoreParallax = "z" in graphInfo;
-    this.#ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this.#ignoreParallax
+    this._ignoreParallax = "z" in graphInfo;
+    this._ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this._ignoreParallax
     //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
     //Todo: force the engine to use this when it's a text object.
-    this.#widthScale =     graphInfo.widthScale ?? 1;
-    this.#heightScale =    graphInfo.heightScale ?? 1;
+    this._widthScale =     graphInfo.widthScale ?? 1;
+    this._heightScale =    graphInfo.heightScale ?? 1;
 
-    this.#states = "states" in graphInfo ? new States(this,graphInfo.states) : new States(this);
-
-    this.#useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits : ("parent" in graphInfo ? false : true); //for scale
+    this._useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits : ("parent" in graphInfo ? false : true); //for scale
   
     // Initialize a proxy to intercept property sets
     return new Proxy(this, {
@@ -175,171 +171,171 @@ class GraphObject{
     });
   }
 
-  get enabled() {return this.#enabled}
+  get enabled() {return this._enabled}
   set enabled(x) {
-    this.#enabled = x;
+    this._enabled = x;
   }
 
-  get text() {return this.#text;}
+  get text() {return this._text;}
   set text(x) {
-    this.#text = lambdaConverter(x);
+    this._text = lambdaConverter(x);
   }
 
-  set fitContent(x:boolean){this.#fitContent = x;}
-  get fitContent(){return this.#fitContent;}
+  set fitContent(x:boolean){this._fitContent = x;}
+  get fitContent(){return this._fitContent;}
 
-  get center() {return this.#center}
-  set center(x:boolean) {this.#center = x}
+  get center() {return this._center}
+  set center(x:boolean) {this._center = x}
 
-  get verticalCenter() {return this.#verticalCenter}
-  set verticalCenter(x:boolean) {this.#verticalCenter = x}
+  get verticalCenter() {return this._verticalCenter}
+  set verticalCenter(x:boolean) {this._verticalCenter = x}
 
-  get color() {return this.#color}
-  set color(x) {this.#color = typeof x == "string"? x : "gray"}
+  get color() {return this._color}
+  set color(x) {this._color = typeof x == "string"? x : "gray"}
 
-  get font() {return this.#font}
-  set font(x) {this.#font = typeof x == "string" ? x: "Arial"}
+  get font() {return this._font}
+  set font(x) {this._font = typeof x == "string" ? x: "Arial"}
 
 
-  get fontSize():number {return this.#fontSize;}
+  get fontSize():number {return this._fontSize;}
   set fontSize(x:string|number) {
     if(typeof x == "string"){
       x = parseFloat(x) || 0;
     }
     if(typeof x == "number"){
       if(x<0){
-        this.#fontSize = 0;
+        this._fontSize = 0;
       }else{
-        this.#fontSize = x;
+        this._fontSize = x;
       }
     }
   }
 
-  get fontSizeNumeric() {return this.#fontSize;}
-  set fontSizeNumeric(x:any) {this.#fontSize = parseFloat(x) || 0;}
+  get fontSizeNumeric() {return this._fontSize;}
+  set fontSizeNumeric(x:any) {this._fontSize = parseFloat(x) || 0;}
 
-  get boxColor() {return this.#boxColor}
-  set boxColor(x) {this.#boxColor = typeof x == "string"? x : "black"}
+  get boxColor() {return this._boxColor}
+  set boxColor(x) {this._boxColor = typeof x == "string"? x : "black"}
     
     
-  get horizontalMargin() {return this.#horizontalMargin;}
-  set horizontalMargin(x:any) {this.#horizontalMargin = parseFloat(x) || 0;}
+  get horizontalMargin() {return this._horizontalMargin;}
+  set horizontalMargin(x:any) {this._horizontalMargin = parseFloat(x) || 0;}
 
-  get verticalMargin() {return this.#verticalMargin;}
-  set verticalMargin(x:any) {this.#verticalMargin = parseFloat(x) || 0;}
+  get verticalMargin() {return this._verticalMargin;}
+  set verticalMargin(x:any) {this._verticalMargin = parseFloat(x) || 0;}
     
     
-  get texture() { return this.#textureName; }
+  get texture() { return this._textureName; }
   set texture(x) { 
-    this.#textureName = x != undefined ? x : null;
+    this._textureName = x != undefined ? x : null;
   }
     
-  get textureName() {return this.#textureName;}
+  get textureName() {return this._textureName;}
   set textureName(x) {
-    this.#textureName = x != undefined ? x : null;
+    this._textureName = x != undefined ? x : null;
   }
     
     
-  get id() {return this.#id;}
-  set id(x) {this.#id = x;}
+  get id() {return this._id;}
+  set id(x) {this._id = x;}
     
-  get brightness() {return this.#brightness;}
+  get brightness() {return this._brightness;}
   set brightness(x) {
     if(!isNaN(x)){
       if(x < 0){
-        this.#brightness = 0;
+        this._brightness = 0;
       }else{
-        this.#brightness = x;
+        this._brightness = x;
       }
     }
   }
   
-  get contrast() {return this.#contrast;}
+  get contrast() {return this._contrast;}
   set contrast(x) {
     if(!isNaN(x)){
       if(x < 0){
-        this.#contrast = 0;
+        this._contrast = 0;
       }else{
-        this.#contrast = x;
+        this._contrast = x;
       }
     }
   }
 
-  get grayscale() {return this.#grayscale;}
+  get grayscale() {return this._grayscale;}
   set grayscale(x) {
     if(!isNaN(x)){
       if(x<0){
-        this.#grayscale = 0;
+        this._grayscale = 0;
       }else if(x>1){
-        this.#grayscale = 1;
+        this._grayscale = 1;
       }else{
-        this.#grayscale = x;
+        this._grayscale = x;
       }  
     }
   }
 
-  get hueRotate() {return this.#hueRotate+"deg";}
+  get hueRotate() {return this._hueRotate+"deg";}
   set hueRotate(x) {
     if(typeof x == "string"){
-      this.#hueRotate = parseFloat(x) || 0;
+      this._hueRotate = parseFloat(x) || 0;
     }else if(typeof x == "number"){
-      this.#hueRotate = x;
+      this._hueRotate = x;
     }
   }
 
-  get hueRotateNumeric() {return this.#hueRotate;}
+  get hueRotateNumeric() {return this._hueRotate;}
 
-  get blur() {return this.#blur;}
-  get blurPX() {return this.#blur + "px";}
-  set blur(x:any) {this.#blur = parseFloat(x) || 0;}
+  get blur() {return this._blur;}
+  get blurPX() {return this._blur + "px";}
+  set blur(x:any) {this._blur = parseFloat(x) || 0;}
 
-  get aberration() {return this.#aberration}
+  get aberration() {return this._aberration}
   set aberration(x) {
     if(!isNaN(x)){
       if(x<0){
-        this.#aberration = 0;
+        this._aberration = 0;
       }else{
-        this.#aberration = x;
+        this._aberration = x;
       }
     }
   }
 
-  get aberrationType() {return this.#aberrationType;}
-  set aberrationType(x) {this.#aberrationType = x;}
+  get aberrationType() {return this._aberrationType;}
+  set aberrationType(x) {this._aberrationType = x;}
 
-  get invert() {return this.#invert;}
+  get invert() {return this._invert;}
   set invert(x) {
     if(!isNaN(x)){
       if(x<0){
-        this.#invert = 0;
+        this._invert = 0;
       }else if(x>1){
-        this.#invert = 1;
+        this._invert = 1;
       }else{
-        this.#invert = x;
+        this._invert = x;
       }  
     }
   }
 
-  get saturate() {return this.#saturate;}
+  get saturate() {return this._saturate;}
   set saturate(x) {
     if(!isNaN(x)){
       if(x<0){
-        this.#saturate = 0;
+        this._saturate = 0;
       }else{
-        this.#saturate = x;
+        this._saturate = x;
       }  
     }
   }
 
-  get sepia() {return this.#sepia;}
+  get sepia() {return this._sepia;}
   set sepia(x) {
     if(!isNaN(x)){
       if(x<0){
-        this.#sepia = 0;
+        this._sepia = 0;
       }else if(x>1){
-        this.#sepia = 1;
+        this._sepia = 1;
       }else{
-        this.#sepia = x;
+        this._sepia = x;
       }  
     }
   }
@@ -359,14 +355,14 @@ class GraphObject{
     var filters:Array<string> = [];
     var filterstr = "";
     
-    if(this.#brightness != 1){filters.push("brightness");}
-    if(this.#contrast != 1){filters.push("contrast");}
-    if((this.#grayscale % 360) != 0){filters.push("grayscale");}
-    if(this.#hueRotate != 0){filters.push("hueRotate");}
-    if(this.#invert != 0){filters.push("invert");}
-    // if(this.#blur != 0){filters.push("blurPX")}
-    if(this.#saturate != 1){filters.push("saturate");}
-    if(this.#sepia != 0){filters.push("sepia");}
+    if(this._brightness != 1){filters.push("brightness");}
+    if(this._contrast != 1){filters.push("contrast");}
+    if((this._grayscale % 360) != 0){filters.push("grayscale");}
+    if(this._hueRotate != 0){filters.push("hueRotate");}
+    if(this._invert != 0){filters.push("invert");}
+    // if(this._blur != 0){filters.push("blurPX")}
+    if(this._saturate != 1){filters.push("saturate");}
+    if(this._sepia != 0){filters.push("sepia");}
 
     filters.forEach(element => {
       filterstr += " "+filtersName[element]+"("+this[element]+")";
@@ -381,75 +377,70 @@ class GraphObject{
     return filterstr;
   }
 
-  get opacity() {return this.#opacity;}
+  get opacity() {return this._opacity;}
   set opacity(x) {
     if(!isNaN(x)){
       if(x<0){
-        this.#opacity = 0;
+        this._opacity = 0;
       }else if(x>1){
-        this.#opacity = 1;
+        this._opacity = 1;
       }else{
-        this.#opacity = x;
+        this._opacity = x;
       }  
     }
   }
 
-  get y() {return this.#y;}
+  get y() {return this._y;}
   set y(x:any) {
-    this.#y = parseFloat(x) || 0;
+    this._y = parseFloat(x) || 0;
   }
 
-  get x() {return this.#x;}
+  get x() {return this._x;}
   set x(x:any) {
-    this.#x = parseFloat(x) || 0;
+    this._x = parseFloat(x) || 0;
   }
 
-  get scale() {return this.#scale;}
+  get scale() {return this._scale;}
   set scale(x:any) {
-    this.#scale = parseFloat(x) || 0;
+    this._scale = parseFloat(x) || 0;
   }
 
-  get rotate() {return (this.#rotate*180)/Math.PI;}
-  set rotateRad(x) {this.#rotate = x}
-  get rotateRad() {return this.#rotate;}
-  set rotate(x:any) {this.#rotate =( parseFloat(x) || 0)*Math.PI/180;}
+  get rotate() {return (this._rotate*180)/Math.PI;}
+  set rotateRad(x) {this._rotate = x}
+  get rotateRad() {return this._rotate;}
+  set rotate(x:any) {this._rotate =( parseFloat(x) || 0)*Math.PI/180;}
 
-  get z() {return this.#z;}
+  get z() {return this._z;}
   set z(x:any) {
-    this.#z = parseFloat(x) || 0;
+    this._z = parseFloat(x) || 0;
   }
 
-  get ignoreParallax() {return this.#ignoreParallax;}
+  get ignoreParallax() {return this._ignoreParallax;}
   set ignoreParallax(x) {
-    this.#ignoreParallax = x;
+    this._ignoreParallax = x;
   }
 
-  get widthScale() {return this.#widthScale;}
+  get widthScale() {return this._widthScale;}
   set widthScale(x:any) {
-    this.#widthScale = parseFloat(x) || 0;
+    this._widthScale = parseFloat(x) || 0;
   }
 
-  get heightScale() {return this.#heightScale;}
+  get heightScale() {return this._heightScale;}
   set heightScale(x:any) {
-    this.#heightScale = parseFloat(x) || 0;
+    this._heightScale = parseFloat(x) || 0;
   }
 
-  get states(){return this.#states.states}
+  get useEngineUnits() {return this._useEngineUnits}
+  set useEngineUnits(x) {this._useEngineUnits = x}
 
-  get is() {return this.#states.state}
-  set is(x) {this.#states.state = x;}
+  get pendingRenderingRecalculation() {return this._pendingRenderingRecalculation;}
+  set pendingRenderingRecalculation(x) {this._pendingRenderingRecalculation = x;}
 
-  get useEngineUnits() {return this.#useEngineUnits}
-  set useEngineUnits(x) {this.#useEngineUnits = x}
+  get parent() {return this._parent;}
+  set parent(x) {this._parent = x;}
 
-  get pendingRenderingRecalculation() {return this.#pendingRenderingRecalculation;}
-  set pendingRenderingRecalculation(x) {this.#pendingRenderingRecalculation = x;}
-
-  get parent() {return this.#parent;}
-  set parent(x) {this.#parent = x;}
-
-  get accomulatedZ() {return this.#accomulatedZ;}
-  set accomulatedZ(x) {this.#accomulatedZ = x;}
+  get accomulatedZ() {return this._accomulatedZ;}
+  set accomulatedZ(x) {this._accomulatedZ = x;}
 
 
   /**
@@ -459,9 +450,9 @@ class GraphObject{
    */
   clone(cloneId:string){
     if(cloneId == null)
-      throw new Error("the id for the clonning operation that uses the object with id '"+this.#id+"' is not defined");
+      throw new Error("the id for the clonning operation that uses the object with id '"+this._id+"' is not defined");
 
-    const atributesNames = this.#getAtribs();
+    const atributesNames = this._getAtribs();
 
     var graphData = new Object();
     atributesNames.forEach(element => {
@@ -476,83 +467,11 @@ class GraphObject{
    */
   dump(){
     var d = new Object();
-    this.#getAtribs().forEach(key => {
+    this._getAtribs().forEach(key => {
 
       d[key] = this[key];
     });
     return d
   }
 }
-class States{
-  #states
-  /**
-   * State structure = is a object
-   * {
-   *  beforeChange: funtion
-   *  data: stateData = Object
-   *  afterChange: function
-   * }
-   */
-  #actualState
-  #referenceToObject
-  constructor(ref,states = new Object()){
-    this.#actualState = "";
-    this.#states = states != undefined ? states : {};
-    Object.keys(states).forEach(stateName => {
-      this.addState(stateName,states[stateName]);
-    });
-    this.#referenceToObject = ref != undefined ? ref : {};
-  }
-  addState(id:string,stateInfo){
-    Object.assign(this.#states,{[id]:new State(stateInfo)});
-  }
-  removeState(id:string){
-    delete this.#states[id];
-  }
-  get states(){return this.#states}
-
-  set state(stateName){
-    if(stateName != this.#actualState){
-      if(stateName in this.#states){
-        this.#actualState = stateName;
-        const targetState = this.#states[stateName];
-        targetState.setThisState(this.#referenceToObject);
-      }
-    }
-  }
-  get actualState() {return this.#actualState}
-}
-class State{
-  #beforeChange: Function|null = null
-  #data
-  #afterChange: Function|null = null
-
-  constructor(stateInfo:{[key:string]:any}){
-    if(!("data" in stateInfo))
-      throw new Error("stateInfo without data key");
-    this.#data = stateInfo.data;
-    if("beforeChange" in stateInfo)
-      this.#beforeChange = stateInfo.beforeChange;
-    if("afterChange" in stateInfo)
-      this.#afterChange = stateInfo.afterChange
-  }
-
-  get beforeChange(){return this.#beforeChange}
-  get data(){return this.#data}
-  get afterChange(){return this.#afterChange}
-
-  setThisState(referenceToObject){
-    if(this.#beforeChange != null){
-      this.#beforeChange(RenderEngine.getInstance());
-    }
-    Object.keys(this.#data).forEach(key =>{
-      referenceToObject[key] = this.#data[key];
-    });
-    if(this.#afterChange != null){
-      this.#afterChange(RenderEngine.getInstance());
-    }
-  }
-
-}
-
 export {GraphObject}

@@ -21,6 +21,7 @@ type ScriptNodeType = {
   decisions?:Array<Decision>,
 }
 class ScriptNode {
+  #id:string
   #actor:Actor|null
   #actorId:string|null
   #position:string|null
@@ -40,6 +41,13 @@ class ScriptNode {
     this.#say = data.say;//In the interpretation phase, preserve the 'say' in text, unconverted information
     this.#nextNode = data.nextNode ?? null;
     this.#decisions = data.decisions ?? null;
+  }
+  
+  public get id() : string {
+    return this.#id
+  }
+  public set id(x){
+    this.#id = x;
   }
 
   start(engine:RenderEngine){
@@ -132,7 +140,6 @@ class ScriptNode {
     if(decisionData){
       this.#out = decisionData.out;
       this.#nextNode = decisionData.nextNode;
-      
     }
     if(this.#actor){
       this.#actor.removeFocus();
@@ -144,3 +151,5 @@ class ScriptNode {
   }
 
 }
+
+export default ScriptNode;

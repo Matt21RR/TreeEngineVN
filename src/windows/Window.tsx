@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { JSX } from 'react';
 import $ from "jquery";
 import Draggable from 'react-draggable';
 import { IconButton } from "../tools/components/Buttons";
@@ -28,9 +28,11 @@ class Window extends React.Component<WindowProps> {
       width:number,
       height:number
     };
+  nodeRef:React.RefObject<any>;
   constructor(props:WindowProps){
     super(props);
     this.id = "window" + String(window.performance.now()).replaceAll(".","");
+    this.nodeRef = React.createRef();
     this.resizeBlocked = props.resizeBlocked ?? false;
     this.onResize = props.onResize ?? ( ()=>{ } );
     this.fullSized = false;
@@ -248,8 +250,9 @@ class Window extends React.Component<WindowProps> {
   render(){
     return(
       <Draggable
+      nodeRef={this.nodeRef}
         onMouseDown={
-          (e)=>{
+          ()=>{
             this.props.clicked();
           }
         }
@@ -283,7 +286,8 @@ class Window extends React.Component<WindowProps> {
             opacity: this.props.minimized ? (this.props.preview? .5 : 1) : 1, 
             display: this.props.minimized ? (this.props.preview? "inherit" : "none"):"inherit"
           }} 
-          id={"body"+this.id}>
+          id={"body"+this.id}
+          ref={this.nodeRef}>
           <div className='flex flex-row w-full h-full'>
             <div className='relative w-full h-full min-w-full max-h-full border-[1px] border-gray-700 flex flex-col'>
               {this.renderWindowTop()}

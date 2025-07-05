@@ -26,6 +26,8 @@ import PointerCalculation from "./PointerCalculation.tsx";
 //@ts-ignore
 import gsap from "gsap";
 import { generateObjectsDisplayDimentions } from "./RenderingDimentions.ts";
+import UI from "./UI.tsx";
+import ScriptNode from "../engineComponents/ScriptNode.ts";
 
 /**
  * aaaaa
@@ -93,6 +95,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   dialog: Array<any>;
   narration: string;
   //*ScriptNode stuff
+  scriptNodes: RenList<ScriptNode>;
   scenicPositions: RenList<any>;
   callThisShitWhenDialogEnds:(engine:RenderEngine)=>void;
   callThisShitWhenDecisionEnds:(engine:RenderEngine,data:{[key:string]:any})=>void;
@@ -730,6 +733,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
             <div className="absolute w-full h-full bg-gradient-to-b from-gray-900 to-gray-700">
               {this.renderScene()}
               <PointerCalculation/>
+              {/* <UI/> */}
             </div>
           </div>
         </div>

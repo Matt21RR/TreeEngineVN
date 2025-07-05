@@ -258,6 +258,27 @@ class ObjectsE extends React.Component {
       }
     />
   }
+  deleteSelectedButton(){
+    const eng = this.props.engine;
+    return <Button1 
+      text="delete"
+      action={()=>{
+        Swal.fire({
+          text: "DELETE?: ",
+          showDenyButton: false,
+          showConfirmButton: true,
+          confirmButtonColor:"red",
+          showCancelButton: true,
+          confirmButtonText: "Yes",
+          cancelButtonText: "No"
+        }).then((confir) => {
+          if (confir.isConfirmed) {
+            eng.graphArray.remove(this.selectedObject);
+          }
+        });
+      }}
+    />
+  }
   render(){
     const eng = this.props.engine;
       return(
@@ -281,6 +302,7 @@ class ObjectsE extends React.Component {
             <div className="relative h-full w-full overflow-hidden text-sm px-2 flex flex-col">
               <div className='grow overflow-auto'>
                 {this.selectedObject == "" ? null : this.cloneSelectedButton()}
+                {this.selectedObject == "" ? null : this.deleteSelectedButton()}
                 {this.listProperties()}
               </div>
             </div>
