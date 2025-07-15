@@ -16,7 +16,7 @@ import { Chaos } from "../interpretators/ChaosInterpreter.ts";
 import { generateCalculationOrder, generateRenderingOrder } from "./RenderingOrder.ts";
 
 //@ts-ignore
-import noImageTexture from "../res/no-image.png";
+import noImageTexture from "../resources/no-image.png";
 
 import CollisionLayer, { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
@@ -68,6 +68,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     trigger: typeof Trigger;
     keyboardTrigger: typeof KeyboardTrigger;
     codedRoutine: typeof CodedRoutine;
+    scriptNode: typeof ScriptNode;
   };
   //*Runtime information
   gameVars: Record<string, any>;
@@ -157,6 +158,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       trigger: Trigger,
       keyboardTrigger : KeyboardTrigger,
       codedRoutine : CodedRoutine,
+      scriptNode : ScriptNode
     }
     this.gameVars = {};//Y guardar esto tambien
 
@@ -292,13 +294,14 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   }
   loadScript(scriptRoute:string,destination = "gameEntrypoint"){
     this.dataCleaner();
-    const h = new Chaos();
+    const h = new Chaos();         
     var self = this;
+    
     $.get(scriptRoute).then(scriptFile=>{
       h.kreator(scriptFile).then(scriptData=>{
         var commands = (scriptData as {[key:string]:string})[destination];
         const commandsF = new Function ("engine","ExtendedObjects",commands);
-        console.log(commandsF);
+        console.log(commandsF); 
         commandsF(self,ExtendedObjects);
         self.isReady = true;
         self.forceUpdate();
@@ -733,7 +736,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
             <div className="absolute w-full h-full bg-gradient-to-b from-gray-900 to-gray-700">
               {this.renderScene()}
               <PointerCalculation/>
-              {/* <UI/> */}
+              <UI/>
             </div>
           </div>
         </div>

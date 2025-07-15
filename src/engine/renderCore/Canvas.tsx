@@ -100,7 +100,7 @@ class Canvas extends React.Component<CanvasProps>{
     this.resolutionHeight = Math.floor(window.innerHeight * this.scale *window.devicePixelRatio);
     this.resolutionWidth = Math.floor(window.innerWidth * this.scale *window.devicePixelRatio); 
 
-    this.element = React.createRef();
+    this.element = React.createRef() as React.RefObject<HTMLCanvasElement>;
   
     this.stopEngine = false;
     this.engineThreads = 0;
@@ -232,7 +232,7 @@ class Canvas extends React.Component<CanvasProps>{
     }
     if(this.element == null){
       console.error("element reference error");
-      this.element = React.createRef();
+      this.element = React.createRef() as React.RefObject<HTMLCanvasElement>;
     }
     const canvas = this.element.current;
     if(canvas == null){
@@ -332,10 +332,7 @@ class Canvas extends React.Component<CanvasProps>{
       const actualGlobalAlpha = context.globalAlpha;
 
       if(this.showFps){
-        var mouse = {
-          x : this.renderEngine.mouse.x,
-          y : this.renderEngine.mouse.y
-        };
+        var mouse = this.renderEngine.mouse;
 
         const fpsData: Array<string> = [
           "CPS: "+fps.promedio.cps + "/ FPS: "+fps.promedio.fps,

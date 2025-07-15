@@ -3,7 +3,7 @@ import InstructionInterface from "../InstructionInterface.ts";
 
 class CreateInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger"];
+    const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger", "ScriptNode"];
     const getToken = (idx)=>{return instruction[idx];}
 
     try {
@@ -104,6 +104,12 @@ class CreateInstruction extends InstructionInterface{
           `Object.assign(${dynaVarName},{id:${id}});
 
           engine.codedRoutines.push(new engine.constructors.codedRoutine(${dynaVarName}));`
+        );
+        break;
+      case "ScriptNode":
+        res.push(
+          `Object.assign(${dynaVarName} ,{id:${id}});
+          engine.scriptNodes.push(new engine.constructors.scriptNode(${dynaVarName}))`
         );
         break;
     }

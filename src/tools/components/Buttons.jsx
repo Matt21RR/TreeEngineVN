@@ -15,7 +15,7 @@ import minus from "./icons/minus.svg";
 import plus from "./icons/plus.svg";
 import play from "./icons/play.svg";
 import pause from "./icons/pause.svg";
-import repeat from "./icons/repeat.svg";
+import repeat from "./icons/repeat.svg"; 
 
 import gsap from "gsap";
 import $ from "jquery";
@@ -117,9 +117,9 @@ class IconButton extends React.Component{
   }
   render(){
     return(
-      <div className={"cursor-pointer flex "+ ("style" in this.props ? this.props.style : "h-6 w-6 m-1")+ ((this.props.hide) ? " hidden":"")} onClick={()=>{this.props.action()}}>
-        <div className={"bg-cover bg-no-repeat " + ("iconStyle" in this.props ? this.props.iconStyle : "w-full h-full")}
-             style={{backgroundImage:"url('"+icons[this.props.icon]+"')"}} />
+      <div className={`cursor-pointer flex ${this.props.style ?? "h-6 w-6 m-1"} ${(this.props.hide) ? " hidden":""}`} onClick={()=>{this.props.action()}}>
+        <div className={`bg-cover bg-no-repeat ${this.props.iconStyle ?? "w-full h-full"}`}
+          style={{backgroundImage:`url("${icons[this.props.icon]}")`}} />
       </div>
     );
   }

@@ -27,6 +27,7 @@ class LoadInstruction extends InstructionInterface{
         const sceneOrModuleId = loadId.replaceAll('"',"");
         if(!(sceneOrModuleId in chaosReference.scripts)){
           console.error("List of scripts and modules:",Object.keys(chaosReference.scripts));
+          console.log(chaosReference);  
           throw new Error("Scene or module "+sceneOrModuleId+" not found or don't exists.");
         }
         res = chaosReference.scripts[sceneOrModuleId];

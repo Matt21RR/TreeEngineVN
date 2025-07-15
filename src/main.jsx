@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import "./engine/res/css/fonts.css";
+import "./engine/resources/css/fonts.css";
 
 import { Test } from './windows/Test.jsx';
 import { RenderEngine } from './engine/renderCore/RenderEngine.tsx';

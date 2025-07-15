@@ -1,5 +1,8 @@
 import { arrayFlatter } from "../logic/Misc.ts";
-import { Chaos, Instruction, Token } from "./ChaosInterpreter.ts";
+import { Chaos } from "./ChaosInterpreter.ts";
+import Instruction from "./Instruction.ts";
+import Token from "./Token.ts";
+
 
 abstract class InstructionInterface{
   protected abstract isOfThisType(instruction: Instruction|Token):{[key:string]:any};

@@ -1,33 +1,35 @@
 import DialogInstruction from "../interpretators/builders/DialogInstruction"
 import NarrationInstruction from "../interpretators/builders/NarrationInstruction"
 import { RenderEngine } from "../renderCore/RenderEngine"
+import UI from "../renderCore/UI"
 import Actor from "./Actor"
 
-type Decision = {
+export type Decision = {
   label:string,
-  condition?:(engine:RenderEngine)=>null|null,
-  out?:(engine:RenderEngine)=>null|null
-  nextNode:string
+  condition?:((engine:RenderEngine)=>boolean)|null,
+  out?:((engine:RenderEngine)=>void)|null
+  nextNode?:string
 }
 
-type ScriptNodeType = {
+export type ScriptNodeType = {
   actor?:Actor,
   position?:string,
   emotion?:string,
-  in?:Function,
-  out?:Function,
+  in?:(engine:RenderEngine)=>void,
+  out?:(engine:RenderEngine)=>void,
   say:string,
   nextNode?:string,
   decisions?:Array<Decision>,
 }
+
 class ScriptNode {
   #id:string
   #actor:Actor|null
   #actorId:string|null
   #position:string|null
   #emotion:string|null
-  #in:Function|null
-  #out:Function|null
+  #in:((engine: RenderEngine) => void )| null
+  #out:((engine: RenderEngine) => void) | null
   #say:string
   #nextNode:string|null
   #decisions:Array<Decision>|null
@@ -52,7 +54,6 @@ class ScriptNode {
 
   start(engine:RenderEngine){
     if(this.#in){
-      console.log(this.#in);
       engine.routines.push(this.#in);
     }
     if(this.#actor){
@@ -82,70 +83,39 @@ class ScriptNode {
         narrationFunction(engine);
       }
       if(this.#decisions){
-        RenderEngine.getInstance().callThisShitWhenDialogEnds = this.decide;
+        engine.callThisShitWhenDialogEnds = this.decide;
       }else{
-        RenderEngine.getInstance().callThisShitWhenDialogEnds = this.end;
+        engine.callThisShitWhenDialogEnds = this.end;
       }
     }
   }
 
   decide(engine:RenderEngine){
+    if(!this.#decisions){
+      return;
+    }
     //Decide must wait until narration or dialog ends
     //Show plausible decisions
-
-    const id = `${Math.random()+window.performance.now()}`.replaceAll(".","");
-    let res :Array<string> = [];
-    res.push(`
-      decisionsRef${id} = new GraphObject({
-        enabled:true,
-        x:0.875,
-        y:0.5
-      })
-
-      const decisionsRef${id} = engine.graphArray.get("decisionsRef${id}");
-
-      //The engine with hung-up here... maybe ;)
-      //The reason: the engine will try to delete something that don't exist.
-
-
-
-    `);
-
-    for (let index = 0; index < this.#decisions.length; index++) {
-      const decisionData = this.#decisions[index];
-      if(decisionData.condition){
-        if(!decisionData.condition(engine)){
-          continue;
-        }
-      }
-      res.push(`
-        option${id+index} = new GraphObject({
-          enabled:true,
-          parent: "decideator${id}",
-          widthScale: decisionsRef${id}.widthScale,
-          text:${decisionData.label}
-        })
-
-        option${id+index}Trigger = new Trigger("option${id+index}",{
-          onRelease:(engine)=>{
-            engine.callThisShitWhenDecisionEnds(engine,${decisionData});
-          }
-        })
-      `);
-    }
-
+    UI.getInstance().loadDecisions(this.#decisions);
   }
 
-  end(engine:RenderEngine,decisionData:Decision = null){
+  end(engine:RenderEngine,decisionData:Decision|null = null){
     if(decisionData){
-      this.#out = decisionData.out;
-      this.#nextNode = decisionData.nextNode;
+      this.#out = decisionData.out as ((engine: RenderEngine) => void) | null;
+      this.#nextNode = decisionData.nextNode ?? this.#nextNode;
+      if(this.#nextNode == null){
+        console.warn("nextNode no defined");
+        console.warn(decisionData);
+      }
     }
     if(this.#actor){
       this.#actor.removeFocus();
     }
     if(this.#out){
       engine.routines.push(this.#out);
+    }
+    if(this.#nextNode){
+      engine.scriptNodes.get(this.#nextNode).start(engine);
     }
     
   }

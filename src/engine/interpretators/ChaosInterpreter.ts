@@ -12,7 +12,8 @@ import SceneDefinitionInstruction from "./builders/SceneDefinitionInstruction.ts
 import SetInstruction from "./builders/SetInstruction.ts";
 import DeleteInstruction from "./builders/DeleteInstruction.ts";
 import WaitInstruction from "./builders/WaitInstruction.ts";
-
+import Token from "./Token.ts";
+import Instruction from "./Instruction.ts";
 
 declare global{
   interface Window{
@@ -21,45 +22,6 @@ declare global{
     projectRoute:string
   }
 }
-
-class Token{
-  _value:any
-  _type:string
-  _index:number
-  constructor(value:any,type:string,index:number){
-    this._value = value;
-    this._type = type;
-    this._index = index;
-    // if(index == 49){
-    //   debugger
-    // }
-  }
-  get value(){return this._value;}
-  set value(value){this._value = value;}
-  get type(){return this._type;}
-  set type(type){this._type = type;}
-  get index(){return this._index;}
-  set index(index){this._index = index;}
-}
-
-class Instruction extends Array<Token | Instruction>{
-  get(index:number){
-    this.at(index);
-  }
-  get index():number{
-    if(this.length != 0){
-      const lastElementInList:Token|Instruction = (this.at(-1) as Token|Instruction);
-      if(lastElementInList.constructor.name == "Instruction"){
-        return (lastElementInList as Instruction).index;
-      }else{
-        return (lastElementInList as Token).index;
-      }
-    }else{
-      return 0;
-    }
-  }
-}
-
 
 class ChaosInterpreter {
   sounds:{[key:string]:string}
@@ -87,13 +49,14 @@ class ChaosInterpreter {
     //Preload JSONs 
   }
   listScripts(){
+    const self = this;
     return new Promise((resolve,reject)=>{
-      fetch(this.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
+      fetch(self.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
         Object.keys(scriptsData).forEach((scriptId)=>{
-          scriptsData[scriptId] = this.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
+          scriptsData[scriptId] = self.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
         })
-        Object.assign(scriptsData,{"gameEntrypoint": this.projectRoot + "main.txt"})
-        this.scriptsUrls = scriptsData
+        Object.assign(scriptsData,{"gameEntrypoint": self.projectRoot + "main.txt"})
+        self.scriptsUrls = scriptsData
         resolve(scriptsData);
       });
     })
@@ -103,13 +66,13 @@ class ChaosInterpreter {
     return new Promise((resolve,reject)=>{
       if(doNothing){
         resolve(null);
-      }else{
-        fetch(this.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
+      }else{ 
+        fetch(self.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
           Promise.all(
             Object.keys(scriptsData).map(scriptId => {
-              const jsonPath = this.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
+              const jsonPath = self.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
               return new Promise(resolveScript=>{
-                fetch(jsonPath).then(           
+                fetch(jsonPath).then(          
                   scriptData => {return scriptData.text();}).then((res2)=>{
                     self.kreator(res2,false).then(
                     (textScr)=>{
@@ -126,12 +89,11 @@ class ChaosInterpreter {
     })
   }
   kreator(script:string,loadAudioVisual = true){
-    return new Promise((resolve,reject)=>{
+    return new Promise((resolve,reject)=>{ 
       //TODO: add textures and sounds js exists check
       this.loadScripts(!loadAudioVisual).then(()=>{
         //TODO: ignore lines with no content
         var scenes = this.#instructionsDesintegrator(script);
-
         resolve(scenes);
       })
     });
@@ -141,22 +103,27 @@ class ChaosInterpreter {
     return this.#instructionsDesintegrator(script,true,true) as string;
   }
 
+  tokenization(script:string){
+    script += "\n"; //To avoid the last line to be ignored
+    var tokenList = this.#lexer(script).filter(tk=>{return (tk.constructor.name == "Array")||((tk as Token).type != "space")});
+    var abs = this.#preParser(tokenList);
+    return abs;
+  }
+
   #instructionsDesintegrator(script:string, ignoreSceneOrModuleDefinitionCheck = false, recursiveMode=false){
     script += "\n"; //To avoid the last line to be ignored
     var tokenList = this.#lexer(script);
     var abs = this.#preParser(tokenList);
-
     var collection:Array<[boolean,Object|string]> = [];
 
     for (let index = 0; index < abs.length; index++) {
       const instruction = abs[index] as Instruction|Token;
-    
       if(instruction instanceof Array){
         const interpreted = this.#interpretateInstruction(instruction as Instruction,recursiveMode);
         //@ts-ignore
         if(interpreted[0]){
           collection.push(interpreted as [boolean,Object|string]);
-        }
+        } 
         continue;
       }else if(instruction instanceof Token){
         if(instruction.type == "jsCode"){
@@ -175,7 +142,7 @@ class ChaosInterpreter {
 
   #lexer(script:string){
     // Regular expression to match words, punctuation, and special characters
-    const regex = /((\d+\.?\d*)|(\.\d*)|"([^"]*)"|'([^']*)'|`([^`]*)`|([^\w\s])|(\s{1,})|(\w+)|[=();,{}"'`])/g;
+    const regex = /((\d+\.?\d*)|(\.\d*)|"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`|([^\w\s])|(\s{1,})|(\w+)|[=();,{}"'`])/g;
 
     // Apply regex to split the string
     const result = script.match(regex);
@@ -183,7 +150,7 @@ class ChaosInterpreter {
           let symbol;
           if(val.match(/\n{1,}/)){
             symbol="lineBreak";
-          }else if(val.match(/"([^"]*)"|'([^']*)'|`([^`]*)`/)){
+          }else if(val.match(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/)){
             symbol="text";
           }else if(val.match(/[+\-*/%^=!<>&|]/)){
             symbol="operator";
@@ -311,7 +278,6 @@ class ChaosInterpreter {
                   new Token( "\n", "lineBreak", plausibleInstruction[0].index)
                 )
               }
-
             }
           }
         }
@@ -329,16 +295,13 @@ class ChaosInterpreter {
     }
     const instruction = _instruction.filter(tk=>{return (tk.constructor.name == "Array")||((tk as Token).type != "space")});
 
-    //@ts-ignore
-    //console.log(instruction.map(e=>e.value).join(" "));
-
     const supportedInstructions = [
       new CreateInstruction(),
       new DialogInstruction(),
       new LoadInstruction(),
       new ModuleDefinitionInstruction(),
       new NarrationInstruction(),
-      new PlayInstruction(),
+      new PlayInstruction(), 
       new ResumeInstruction(),
       new RunInstruction(),
       new SceneDefinitionInstruction(),
@@ -346,13 +309,13 @@ class ChaosInterpreter {
       new DeleteInstruction(),
       new WaitInstruction()
     ];
-
     for (const supportedInstruction of supportedInstructions) {
       //@ts-ignore
       const res = (supportedInstruction).check(instruction,this,!recursiveMode);
       if(res.match){
         result = res.result;
-        return [true,result];
+        itWasAScriptInstruction = true;
+        break;
       }
     }
     return [itWasAScriptInstruction,result]
@@ -386,4 +349,4 @@ class ChaosInterpreter {
     return scenes;
   }
 }
-export {ChaosInterpreter as Chaos,Token,Instruction};
+export {ChaosInterpreter as Chaos};

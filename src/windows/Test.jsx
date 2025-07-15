@@ -28,7 +28,7 @@ class Test extends React.Component{
             showFps
             developmentDeviceHeight={1080}
             cyclesPerSecond={60}
-            setEngine={(engine)=>{console.log(engine); this.engine=engine; this.windowsEnvironment.renderSecondaryContent = true; this.windowsEnvironment.forceUpdate(); this.forceUpdate();}}/>
+            setEngine={(engine)=>{this.engine=engine; this.windowsEnvironment.renderSecondaryContent = true; this.windowsEnvironment.forceUpdate(); this.forceUpdate();}}/>
         }
         content={{
           fileExplorer:{
