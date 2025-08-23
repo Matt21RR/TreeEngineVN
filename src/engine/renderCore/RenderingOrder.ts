@@ -1,8 +1,7 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { GraphObject } from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList";
-
-type CalculationOrder = Array<{id:string,weight:number,z:number}>;
+import { CalculationOrder } from "./RenderEngine.d.tsx";
 
 /**
  * Genera el orden de renderización de los elementos en pantalla tomando en cuenta el valor z

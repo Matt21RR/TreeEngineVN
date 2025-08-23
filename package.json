@@ -19,6 +19,8 @@
     "gsap": "^3.13.0",
     "howler": "^2.2.4",
     "jquery": "^3.7.1",
+    "pixi.js": "^8.12.0",
+    "rc-table": "^7.51.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-draggable": "^4.5.0",

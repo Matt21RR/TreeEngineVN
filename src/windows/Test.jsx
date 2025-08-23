@@ -1,7 +1,6 @@
 import React  from "react";
 import { WindowsEnvironment } from "./WindowsEnvironment";
 import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
-import { KeyboardTrigger } from "../engine/engineComponents/Trigger.ts";
 import { ObjectsE } from "../tools/SubTools";
 import { EngineTools } from "../tools/EngineTools";
 import { FileExplorer } from "../tools/FileExplorer";

@@ -1,4 +1,4 @@
-type ObjectRenderingData = {
+export type ObjectRenderingData = {
   x:number, 
   y:number, 
   z:number, 
@@ -22,8 +22,6 @@ type EngineRenderingData = {
   [key:string]:ObjectRenderingData
 };
 
-type Tuple = [number, number];
-
 function engineRenderingDataCloner(engineRenderingData:EngineRenderingData){
   var newData:EngineRenderingData = {};
   for(const id in engineRenderingData){
@@ -35,18 +33,18 @@ function engineRenderingDataCloner(engineRenderingData:EngineRenderingData){
 
 class CollisionLayer {
   collisionMatrix:string[][][];
-  refTable:{[key:string]:Array<Tuple>};
-  #renderingData:EngineRenderingData;
+  refTable:{[key:string]:Array<[number,number]>};
+  private renderingData:EngineRenderingData;
 
   constructor() {
     this.collisionMatrix = [];
     this.refTable = {};
-    this.#renderingData = {};
+    this.renderingData = {};
   }
   update(renderingData:EngineRenderingData, displayWidth:number, displayHeight:number) {
     this.collisionMatrix = [];
     this.refTable = {};
-    this.#renderingData = renderingData;
+    this.renderingData = renderingData;
     for (let key in renderingData) {
       const data = renderingData[key];
       //Horizontal boundaries
@@ -75,7 +73,7 @@ class CollisionLayer {
       }
     }
   }
-  #isColliding(a:ObjectRenderingData, b:ObjectRenderingData) {
+  private static isColliding(a:ObjectRenderingData, b:ObjectRenderingData) {
     let aX = a.corner.x;
     let aY = a.corner.y;
     let aW = a.width;
@@ -97,7 +95,7 @@ class CollisionLayer {
     }
     return false;
   }
-  #isMouseColliding(mouseX:number, mouseY:number, object:ObjectRenderingData) {
+  private static isMouseColliding(mouseX:number, mouseY:number, object:ObjectRenderingData) {
     let aX = object.corner.x;
     let aY = object.corner.y;
     let aW = object.width;
@@ -138,7 +136,7 @@ class CollisionLayer {
       return [];
     }
     
-    const entityData = this.#renderingData[key];
+    const entityData = this.renderingData[key];
     let collisions:Array<string> = [];
     for(let target of collisionsToCheck) {
       if(checkTargets.length > 0) {
@@ -149,8 +147,8 @@ class CollisionLayer {
       if(target === key) {
         continue;
       }
-      let targetData = this.#renderingData[target];
-      if(this.#isColliding(entityData, targetData)) {
+      let targetData = this.renderingData[target];
+      if(CollisionLayer.isColliding(entityData, targetData)) {
         collisions.push(target);
       }
 
@@ -172,8 +170,8 @@ class CollisionLayer {
       }
       let collisions:Array<string> = [];
       for(let target of collisionsToCheck) {
-        let targetData = this.#renderingData[target];
-        if(this.#isMouseColliding(mouseX*resolution.width, mouseY*resolution.height, targetData)) {
+        let targetData = this.renderingData[target];
+        if(CollisionLayer.isMouseColliding(mouseX*resolution.width, mouseY*resolution.height, targetData)) {
           collisions.push(target);
         }
       }

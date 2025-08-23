@@ -1,5 +1,5 @@
-type CalculationOrder = Array<{id:string,weight:number,z:number}>;
-type CameraData = {
+export type CalculationOrder = {id:string,weight:number,z:number}[];
+export type CameraData = {
     id: string;
     maxZ: number;
     origin: { x: number; y: number };

@@ -1,4 +1,4 @@
-import DialogInstruction from "../interpretators/builders/DialogInstruction"
+import DialogInstruction from "../interpretators/builders/DialogInstruction.ts"
 import NarrationInstruction from "../interpretators/builders/NarrationInstruction"
 import { RenderEngine } from "../renderCore/RenderEngine"
 import UI from "../renderCore/UI"

@@ -3,18 +3,10 @@ import { GraphObject } from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
 import { getStr, wrapText } from "../logic/Misc.ts";
 import { CanvasData } from "./Canvas";
+import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
 import { RenderEngine } from "./RenderEngine.tsx";
 import { arrayiseTree } from "./RenderingOrder.ts";
 import { RenderMisc } from "./RenderMisc.ts";
-
-type CalculationOrder = Array<{id:string,weight:number,z:number}>;
-type CameraData = {
-    id: string;
-    maxZ: number;
-    origin: { x: number; y: number };
-    position: { x: number; y: number; z: number; angle: number };
-    usePerspective: boolean;
-  };
 
 
 /**

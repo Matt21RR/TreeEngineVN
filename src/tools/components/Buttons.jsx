@@ -187,7 +187,7 @@ class InputTextArea extends React.Component {
               className: 'text-[#98C379]'
             },
             {
-              highlight: ['GraphObject','TextureAnim','Trigger','KeyboardTrigger','Animation','CodedRoutine','(',')','{','}'],
+              highlight: ['GraphObject','TextureAnim','Trigger','KeyboardTrigger','Animation','CodedRoutine','Actor','(',')','{','}'],
               className: 'text-[#357FBF]'
             },
             {

@@ -1,6 +1,6 @@
 import React from "react";
 import { BaseButton } from "../tools/components/Buttons";
-import { Window } from "./Window.tsx";
+import Window from "./Window.tsx";
 
 class WindowsEnvironment extends React.Component{
   constructor(props){

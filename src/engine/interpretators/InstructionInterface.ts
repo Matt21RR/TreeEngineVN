@@ -6,11 +6,20 @@ import Token from "./Token.ts";
 
 abstract class InstructionInterface{
   protected abstract isOfThisType(instruction: Instruction|Token):{[key:string]:any};
-  protected abstract interpretate(isInRoutineMode:boolean, extractedData:{[key:string]:any}):any;
+  protected abstract interpretate(isInRoutineMode:boolean, extractedData:{[key:string]:any}):(string|{[key:string]:any});
+  protected agrupable = false;
 
-  #getStrParamsFromTokenList(instruction){
-    const plainTokenListOfParams = arrayFlatter(instruction.at(-1).flat())
-    var strParams = plainTokenListOfParams.map(token=>token.value).join("");
+  isAgrupable(){
+    return this.agrupable;
+  }
+
+  private getStrParamsFromInstruction(instruction: Instruction){
+    const plainTokenListOfParams = arrayFlatter((instruction.at(-1) as Array<Token>).flat());
+    return this.getStrParamsFromTokenList(plainTokenListOfParams);
+  }
+
+  protected getStrParamsFromTokenList(instruction: Array<Token>){
+    var strParams = instruction.map(token=>token.value).join("");
 
     if(strParams.indexOf("(") == 0){
       strParams = strParams.substring(1,strParams.length-1);
@@ -28,7 +37,7 @@ abstract class InstructionInterface{
   check(instruction, chaosReference:Chaos, isInRoutineMode:boolean){
     let strParams = "";
     if ((instruction as Instruction).at(-1) instanceof Array){
-      strParams = this.#getStrParamsFromTokenList(instruction);
+      strParams = this.getStrParamsFromInstruction(instruction);
     }
 
 

@@ -1,5 +1,48 @@
 import { lambdaConverter } from "../logic/Misc.ts"
 
+const dataType = {
+    id: "string",
+    enabled : "boolean",
+
+    text : ["function","string","null"],
+    fitContent: "boolean",
+    center : "boolean",
+    verticalCenter: "boolean",
+    color : "string",
+    font : "string",
+    fontSize : "number",
+    boxColor : "string",
+    horizontalMargin : "number",
+    verticalMargin : "number",
+
+    texture: ["string","null"],
+
+    brightness : "number",
+    contrast : "number",
+    grayscale : "number",
+    hueRotate : "number",
+    invert : "number",
+    saturate : "number",
+    sepia : "number",
+
+    blur : "number",
+    aberration : "number",
+    aberrationType : "string",
+
+    opacity : "number",
+
+    parent : "string",
+
+    ignoreParallax : "boolean",
+    useEngineUnits : "boolean",
+    x : "number",
+    y : "number",
+    z : "number",
+    scale : "number",
+    widthScale : "number",
+    heightScale : "number",
+    rotate : "number",
+  }
 
 class GraphObject{
   _enabled:boolean //TODO: use I'T
@@ -48,59 +91,15 @@ class GraphObject{
 
   _useEngineUnits:boolean
 
-  _parent
+  _parent:""
   
-  _accomulatedZ //Engine related var, dont changeit through a gamescript
+  _accomulatedZ:number //Engine related var, dont changeit through a gamescript
 
   _getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
-    const propertyNames = Object.keys(this.dataType);
+    const propertyNames = Object.keys(dataType);
     const atributesNames = propertyNames.filter(key =>{return "get" in propertyDescriptors[key]});
     return atributesNames;
-  }
-
-  dataType = {
-    id: "string",
-    enabled : "boolean",
-
-    text : ["function","string","null"],
-    fitContent: "boolean",
-    center : "boolean",
-    verticalCenter: "boolean",
-    color : "string",
-    font : "string",
-    fontSize : "number",
-    boxColor : "string",
-    horizontalMargin : "number",
-    verticalMargin : "number",
-
-    texture: ["string","null"],
-
-    brightness : "number",
-    contrast : "number",
-    grayscale : "number",
-    hueRotate : "number",
-    invert : "number",
-    saturate : "number",
-    sepia : "number",
-
-    blur : "number",
-    aberration : "number",
-    aberrationType : "string",
-
-    opacity : "number",
-
-    parent : "string",
-
-    ignoreParallax : "boolean",
-    useEngineUnits : "boolean",
-    x : "number",
-    y : "number",
-    z : "number",
-    scale : "number",
-    widthScale : "number",
-    heightScale : "number",
-    rotate : "number",
   }
 
   constructor(graphInfo:{[key:string]:any} = {}){

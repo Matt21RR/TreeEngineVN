@@ -18,17 +18,17 @@ interface WindowProps{
 }
 
 class Window extends React.Component<WindowProps> {
-  id:string;
-  resizeBlocked:boolean;
-  onResize:Function;
-  fullSized:boolean;
-  unfullSizedData:{
+  private id:string;
+  private resizeBlocked:boolean;
+  private onResize:Function;
+  private fullSized:boolean;
+  private unfullSizedData:{
       top:number,
       left:number,
       width:number,
       height:number
     };
-  nodeRef:React.RefObject<any>;
+  private nodeRef:React.RefObject<any>;
   constructor(props:WindowProps){
     super(props);
     this.id = "window" + String(window.performance.now()).replaceAll(".","");
@@ -43,7 +43,7 @@ class Window extends React.Component<WindowProps> {
       height:0
     };
   }
-  renderWindowTop(){
+  private renderWindowTop(){
     const props = this.props;
     return(
       <div className='relative top-0 h-8 w-full flex flex-col'>
@@ -76,7 +76,7 @@ class Window extends React.Component<WindowProps> {
       </div>
     );
   }
-  #coordsExtractor(){
+  private coordsExtractor(){
     var w = document.getElementById("body"+this.id) as HTMLDivElement;
     var coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",").map(el=>parseFloat(el)*-1);
     if(coords.length == 0){
@@ -84,12 +84,12 @@ class Window extends React.Component<WindowProps> {
     }
     return coords;
   }
-  fulSize(){
+  private fulSize(){
     this.fullSized = true;
     this.forceUpdate();
 
     var w = document.getElementById("body"+this.id) as HTMLDivElement;
-    const coords = this.#coordsExtractor();
+    const coords = this.coordsExtractor();
 
     this.unfullSizedData = {
       width: parseFloat(w.style.width) || 0,
@@ -105,7 +105,7 @@ class Window extends React.Component<WindowProps> {
       onComplete:()=>{this.onResize();}
     }); 
   }
-  reduceSize(){
+  private reduceSize(){
     this.fullSized = false;
     this.forceUpdate();
 
@@ -117,7 +117,7 @@ class Window extends React.Component<WindowProps> {
       onComplete:()=>{this.onResize();}
     });
   }
-  resize(border,ev){
+  private resize(border:string,ev){
     if(this.resizeBlocked){return;}
 
     const e = ev.originalEvent;
@@ -262,7 +262,7 @@ class Window extends React.Component<WindowProps> {
             this.unfullSizedData.width = this.unfullSizedData.width == 0 ? 550 : this.unfullSizedData.width;
             this.unfullSizedData.height = 450;
 
-            const coords = this.#coordsExtractor();
+            const coords = this.coordsExtractor();
             this.unfullSizedData.left = (+m.clientX - (coords[0]*1) - (this.unfullSizedData.width/2));
             this.unfullSizedData.top = (-m.clientY - (coords[1]*1) + 20);
 
@@ -305,4 +305,4 @@ class Window extends React.Component<WindowProps> {
   }
 }
 
-export {Window}
+export default Window;

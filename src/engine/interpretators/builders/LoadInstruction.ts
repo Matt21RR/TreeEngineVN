@@ -30,7 +30,7 @@ class LoadInstruction extends InstructionInterface{
           console.log(chaosReference);  
           throw new Error("Scene or module "+sceneOrModuleId+" not found or don't exists.");
         }
-        res = chaosReference.scripts[sceneOrModuleId];
+        res = chaosReference.scripts[sceneOrModuleId].main;
         break;
     }
     return res;

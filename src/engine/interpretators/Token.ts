@@ -6,9 +6,6 @@ class Token{
     this._value = value;
     this._type = type;
     this._index = index;
-    // if(index == 49){
-    //   debugger
-    // }
   }
   get value(){return this._value;}
   set value(value){this._value = value;}

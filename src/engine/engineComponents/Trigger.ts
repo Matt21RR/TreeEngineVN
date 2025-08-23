@@ -2,16 +2,16 @@ import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 import { GraphObject } from "./GraphObject.ts";
 
 class Trigger{
-  #id:string
-  #relatedTo:string|null = null
-  #enabled:boolean
+  _id:string
+  _relatedTo:string|null = null
+  _enabled:boolean
 
-  #onHold:Function|null
-  #onRelease:Function|null
-  #onEnter:Function|null
-  #onLeave:Function|null
-  #onWheel:Function|null
-  #onMouseMove:Function|null
+  private _onHold:Function|null
+  private _onRelease:Function|null
+  private _onEnter:Function|null
+  private _onLeave:Function|null
+  private _onWheel:Function|null
+  private _onMouseMove:Function|null
 
   constructor(tInfo){
     if(!("id" in tInfo))
@@ -21,44 +21,44 @@ class Trigger{
         throw new Error("Trying to create a Trigger without the graphObject id that will be related to");
     }
 
-    this.#id = tInfo.id;
-    this.#relatedTo =   tInfo.relatedTo ?? null;
-    this.#enabled =     tInfo.enabled ?? true;
+    this._id = tInfo.id;
+    this._relatedTo =   tInfo.relatedTo ?? null;
+    this._enabled =     tInfo.enabled ?? true;
     //if superposition is true the engine will ignore the graphObjects that are over the graphobject related to the trigger
     //superposition: tInfo.superposition != undefined ? tInfo.superposition : false,
-    this.#onHold =      tInfo.onHold ?? null;
-    this.#onRelease =   tInfo.onRelease ?? null;
-    this.#onEnter =     tInfo.onEnter ?? null;
-    this.#onLeave =     tInfo.onLeave ?? null;
-    this.#onWheel =     tInfo.onWheel ?? null;
-    this.#onMouseMove = tInfo.onMouseMove ?? null;
+    this._onHold =      tInfo.onHold ?? null;
+    this._onRelease =   tInfo.onRelease ?? null;
+    this._onEnter =     tInfo.onEnter ?? null;
+    this._onLeave =     tInfo.onLeave ?? null;
+    this._onWheel =     tInfo.onWheel ?? null;
+    this._onMouseMove = tInfo.onMouseMove ?? null;
   }
 
-  get id(){return this.#id}
+  get id(){return this._id}
 
-  get relatedTo() {return this.#relatedTo;}
-  set relatedTo(x) {this.#relatedTo = x;}
+  get relatedTo() {return this._relatedTo;}
+  set relatedTo(x) {this._relatedTo = x;}
 
-  get enabled() {return this.#enabled;}
-  set enabled(x){this.#enabled = x;}
+  get enabled() {return this._enabled;}
+  set enabled(x){this._enabled = x;}
 
-  get onHold() {return this.#onHold;}
-  set onHold(x) {this.#onHold = x;}
+  get onHold() {return this._onHold;}
+  set onHold(x) {this._onHold = x;}
 
-  get onRelease() {return this.#onRelease;}
-  set onRelease(x) {this.#onRelease = x;}
+  get onRelease() {return this._onRelease;}
+  set onRelease(x) {this._onRelease = x;}
 
-  get onEnter() {return this.#onEnter;}
-  set onEnter(x) {this.#onEnter = x;}
+  get onEnter() {return this._onEnter;}
+  set onEnter(x) {this._onEnter = x;}
 
-  get onLeave() {return this.#onLeave;}
-  set onLeave(x) {this.#onLeave = x;}
+  get onLeave() {return this._onLeave;}
+  set onLeave(x) {this._onLeave = x;}
 
-  get onWheel() {return this.#onWheel;}
-  set onWheel(x) {this.#onWheel = x;}
+  get onWheel() {return this._onWheel;}
+  set onWheel(x) {this._onWheel = x;}
 
-  get onMouseMove() {return this.#onMouseMove;}
-  set onMouseMove(x) {this.#onMouseMove = x;}
+  get onMouseMove() {return this._onMouseMove;}
+  set onMouseMove(x) {this._onMouseMove = x;}
 
   check(engineOrMouseRef:RenderEngine|React.MouseEvent|React.TouchEvent, action:string){
     if(action == "mouseMove")//check onEnter
@@ -82,36 +82,36 @@ class Trigger{
 }
 
 class KeyboardTrigger{
-  #keys:Array<string>;
-  #enabled:boolean
+  private _keys:Array<string>;
+  private _enabled:boolean
 
-  #onPress:Function|null
-  #onHold:Function|null
-  #onRelease:Function|null
+  private _onPress:Function|null
+  private _onHold:Function|null
+  private _onRelease:Function|null
 
   constructor(tInfo){
-    this.#keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
-    this.#enabled =     tInfo.enabled ?? true;
-    this.#onPress =     tInfo.onPress ?? null;
-    this.#onHold =      tInfo.onHold ?? null;
-    this.#onRelease =   tInfo.onRelease ?? null;
+    this._keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
+    this._enabled =     tInfo.enabled ?? true;
+    this._onPress =     tInfo.onPress ?? null;
+    this._onHold =      tInfo.onHold ?? null;
+    this._onRelease =   tInfo.onRelease ?? null;
   }
 
-  get id(){return this.#keys.join(" ")}
+  get id(){return this._keys.join(" ")}
 
-  get keys(){return this.#keys}
+  get keys(){return this._keys}
 
-  get enabled() {return this.#enabled;}
-  set enabled(x){this.#enabled = x;}
+  get enabled() {return this._enabled;}
+  set enabled(x){this._enabled = x;}
 
-  get onPress() {return this.#onPress;}
-  set onPress(x) {this.#onPress = x;}
+  get onPress() {return this._onPress;}
+  set onPress(x) {this._onPress = x;}
 
-  get onHold() {return this.#onHold;}
-  set onHold(x) {this.#onHold = x;}
+  get onHold() {return this._onHold;}
+  set onHold(x) {this._onHold = x;}
 
-  get onRelease() {return this.#onRelease;}
-  set onRelease(x) {this.#onRelease = x;}
+  get onRelease() {return this._onRelease;}
+  set onRelease(x) {this._onRelease = x;}
 
 
   check(engineRef:RenderEngine,action:string){

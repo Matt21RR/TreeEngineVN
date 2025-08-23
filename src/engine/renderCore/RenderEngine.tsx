@@ -28,15 +28,9 @@ import gsap from "gsap";
 import { generateObjectsDisplayDimentions } from "./RenderingDimentions.ts";
 import UI from "./UI.tsx";
 import ScriptNode from "../engineComponents/ScriptNode.ts";
+import Actor from "../engineComponents/Actor.ts";
+import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
 
-/**
- * aaaaa
- * 
- * @class RenderEngine
- * @param {boolean} [props.repeat=false] clientSideResources (as flag) = The engine won't look for a server to get the game resources
- * @param {string} props.aspectRatio - Set aspect ratio (default 16:9)
- * 
- */
 interface RenderEngineProps {
   clientSideResources?: boolean;
   aspectRatio?: string;
@@ -68,7 +62,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     trigger: typeof Trigger;
     keyboardTrigger: typeof KeyboardTrigger;
     codedRoutine: typeof CodedRoutine;
-    scriptNode: typeof ScriptNode;
+    actor: typeof Actor;
   };
   //*Runtime information
   gameVars: Record<string, any>;
@@ -89,14 +83,17 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   routineNumber: number;
   resume: boolean;
   //*Dialog struff
-  voiceFrom: string;
+  actualSpeaker: Actor;
   paragraphNumber: number;
   paragraph: string;
   dialogNumber: number;
+  charNumber: number;
   dialog: Array<any>;
-  narration: string;
+  narration: Array<any>;
+
   //*ScriptNode stuff
-  scriptNodes: RenList<ScriptNode>;
+  actors:RenList<Actor>
+  nodes:{[key:string]:string};
   scenicPositions: RenList<any>;
   callThisShitWhenDialogEnds:(engine:RenderEngine)=>void;
   callThisShitWhenDecisionEnds:(engine:RenderEngine,data:{[key:string]:any})=>void;
@@ -158,7 +155,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       trigger: Trigger,
       keyboardTrigger : KeyboardTrigger,
       codedRoutine : CodedRoutine,
-      scriptNode : ScriptNode
+      actor : Actor
     }
     this.gameVars = {};//Y guardar esto tambien
 
@@ -180,11 +177,15 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.lambdaConverter = lambdaConverter;
     this.getStr = getStr;
 
+    //ScriptNode Stuff
+    this.actors = new RenList();
+    this.scenicPositions = new RenList();
+
     this.dataCleaner();
     //*Texture Fallback
     this.setFallbackTexture();
   } 
-  setFallbackTexture(){
+  private setFallbackTexture(){
     const fallbackImage = new Image();
     fallbackImage.crossOrigin = "Anonymous";
     fallbackImage.src = noImageTexture;
@@ -299,7 +300,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     
     $.get(scriptRoute).then(scriptFile=>{
       h.kreator(scriptFile).then(scriptData=>{
-        var commands = (scriptData as {[key:string]:string})[destination];
+        var commands = (scriptData as {[key:string]:string})[destination].main;
+        this.nodes = (scriptData as {[key:string]:string})[destination].nodes;
         const commandsF = new Function ("engine","ExtendedObjects",commands);
         console.log(commandsF); 
         commandsF(self,ExtendedObjects);
@@ -307,6 +309,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         self.forceUpdate();
       })
     })
+  }
+  loadNode(nodeId: string){
+    var commands = this.nodes[nodeId];
+    const commandsF = new Function ("engine","ExtendedObjects",commands);
+    // console.log(commandsF); 
+    commandsF(self,ExtendedObjects);
   }
   displayResolutionCalc(aspectRatio:string = this.aspectRatio) {
     const w = document.getElementById("display"+this.id) as HTMLElement;
@@ -437,12 +445,14 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.routineNumber = -1;
     this.resume = true;
     //Dialogs
-    this.voiceFrom = "";
     this.paragraphNumber = 0;
     this.paragraph = "";
     this.dialogNumber = 0;
+    this.charNumber = 0;
     this.dialog = [];
-    this.narration = "";
+    this.narration = [];
+    //ScriptNode stuff
+    this.nodes = {};
   }
   play(songId:string){
     this.soundsList.get(songId).sound.play();
@@ -476,7 +486,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           const resolution = canvas.resolution;
 
           canvas.context.clearRect(0, 0, resolution.width, resolution.height);//cleanning window
-          canvas.context.textBaseline = 'middle';
 
           this.noRenderedItemsCount = 0;
 
@@ -669,6 +678,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           //disable image smoothing
           canvas.context.imageSmoothingEnabled = false;
           canvas.context.textRendering = "optimizeSpeed";
+          canvas.context.textBaseline = 'middle';
 
           //*Cargar funcion externa
           if(this.props.setEngine){
@@ -687,6 +697,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           //disable image smoothing
           canvas.context.imageSmoothingEnabled = false;
           canvas.context.textRendering = "optimizeSpeed"; 
+          canvas.context.textBaseline = 'middle';
 
           //prevents reescaling glitches
           this.graphArray.objects.forEach(e=>{
@@ -727,6 +738,123 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     }else{
       return(<span className="text-white absolute">ISN'T READY YET, OR UNABLE TO RUN YOUR SCRIPT</span>);
     }
+  }
+  pracket(){
+    if(!this.isReady){
+      return(<span className="text-white absolute">ISN'T READY YET, OR UNABLE TO RUN YOUR SCRIPT</span>);
+    }
+    return(
+      <Canvas 
+      displayResolution={this.engineDisplayRes}
+      fps={this.cyclesPerSecond}
+      scale={1} 
+      showFps={this.showFps}
+      engine={this}
+      renderGraphics={(canvas)=>{
+        this.calculationOrder = generateCalculationOrder(this.graphArray);
+        const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.dimentionsPack,this.calculationOrder,this.camera);
+        this.dimentionsPack = dimentionsPack;
+        this.renderingOrderById = generateRenderingOrder(dimentionsPack);
+
+        if(!this.redraw){
+          return [0];
+        }
+
+        this.canvasRef = canvas;
+        const resolution = canvas.resolution;
+
+        canvas.context.clearRect(0, 0, resolution.width, resolution.height);//cleanning window
+
+        const availableIdsToRender = this.renderingOrderById; 
+
+        const objectsToRender = availableIdsToRender.length;
+
+        for (let index = 0; index < objectsToRender; index++) {
+          let infoAdjudicationPre = performance.now();
+          const gObject = this.getObject(availableIdsToRender[index]);
+
+          const objectRenderingData = dimentionsPack[gObject.id];
+          var objectLeft = objectRenderingData.x;
+          var objectTop = objectRenderingData.y;
+          
+          var testD = objectRenderingData.sizeInDisplay;
+
+          var objectWidth = objectRenderingData.width;
+          var objectHeight = objectRenderingData.height;
+
+          const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
+
+        }
+        this.collisionLayer.update(dimentionsPack,resolution.width,resolution.height);
+
+        // this.redraw = false;
+        return [0,0,0,0,objectsToRender,0];
+      }} 
+      onLoad={(canvas)=>{
+        this.canvasRef = canvas;
+        //calc the perspective angle
+        this.camera.position.angle = canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width);
+        //disable image smoothing
+        canvas.context.imageSmoothingEnabled = false;
+        canvas.context.textRendering = "optimizeSpeed";
+        canvas.context.textBaseline = 'middle';
+
+        //*Cargar funcion externa
+        if(this.props.setEngine){
+          const numberOfArguments = this.props.setEngine.length;
+          if(numberOfArguments == 1){
+            this.props.setEngine(this);
+          }else if(numberOfArguments == 2){
+            this.props.setEngine(this,ExtendedObjects);
+          }
+        }
+      }}
+      onResize={(canvas)=>{
+        this.canvasRef = canvas;
+        //calc the perspective angle
+        this.camera.position.angle = canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width);
+        //disable image smoothing
+        canvas.context.imageSmoothingEnabled = false;
+        canvas.context.textRendering = "optimizeSpeed"; 
+        canvas.context.textBaseline = 'middle';
+
+        //prevents reescaling glitches
+        this.graphArray.objects.forEach(e=>{
+          e.pendingRenderingRecalculation = true;
+        });
+      }}
+      events={()=>{
+        const mix = this.pressedKeys.join(" ");
+        if(this.keyboardTriggers.exist(mix) && (this.pressedKeys.length>1)){
+          this.keyboardTriggers.get(mix).check(this,"onHold");
+        }
+        this.pressedKeys.forEach(key => {
+          if(this.keyboardTriggers.exist(key)){
+            this.keyboardTriggers.get(key).check(this,"onHold");
+          }
+        });
+      }}
+      animateGraphics={(fps)=>{
+        this.engineTime += (fps.elapsed * (this.stopEngine ? 0 : this.engineSpeed));
+        for (let index = 0; index < this.anims.objects.length; index++) {
+          const anim = this.anims.objects[index];
+          if(anim.relatedTo != null){
+            anim.updateState(this.engineTime,this);
+          }
+        }  
+        if(this.resume){
+          if((this.routineNumber+1)<this.routines.length){
+            this.routineNumber++;
+            this.routines[this.routineNumber](this);
+          }
+        }
+        this.codedRoutines.objects.forEach(element => {
+          element.run(this);
+        });
+      }}
+      />
+    );
+    
   }
   render(){
     return(

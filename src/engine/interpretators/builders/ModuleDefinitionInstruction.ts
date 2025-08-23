@@ -1,3 +1,4 @@
+import { ScriptStructure } from "../ChaosInterpreter.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 import Token from "../Token.ts";
 

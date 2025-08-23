@@ -116,6 +116,9 @@ function getStr(text:Function|string):string{
     if(typeof text != "string"){
       text = text.toString() as string;
     }
+    if(text.includes("${")){
+      text = new Function("engine", `return \`${text}\``)() as string;
+    }
     return text; 
   } catch (error) {
     console.warn("UNREADABLE STUFF DETECTED!!!!");
@@ -168,4 +171,56 @@ function Mixin(...mixins: any[]) {
         Object.assign(target.prototype, ...mixins.map(m => m.prototype));
     };
 }
-export {mobileCheck,wrapText,random,lambdaConverter, getStr,degToRad,rad2Deg,getAttribs,arrayFlatter, sortByReference, Mixin}
+
+function isTemplateLiteral(source:string):boolean{
+ return source.startsWith("`") && source.endsWith("`");
+}
+
+function templateLiteralSplitter(source:string){
+  if (!source.startsWith("`") || !source.endsWith("`")) {
+    throw new Error("Not a template literal");
+  }
+
+  // Remove backticks
+  source = source.slice(1, -1);
+
+  let parts: Array<string> = [];
+  let buffer = "";
+  let i = 0;
+
+  while (i < source.length) {
+    if (source[i] === "$" && source[i + 1] === "{") {
+      // Push current text
+      if (buffer) {
+        parts.push(buffer);
+        buffer = "";
+      }
+
+      // Capture ${ ... } with nesting
+      let depth = 0;
+      let start = i;
+      while (i < source.length) {
+        if (source[i] === "$" && source[i + 1] === "{") {
+          depth++;
+          i += 2;
+        } else if (source[i] === "}") {
+          depth--;
+          i++;
+          if (depth === 0) break;
+        } else {
+          i++;
+        }
+      }
+
+      // Push expression block
+      parts.push(source.slice(start, i));
+    } else {
+      buffer += source[i++];
+    }
+  }
+
+  if (buffer) parts.push(buffer);
+
+  return parts;
+}
+export {mobileCheck,wrapText,random,lambdaConverter, getStr,degToRad,rad2Deg,getAttribs,arrayFlatter, sortByReference, Mixin, templateLiteralSplitter, isTemplateLiteral}

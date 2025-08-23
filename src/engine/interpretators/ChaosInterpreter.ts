@@ -1,7 +1,6 @@
 import { arrayFlatter } from "../logic/Misc.ts";
 import CreateInstruction from "./builders/CreateInstruction.ts";
 import DialogInstruction from "./builders/DialogInstruction.ts";
-import InstructionInterface from "./InstructionInterface.ts";
 import LoadInstruction from "./builders/LoadInstruction.ts";
 import ModuleDefinitionInstruction from "./builders/ModuleDefinitionInstruction.ts";
 import NarrationInstruction from "./builders/NarrationInstruction.ts";
@@ -14,6 +13,12 @@ import DeleteInstruction from "./builders/DeleteInstruction.ts";
 import WaitInstruction from "./builders/WaitInstruction.ts";
 import Token from "./Token.ts";
 import Instruction from "./Instruction.ts";
+import NodeDefinitionInstruction from "./builders/NodeDefinitionInstruction.ts";
+import StructureEndInstruction from "./builders/StructureEndInstruction.ts";
+import AgrupableInstructionInterface from "./AgrupableInstructionInterface.ts";
+import JumpToInstruction from "./builders/JumpToInstruction.ts";
+import SetSpeakerInstruction from "./builders/SetSpeakerInstruction.ts";
+
 
 declare global{
   interface Window{
@@ -26,7 +31,7 @@ declare global{
 class ChaosInterpreter {
   sounds:{[key:string]:string}
   textures:{[key:string]:string}
-  scripts:{[key:string]:string}
+  scripts:{[key:string]:{main:string,nodes:{}}}
   scriptsUrls:{[key:string]:string}
   projectRoot:string
   constructor(){
@@ -39,14 +44,34 @@ class ChaosInterpreter {
     //@ts-ignore
     window.chaos = this;
   }
-  getSound(){
+  supportedInstructions = [
+      new CreateInstruction(),
+      new DialogInstruction(),
+      new LoadInstruction(),
+      new ModuleDefinitionInstruction(),
+      new NodeDefinitionInstruction(),
+      new JumpToInstruction(),
+      new SetSpeakerInstruction(),
+      new StructureEndInstruction(),
+      new NarrationInstruction(),
+      new PlayInstruction(), 
+      new ResumeInstruction(),
+      new RunInstruction(),
+      new SceneDefinitionInstruction(),
+      new SetInstruction(),
+      new DeleteInstruction(),
+      new WaitInstruction()
+    ];
+
+  invokeSupportedInstruction(instructionType: string){
+    return this.supportedInstructions.find(inst => inst.constructor.name == instructionType);
+  }
+
+  private getSound(){
     return this.projectRoot + "snd/sounds.json";
   }
-  getTexture(){
+  private getTexture(){
     return this.projectRoot + "img/textures.json";
-  }
-  getScript(id){
-    //Preload JSONs 
   }
   listScripts(){
     const self = this;
@@ -93,61 +118,73 @@ class ChaosInterpreter {
       //TODO: add textures and sounds js exists check
       this.loadScripts(!loadAudioVisual).then(()=>{
         //TODO: ignore lines with no content
-        var scenes = this.#instructionsDesintegrator(script);
+        var scenes = this.instructionsDesintegrator(script);
         resolve(scenes);
       })
     });
   }
 
   directKreator(script:string){
-    return this.#instructionsDesintegrator(script,true,true) as string;
+    return this.instructionsDesintegrator(script,true,true) as string;
   }
 
   tokenization(script:string){
     script += "\n"; //To avoid the last line to be ignored
-    var tokenList = this.#lexer(script).filter(tk=>{return (tk.constructor.name == "Array")||((tk as Token).type != "space")});
-    var abs = this.#preParser(tokenList);
+    var tokenList = this.lexer(script).filter(tk=>{return (tk.constructor.name == "Array")||((tk as Token).type != "space")});
+    var abs = this.preParser(tokenList);
     return abs;
   }
 
-  #instructionsDesintegrator(script:string, ignoreSceneOrModuleDefinitionCheck = false, recursiveMode=false){
+  private instructionsDesintegrator(script:string, ignoreSceneOrModuleDefinitionCheck = false, recursiveMode=false){
     script += "\n"; //To avoid the last line to be ignored
-    var tokenList = this.#lexer(script);
-    var abs = this.#preParser(tokenList);
-    var collection:Array<[boolean,Object|string]> = [];
+    var tokenList = this.lexer(script);
+    var abs = this.preParser(tokenList);
+    
+    var collection:Array<Interpretation> = [];
 
     for (let index = 0; index < abs.length; index++) {
       const instruction = abs[index] as Instruction|Token;
       if(instruction instanceof Array){
-        const interpreted = this.#interpretateInstruction(instruction as Instruction,recursiveMode);
+        const interpretation = this.interpretateInstruction(instruction as Instruction,recursiveMode);
         //@ts-ignore
-        if(interpreted[0]){
-          collection.push(interpreted as [boolean,Object|string]);
+        if(interpretation.itWasAScriptInstruction){
+          if (interpretation.isAgrupable && collection.at(-1)?.matchName == interpretation.matchName){
+            const supportedInstruction = this.invokeSupportedInstruction(interpretation.matchName);
+            const mixedInterpretation = (supportedInstruction as AgrupableInstructionInterface)
+              .agrupator([collection.at(-1) as Interpretation,interpretation]);
+
+            collection.pop();
+            collection.push(mixedInterpretation);
+
+          }else{
+            collection.push(interpretation);
+          }
         } 
         continue;
       }else if(instruction instanceof Token){
         if(instruction.type == "jsCode"){
-          collection.push([true,instruction.value]);
+          collection.push({itWasAScriptInstruction:true,result:instruction.value,matchName:"",isAgrupable:false});
           continue;
         }
       }
       console.warn("Un-understandable or unsupported instruction",instruction);
     }
+    // window.arc = (JSON.stringify(collection));
     if(ignoreSceneOrModuleDefinitionCheck){
-      return collection.map(inst=>inst[1]).join("\n");
+      return collection.map(inst=>inst.result).join("\n");
     }else{
-      return this.#haveSceneOrModuleDefinition(collection);
+      return this.haveSceneOrModuleDefinition(collection);
     }
   }
 
-  #lexer(script:string){
+  private lexer(script:string){
     // Regular expression to match words, punctuation, and special characters
     const regex = /((\d+\.?\d*)|(\.\d*)|"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`|([^\w\s])|(\s{1,})|(\w+)|[=();,{}"'`])/g;
 
     // Apply regex to split the string
     const result = script.match(regex);
     const tokenList = (result as RegExpMatchArray).map((val,index)=>{
-          let symbol;
+          let symbol:string;
           if(val.match(/\n{1,}/)){
             symbol="lineBreak";
           }else if(val.match(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/)){
@@ -173,11 +210,11 @@ class ChaosInterpreter {
 
       return tokenList;
   }
-  #tokenListToText(tokenList:Instruction){
+  private tokenListToText(tokenList:Instruction){
     return arrayFlatter(tokenList).map(token=>{return token.value}).join("");
   }
 
-  #preParser(tokenList:Array<Token>, bracketsChain:Array<Token> = []):[Instruction,number]|Instruction{
+  private preParser(tokenList:Array<Token>, bracketsChain:Array<Token> = []):[Instruction,number]|Instruction{
     var abs:Instruction = new Instruction();
     var acum:Instruction = bracketsChain.map(a=>a) as Instruction;
     var isJsCode = false;
@@ -189,7 +226,7 @@ class ChaosInterpreter {
       if(token.type == "openBracket"){
         let res:Instruction;
         let checked:number;
-        [res, checked] = this.#preParser(tokenList.slice(idx+1),[token]) as [Instruction,number];
+        [res, checked] = this.preParser(tokenList.slice(idx+1),[token]) as [Instruction,number];
         loops += checked;
         idx += checked;
         acum.push(res);
@@ -213,7 +250,7 @@ class ChaosInterpreter {
             }
           }else{
             console.error(`Syntax error: ${token.value} in token ${token.index}, expected ${latestBracketInChain.value}`);
-            debugger;
+            // debugger;
             //TODO: Add a throw error
             break;
           }
@@ -222,9 +259,8 @@ class ChaosInterpreter {
       }
       if(token.type == "lineBreak" && bracketCounter == 0){
         if(isJsCode){
-          if(this.#tokenListToText(acum).length != 0){
-            // console.log(this.#tokenListToText(acum));
-            abs.push(new Token(this.#tokenListToText(acum),"jsCode",acum[0].index));
+          if(this.tokenListToText(acum).length != 0){
+            abs.push(new Token(this.tokenListToText(acum),"jsCode",acum[0].index));
           }
         }else{//* If is not a js code, then it is a script instruction
           abs.push(acum);
@@ -263,11 +299,11 @@ class ChaosInterpreter {
           if(prevLineBreakFound){
             plausibleInstruction.reverse();
             //@ts-ignore
-            const [itWasAScriptInstruction,interpretedResult] = this.#interpretateInstruction(plausibleInstruction,true);
-            if(itWasAScriptInstruction){
+            const interpretation = this.interpretateInstruction(plausibleInstruction,true);
+            if(interpretation.itWasAScriptInstruction){
               acum.splice((acum.length-1)-plausibleInstruction.length);
               acum.push(
-                new Token( interpretedResult, "jsCode", plausibleInstruction[0].index)
+                new Token( interpretation.result, "jsCode", plausibleInstruction[0].index)
               );
               if(plausibleInstruction.length>1){
                 acum.push(
@@ -287,61 +323,85 @@ class ChaosInterpreter {
     return abs;
   }
 
-  #interpretateInstruction(_instruction:Instruction,recursiveMode = false){
+  private interpretateInstruction(_instruction:Instruction,recursiveMode = false): Interpretation{
     var itWasAScriptInstruction = false;
-    let result:Object|string|Instruction = _instruction;
+    let result:{[key:string]:any}|string|Instruction = _instruction;
+    let matchName = "";
+    let isAgrupable = false;
     if(_instruction.length == 0){
-      return [false,result];
+      return {itWasAScriptInstruction,result,matchName,isAgrupable};
     }
     const instruction = _instruction.filter(tk=>{return (tk.constructor.name == "Array")||((tk as Token).type != "space")});
 
-    const supportedInstructions = [
-      new CreateInstruction(),
-      new DialogInstruction(),
-      new LoadInstruction(),
-      new ModuleDefinitionInstruction(),
-      new NarrationInstruction(),
-      new PlayInstruction(), 
-      new ResumeInstruction(),
-      new RunInstruction(),
-      new SceneDefinitionInstruction(),
-      new SetInstruction(),
-      new DeleteInstruction(),
-      new WaitInstruction()
-    ];
-    for (const supportedInstruction of supportedInstructions) {
+    for (const supportedInstruction of this.supportedInstructions) {
       //@ts-ignore
       const res = (supportedInstruction).check(instruction,this,!recursiveMode);
       if(res.match){
-        result = res.result;
         itWasAScriptInstruction = true;
+        result = res.result as Interpretation;
+        matchName = supportedInstruction.constructor.name;
+        isAgrupable = supportedInstruction.isAgrupable();
+        console.log(matchName,instruction);
         break;
       }
     }
-    return [itWasAScriptInstruction,result]
+    return {itWasAScriptInstruction,result,matchName,isAgrupable};
   }
-  #haveSceneOrModuleDefinition(processedInstructions){
-    var scenes = new Object();
-    var lastSceneDefinition = "gameEntrypoint";
-    scenes[lastSceneDefinition] = "";
 
-    for (const instruction of processedInstructions) {
-      if(instruction[0]){
-        if(instruction[1].constructor.name == "Object" && "define" in instruction[1]){
-          lastSceneDefinition = instruction[1].id;
-          scenes[lastSceneDefinition] = "";
-          continue;
+  private haveSceneOrModuleDefinition(interpretedInstructions:Array<Interpretation>){
+    var scenes: {[key:string]:{main:string,nodes:{}}} = {};
+    var actualStructureDefinition = {define:ScriptStructure.Scene,id:"gameEntrypoint"};
+    scenes[actualStructureDefinition.id] = {main:"",nodes:{}};
+
+    var tag = actualStructureDefinition.id;
+    var nodeTag = "";
+
+    for (const interpretation of interpretedInstructions) {
+      if(interpretation.itWasAScriptInstruction){
+        if(interpretation.result.constructor.name == "Object"){
+          const result = interpretation.result as Object;
+          if("define" in result && "id" in result){
+            const define = ScriptStructure.enumify(result.define as string);
+            actualStructureDefinition = {define,id:result.id as string};
+            if([ScriptStructure.Scene,ScriptStructure.Module].includes(define)){
+              tag = actualStructureDefinition.id;
+              scenes[tag] = {main:"",nodes:{}};
+            }else if(define == ScriptStructure.Node){
+              nodeTag = actualStructureDefinition.id;
+              scenes[tag].nodes[nodeTag] = "";
+            }
+            continue;
+          }else if("end" in result){
+            const end = ScriptStructure.enumify(result.end as string);
+            if(end == ScriptStructure.Node){
+              nodeTag = "";
+            }else if([ScriptStructure.Scene,ScriptStructure.Module].includes(end)){
+              nodeTag = "";
+              tag = "";
+            }
+            continue;
+          }
         }
-        scenes[lastSceneDefinition]+=instruction[1]+"\n";
+        if(tag == ""){
+          throw new Error(
+          "Script with no bounds!!",{cause:
+            "ChaosInterpreter is trying to write interpreted code outside a structure. No scene or module defined!!"
+          });
+      }
+        else if(nodeTag == ""){
+          scenes[tag].main+=interpretation.result+"\n";
+        }else{
+          scenes[tag].nodes[nodeTag]+=interpretation.result+"\n";
+        }
       }
     }
-    if("gameEntrypoint" in scenes && scenes.gameEntrypoint == ""){
+    if("gameEntrypoint" in scenes && scenes.gameEntrypoint.main == "" && Object.keys(scenes.gameEntrypoint.nodes).length == 0){
       delete scenes.gameEntrypoint;
     }else if("gameEntrypoint" in scenes){
-      scenes.gameEntrypoint = 
+      scenes.gameEntrypoint.main = 
       `engine.loadTexture('${this.getTexture()}').then(()=>{
         engine.loadSound('${this.getSound()}').then(()=>{
-          ${scenes.gameEntrypoint}
+          ${scenes.gameEntrypoint.main}
         });
       });`
     }
@@ -349,4 +409,23 @@ class ChaosInterpreter {
     return scenes;
   }
 }
-export {ChaosInterpreter as Chaos};
+
+type Interpretation = {
+    itWasAScriptInstruction: boolean;
+    result: Object | string | Instruction;
+    matchName: string;
+    isAgrupable: boolean;
+}
+
+enum ScriptStructure {
+  Scene,
+  Module,
+  Node
+}
+namespace ScriptStructure {
+  export function enumify(key:string): number{
+    return ScriptStructure[key.replace(/^./, key[0].toUpperCase())];
+  }
+}
+
+export {ChaosInterpreter as Chaos,ScriptStructure,Interpretation};
