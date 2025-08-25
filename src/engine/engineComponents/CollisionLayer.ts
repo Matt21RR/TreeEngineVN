@@ -183,4 +183,4 @@ class CollisionLayer {
   }
 }
 export default CollisionLayer;
-export {engineRenderingDataCloner, ObjectRenderingData}
+export {engineRenderingDataCloner}
