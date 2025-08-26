@@ -27,7 +27,6 @@ import PointerCalculation from "./PointerCalculation.tsx";
 import gsap from "gsap";
 import { generateObjectsDisplayDimentions } from "./RenderingDimentions.ts";
 import UI from "./UI.tsx";
-import ScriptNode from "../engineComponents/ScriptNode.ts";
 import Actor from "../engineComponents/Actor.ts";
 import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
 
@@ -313,7 +312,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   loadNode(nodeId: string){
     var commands = this.nodes[nodeId];
     const commandsF = new Function ("engine","ExtendedObjects",commands);
-    // console.log(commandsF); 
     commandsF(self,ExtendedObjects);
   }
   displayResolutionCalc(aspectRatio:string = this.aspectRatio) {
@@ -458,288 +456,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.soundsList.get(songId).sound.play();
   }
   renderScene(){
-    if(this.isReady){
-      return(
-        <Canvas 
-        displayResolution={this.engineDisplayRes}
-        fps={this.cyclesPerSecond}
-        scale={1} 
-        showFps={this.showFps}
-        engine={this}
-        renderGraphics={(canvas)=>{
-          const startOrdA = performance.now();
-          
-          this.calculationOrder = generateCalculationOrder(this.graphArray);
-          const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.dimentionsPack,this.calculationOrder,this.camera);
-          this.dimentionsPack = dimentionsPack;
-          this.renderingOrderById = generateRenderingOrder(dimentionsPack);
-
-          const endOrdB = performance.now()-startOrdA;
-
-          const orderingTime = endOrdB;
-
-          if(!this.redraw){
-            return [0];
-          }
-
-          this.canvasRef = canvas;
-          const resolution = canvas.resolution;
-
-          canvas.context.clearRect(0, 0, resolution.width, resolution.height);//cleanning window
-
-          this.noRenderedItemsCount = 0;
-
-          let infoAdjudicationTime = 0;
-          let drawingTime = 0;
-          let debugTime = 0;
-
-          const availableIdsToRender = this.renderingOrderById; 
-
-          const objectsToRender = availableIdsToRender.length;
-
-          for (let index = 0; index < objectsToRender; index++) {
-            let infoAdjudicationPre = performance.now();
-            const gObject = this.getObject(availableIdsToRender[index]);
-
-            const objectRenderingData = dimentionsPack[gObject.id];
-            var objectLeft = objectRenderingData.x;
-            var objectTop = objectRenderingData.y;
-            
-            var testD = objectRenderingData.sizeInDisplay;
-
-            var objectWidth = objectRenderingData.width;
-            var objectHeight = objectRenderingData.height;
-
-            const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
-            const strRef = gObject.text == null ? null : getStr(gObject.text);
-            const fontSizeRenderingValue = gObject.fontSizeNumeric*resolution.scale*(resolution.height/this.developmentDeviceHeight)*testD;
-            const objectWidthMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.horizontalMargin;
-            const objectHeightMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.verticalMargin;
-
-            infoAdjudicationTime += performance.now()-infoAdjudicationPre;
-
-            let drawingTimePre = performance.now();
-            if(!(gObject.opacity == 0)){
-
-               //*part one: global alpha
-              canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
-
-              //*part two: filtering
-              var filterString = gObject.filterString;
-
-              //*part three
-              //with testD > 0.003 we ensure the very far of|behind the camera elements won't be rendered
-              if(testD>0.003){
-                let texts: Array<[string,number,number]> = [];
-                if(strRef != null && !objectRenderingData.text){
-                  canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
-                  texts = wrapText(//TODO: Wrap it until all the text get wraped
-                    canvas.context,
-                    strRef,
-                    objectWidthMargin + objectRenderingData.corner.x,
-                    objectHeightMargin + objectRenderingData.corner.y + fontSizeRenderingValue/2,
-                    objectWidth - objectWidthMargin*2,
-                    objectHeight - objectHeightMargin*2,
-
-                    fontSizeRenderingValue,
-                    
-                    gObject.center,
-                    gObject.verticalCenter
-                  ); 
-
-                }
-                if(objectRenderingData.text){
-                  canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
-                  texts = objectRenderingData.text;
-                }
-                canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
-                if(gObject.rotate != 0){
-                  canvas.context.save();
-                  canvas.context.setTransform(//transform using center as origin
-                    1,
-                    0,
-                    0,
-                    1,
-                    objectRenderingData.x, 
-                    objectRenderingData.y); // sets scale and origin
-                  canvas.context.rotate(gObject.rotateRad);
-
-                  if(strRef != null){
-                    if(gObject.boxColor != "transparent"){
-                      canvas.context.fillStyle = gObject.boxColor;
-                      canvas.context.fillRect(
-                        objectRenderingData.corner.x - objectRenderingData.x,
-                        objectRenderingData.corner.y - objectRenderingData.y,
-                        objectRenderingData.width,
-                        objectRenderingData.height
-                        );
-                    }
-                    canvas.context.fillStyle = gObject.color;
-                    texts.forEach((text) => {
-                      canvas.context.fillText(
-                        text[0],
-                        text[1]-objectLeft,
-                        text[2]-objectTop
-                      );
-                    });
-                  }
-                  if(texRef != null){
-                    canvas.context.drawImage(
-                      texRef.getTexture(gObject),
-                      objectRenderingData.corner.x - objectRenderingData.x,
-                      objectRenderingData.corner.y - objectRenderingData.y,
-                      objectRenderingData.width,
-                      objectRenderingData.height
-                    );
-                  }
-
-                  canvas.context.restore();
-                }else{
-                //*part three: draw image
-                  if(strRef != null){
-                    if(gObject.boxColor != "transparent"){
-                      canvas.context.fillStyle = gObject.boxColor;
-                      canvas.context.fillRect(
-                        objectRenderingData.corner.x,
-                        objectRenderingData.corner.y,
-                        objectRenderingData.width,
-                        objectRenderingData.height
-                      );
-                    }
-                    canvas.context.fillStyle = gObject.color;
-                    texts.forEach((text) => {
-                      canvas.context.fillText(
-                        text[0],
-                        text[1],
-                        text[2]
-                      );
-                    });
-                  }
-
-                  if(texRef != null){
-                    canvas.context.drawImage(
-                      texRef.getTexture(gObject),
-                      objectRenderingData.corner.x,
-                      objectRenderingData.corner.y,
-                      objectRenderingData.width,
-                      objectRenderingData.height
-                    );
-                  }
-                }
-              }else{
-                this.noRenderedItemsCount++;
-              }
-
-              //*part four: anullate globalalpha and filters
-              if(filterString != "none")
-                canvas.context.filter = "none";
-              canvas.context.globalAlpha = 1;
-            }else{
-              this.noRenderedItemsCount++;
-            }
-            drawingTime += performance.now()-drawingTimePre;
-
-            //*DEBUG INFO
-            let debugTimePre = performance.now();
-            if(this.objectsToDebug.indexOf(gObject.id) != -1){
-              //*part five: draw object info
-              if(this.drawObjectLimits){
-                RenderMisc.drawObjectLimits(canvas.context,objectRenderingData,resolution,this.camera.position.z);
-              }
-            }
-            if(this.drawCollisionsMatrix){
-              RenderMisc.drawCollisionBox(canvas.context,objectRenderingData);
-            }
-            //* DRAW TRIGGERS
-            if(this.drawTriggers){
-              if(this.triggers.objects.filter(e=>{return e.enabled}).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
-                RenderMisc.drawTrigger(canvas.context,objectRenderingData);
-              }
-            }
-            debugTime += performance.now()-debugTimePre;
-          }
-          //* DRAW COLLISION LAYER
-          if(this.drawCollisionsMatrix){
-            RenderMisc.drawCollisionsMatrix(canvas.context,resolution);
-          }
-          // console.warn("Objects excluded: ",this.noRenderedItemsCount);
-
-          var updatingColsTime = performance.now();
-          this.collisionLayer.update(dimentionsPack,resolution.width,resolution.height);
-          updatingColsTime = performance.now()-updatingColsTime;
-
-          // this.redraw = false;
-          return [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,updatingColsTime];
-        }} 
-        onLoad={(canvas)=>{
-          this.canvasRef = canvas;
-          //calc the perspective angle
-          this.camera.position.angle = canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width);
-          //disable image smoothing
-          canvas.context.imageSmoothingEnabled = false;
-          canvas.context.textRendering = "optimizeSpeed";
-          canvas.context.textBaseline = 'middle';
-
-          //*Cargar funcion externa
-          if(this.props.setEngine){
-            const numberOfArguments = this.props.setEngine.length;
-            if(numberOfArguments == 1){
-              this.props.setEngine(this);
-            }else if(numberOfArguments == 2){
-              this.props.setEngine(this,ExtendedObjects);
-            }
-          }
-        }}
-        onResize={(canvas)=>{
-          this.canvasRef = canvas;
-          //calc the perspective angle
-          this.camera.position.angle = canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width);
-          //disable image smoothing
-          canvas.context.imageSmoothingEnabled = false;
-          canvas.context.textRendering = "optimizeSpeed"; 
-          canvas.context.textBaseline = 'middle';
-
-          //prevents reescaling glitches
-          this.graphArray.objects.forEach(e=>{
-            e.pendingRenderingRecalculation = true;
-          });
-        }}
-        events={()=>{
-          const mix = this.pressedKeys.join(" ");
-          if(this.keyboardTriggers.exist(mix) && (this.pressedKeys.length>1)){
-            this.keyboardTriggers.get(mix).check(this,"onHold");
-          }
-          this.pressedKeys.forEach(key => {
-            if(this.keyboardTriggers.exist(key)){
-              this.keyboardTriggers.get(key).check(this,"onHold");
-            }
-          });
-        }}
-        animateGraphics={(fps)=>{
-          this.engineTime += (fps.elapsed * (this.stopEngine ? 0 : this.engineSpeed));
-          for (let index = 0; index < this.anims.objects.length; index++) {
-            const anim = this.anims.objects[index];
-            if(anim.relatedTo != null){
-              anim.updateState(this.engineTime,this);
-            }
-          }  
-          if(this.resume){
-            if((this.routineNumber+1)<this.routines.length){
-              this.routineNumber++;
-              this.routines[this.routineNumber](this);
-            }
-          }
-          this.codedRoutines.objects.forEach(element => {
-            element.run(this);
-          });
-        }}
-        />
-      );
-    }else{
-      return(<span className="text-white absolute">ISN'T READY YET, OR UNABLE TO RUN YOUR SCRIPT</span>);
-    }
-  }
-  pracket(){
     if(!this.isReady){
       return(<span className="text-white absolute">ISN'T READY YET, OR UNABLE TO RUN YOUR SCRIPT</span>);
     }
@@ -751,10 +467,16 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       showFps={this.showFps}
       engine={this}
       renderGraphics={(canvas)=>{
+        const startOrdA = performance.now();
+        
         this.calculationOrder = generateCalculationOrder(this.graphArray);
         const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.dimentionsPack,this.calculationOrder,this.camera);
         this.dimentionsPack = dimentionsPack;
         this.renderingOrderById = generateRenderingOrder(dimentionsPack);
+
+        const endOrdB = performance.now()-startOrdA;
+
+        const orderingTime = endOrdB;
 
         if(!this.redraw){
           return [0];
@@ -764,6 +486,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         const resolution = canvas.resolution;
 
         canvas.context.clearRect(0, 0, resolution.width, resolution.height);//cleanning window
+
+        this.noRenderedItemsCount = 0;
+
+        let infoAdjudicationTime = 0;
+        let drawingTime = 0;
+        let debugTime = 0;
 
         const availableIdsToRender = this.renderingOrderById; 
 
@@ -783,12 +511,165 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           var objectHeight = objectRenderingData.height;
 
           const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
+          const strRef = gObject.text == null ? null : getStr(gObject.text);
+          const fontSizeRenderingValue = gObject.fontSizeNumeric*resolution.scale*(resolution.height/this.developmentDeviceHeight)*testD;
+          const objectWidthMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.horizontalMargin;
+          const objectHeightMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.verticalMargin;
 
+          infoAdjudicationTime += performance.now()-infoAdjudicationPre;
+
+          let drawingTimePre = performance.now();
+          if(!(gObject.opacity == 0)){
+
+              //*part one: global alpha
+            canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
+
+            //*part two: filtering
+            var filterString = gObject.filterString;
+
+            //*part three
+            //with testD > 0.003 we ensure the very far of|behind the camera elements won't be rendered
+            if(testD>0.003){
+              let texts: Array<[string,number,number]> = [];
+              if(strRef != null && !objectRenderingData.text){
+                canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
+                texts = wrapText(//TODO: Wrap it until all the text get wraped
+                  canvas.context,
+                  strRef,
+                  objectWidthMargin + objectRenderingData.corner.x,
+                  objectHeightMargin + objectRenderingData.corner.y + fontSizeRenderingValue/2,
+                  objectWidth - objectWidthMargin*2,
+                  objectHeight - objectHeightMargin*2,
+
+                  fontSizeRenderingValue,
+                  
+                  gObject.center,
+                  gObject.verticalCenter
+                ); 
+
+              }
+              if(objectRenderingData.text){
+                canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
+                texts = objectRenderingData.text;
+              }
+              canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
+              if(gObject.rotate != 0){
+                canvas.context.save();
+                canvas.context.setTransform(//transform using center as origin
+                  1,
+                  0,
+                  0,
+                  1,
+                  objectRenderingData.x, 
+                  objectRenderingData.y); // sets scale and origin
+                canvas.context.rotate(gObject.rotateRad);
+
+                if(strRef != null){
+                  if(gObject.boxColor != "transparent"){
+                    canvas.context.fillStyle = gObject.boxColor;
+                    canvas.context.fillRect(
+                      objectRenderingData.corner.x - objectRenderingData.x,
+                      objectRenderingData.corner.y - objectRenderingData.y,
+                      objectRenderingData.width,
+                      objectRenderingData.height
+                      );
+                  }
+                  canvas.context.fillStyle = gObject.color;
+                  texts.forEach((text) => {
+                    canvas.context.fillText(
+                      text[0],
+                      text[1]-objectLeft,
+                      text[2]-objectTop
+                    );
+                  });
+                }
+                if(texRef != null){
+                  canvas.context.drawImage(
+                    texRef.getTexture(),
+                    objectRenderingData.corner.x - objectRenderingData.x,
+                    objectRenderingData.corner.y - objectRenderingData.y,
+                    objectRenderingData.width,
+                    objectRenderingData.height
+                  );
+                }
+
+                canvas.context.restore();
+              }else{
+              //*part three: draw image
+                if(strRef != null){
+                  if(gObject.boxColor != "transparent"){
+                    canvas.context.fillStyle = gObject.boxColor;
+                    canvas.context.fillRect(
+                      objectRenderingData.corner.x,
+                      objectRenderingData.corner.y,
+                      objectRenderingData.width,
+                      objectRenderingData.height
+                    );
+                  }
+                  canvas.context.fillStyle = gObject.color;
+                  texts.forEach((text) => {
+                    canvas.context.fillText(
+                      text[0],
+                      text[1],
+                      text[2]
+                    );
+                  });
+                }
+
+                if(texRef != null){
+                  canvas.context.drawImage(
+                    texRef.getTexture(),
+                    objectRenderingData.corner.x,
+                    objectRenderingData.corner.y,
+                    objectRenderingData.width,
+                    objectRenderingData.height
+                  );
+                }
+              }
+            }else{
+              this.noRenderedItemsCount++;
+            }
+
+            //*part four: anullate globalalpha and filters
+            if(filterString != "none")
+              canvas.context.filter = "none";
+            canvas.context.globalAlpha = 1;
+          }else{
+            this.noRenderedItemsCount++;
+          }
+          drawingTime += performance.now()-drawingTimePre;
+
+          //*DEBUG INFO
+          let debugTimePre = performance.now();
+          if(this.objectsToDebug.indexOf(gObject.id) != -1){
+            //*part five: draw object info
+            if(this.drawObjectLimits){
+              RenderMisc.drawObjectLimits(canvas.context,objectRenderingData,resolution,this.camera.position.z);
+            }
+          }
+          if(this.drawCollisionsMatrix){
+            RenderMisc.drawCollisionBox(canvas.context,objectRenderingData);
+          }
+          //* DRAW TRIGGERS
+          if(this.drawTriggers){
+            if(this.triggers.objects.filter(e=>{return e.enabled}).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
+              RenderMisc.drawTrigger(canvas.context,objectRenderingData);
+            }
+          }
+          debugTime += performance.now()-debugTimePre;
         }
+        //* DRAW COLLISION LAYER
+        if(this.drawCollisionsMatrix){
+          RenderMisc.drawCollisionsMatrix(canvas.context,resolution);
+        }
+        // console.warn("Objects excluded: ",this.noRenderedItemsCount);
+
+        var updatingColsTime = performance.now();
         this.collisionLayer.update(dimentionsPack,resolution.width,resolution.height);
+        updatingColsTime = performance.now()-updatingColsTime;
 
         // this.redraw = false;
-        return [0,0,0,0,objectsToRender,0];
+        return [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,updatingColsTime];
       }} 
       onLoad={(canvas)=>{
         this.canvasRef = canvas;
@@ -854,7 +735,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       }}
       />
     );
-    
   }
   render(){
     return(

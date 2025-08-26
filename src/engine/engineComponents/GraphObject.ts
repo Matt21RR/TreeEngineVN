@@ -347,7 +347,7 @@ class GraphObject{
       hueRotate:"hue-rotate",
       dropShadow:"dropShadow",
       invert:"invert",
-      // blurPX:"blur",
+      blurPX:"blur",
       saturate:"saturate",
       sepia:"sepia",
     }
@@ -359,7 +359,7 @@ class GraphObject{
     if((this._grayscale % 360) != 0){filters.push("grayscale");}
     if(this._hueRotate != 0){filters.push("hueRotate");}
     if(this._invert != 0){filters.push("invert");}
-    // if(this._blur != 0){filters.push("blurPX")}
+    if(this._blur != 0){filters.push("blurPX")}
     if(this._saturate != 1){filters.push("saturate");}
     if(this._sepia != 0){filters.push("sepia");}
 

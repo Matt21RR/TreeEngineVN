@@ -22,7 +22,7 @@ class Shader{
    * 
    * @param {GraphObject} graphObject 
    */
-  getTexture(graphObject:GraphObject){
+  getTexture(){
     return this.#image;
   }
 }
