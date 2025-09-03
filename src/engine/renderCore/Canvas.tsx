@@ -122,7 +122,7 @@ class Canvas extends React.Component<CanvasProps>{
     if (!this.stopEngine) 
       this.onResize({
         object:this,
-        context:canvas.getContext("2d", { alpha: false }) as CanvasRenderingContext2D,
+        context:canvas.getContext("2d") as CanvasRenderingContext2D,
         resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
         fps:{}
       });
@@ -144,7 +144,7 @@ class Canvas extends React.Component<CanvasProps>{
           //set the reset function
           this.onResize({
             object:this,
-            context:canvas.getContext("2d", { alpha: false }) as CanvasRenderingContext2D,
+            context:canvas.getContext("2d") as CanvasRenderingContext2D,
             resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
             fps:{}});
         }
@@ -182,7 +182,7 @@ class Canvas extends React.Component<CanvasProps>{
       if(canvas){
         this.onLoad({
           object:this,
-          context:canvas.getContext("2d", { alpha: false }) as CanvasRenderingContext2D,
+          context:canvas.getContext("2d") as CanvasRenderingContext2D,
           resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
           fps:{}});
       }else{
@@ -195,7 +195,7 @@ class Canvas extends React.Component<CanvasProps>{
   canvasWriter(text:Array<string>,origin:{x:number,y:number},lineHeight:number){
     const canvas = this.element.current;
     if(canvas){
-      const context = canvas.getContext("2d", { alpha: false });
+      const context = canvas.getContext("2d");
       if(context){
         context.font = (12*this.scale)+"px Terminal";
         context.fillStyle = "orange";
@@ -239,7 +239,7 @@ class Canvas extends React.Component<CanvasProps>{
       console.error("canvas reference error");
       return;
     }
-    var context = canvas.getContext("2d", { alpha: false }) as CanvasRenderingContext2D;
+    var context = canvas.getContext("2d") as CanvasRenderingContext2D;
 
     var checkEvents = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
       try {

@@ -8,7 +8,7 @@ import { GraphObject } from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger.ts";
 
-import { getStr, lambdaConverter, Mixin, wrapText } from "../logic/Misc.ts";
+import { getStr, lambdaConverter, Mixin, TextLine, wrapText } from "../logic/Misc.ts";
 import { Shader } from "./Shaders.ts";
 import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
@@ -29,6 +29,7 @@ import { generateObjectsDisplayDimentions } from "./RenderingDimentions.ts";
 import UI from "./UI.tsx";
 import Actor from "../engineComponents/Actor.ts";
 import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
+import Swal from "sweetalert2";
 
 interface RenderEngineProps {
   clientSideResources?: boolean;
@@ -299,13 +300,36 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     
     $.get(scriptRoute).then(scriptFile=>{
       h.kreator(scriptFile).then(scriptData=>{
-        var commands = (scriptData as {[key:string]:string})[destination].main;
-        this.nodes = (scriptData as {[key:string]:string})[destination].nodes;
-        const commandsF = new Function ("engine","ExtendedObjects",commands);
-        console.log(commandsF); 
-        commandsF(self,ExtendedObjects);
-        self.isReady = true;
-        self.forceUpdate();
+        try {
+          var commands = (scriptData as {[key:string]:string})[destination].main;
+          this.nodes = (scriptData as {[key:string]:string})[destination].nodes;
+          const commandsF = new Function ("engine","ExtendedObjects",commands);
+          console.log(commandsF); 
+          commandsF(self,ExtendedObjects);
+          self.isReady = true;
+          self.forceUpdate();
+        } catch (error) {
+          let timerInterval;
+          Swal.fire({
+            title: "Error al ejecutar el script",
+            html: "compruebe la consola!",
+            timer: 1500,
+            timerProgressBar: true,
+            didOpen: () => {
+              Swal.showLoading();
+              const timer = Swal.getPopup()!.querySelector("b");
+              timerInterval = setInterval(() => {
+                timer!.textContent = `${Swal.getTimerLeft()}`;
+              }, 100);
+            },
+            willClose: () => {
+              clearInterval(timerInterval);
+            }
+          });
+          console.error(error.message);
+          console.error(error.stack);
+        }
+
       })
     })
   }
@@ -424,12 +448,18 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         return true;
       }
     };
+
+    const canvas = this.canvasRef;
     
     this.camera = new Proxy({
       id:"engineCamera",
       maxZ:10000,
       origin:{x:.5,y:.5},
-      position:{x:.5,y:.5,z:0,angle:0},
+      position:{
+        x:.5,
+        y:.5,
+        z:0,
+        angle: canvas ? canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width) : 0},
       usePerspective:false
     }, handler);
     
@@ -497,24 +527,16 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
         const objectsToRender = availableIdsToRender.length;
 
+        // canvas.context.globalCompositeOperation = "destination-over";
+
         for (let index = 0; index < objectsToRender; index++) {
           let infoAdjudicationPre = performance.now();
           const gObject = this.getObject(availableIdsToRender[index]);
 
-          const objectRenderingData = dimentionsPack[gObject.id];
-          var objectLeft = objectRenderingData.x;
-          var objectTop = objectRenderingData.y;
-          
-          var testD = objectRenderingData.sizeInDisplay;
-
-          var objectWidth = objectRenderingData.width;
-          var objectHeight = objectRenderingData.height;
+          const renderingData = dimentionsPack[gObject.id];
 
           const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
           const strRef = gObject.text == null ? null : getStr(gObject.text);
-          const fontSizeRenderingValue = gObject.fontSizeNumeric*resolution.scale*(resolution.height/this.developmentDeviceHeight)*testD;
-          const objectWidthMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.horizontalMargin;
-          const objectHeightMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.verticalMargin;
 
           infoAdjudicationTime += performance.now()-infoAdjudicationPre;
 
@@ -529,105 +551,63 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
             //*part three
             //with testD > 0.003 we ensure the very far of|behind the camera elements won't be rendered
-            if(testD>0.003){
-              let texts: Array<[string,number,number]> = [];
-              if(strRef != null && !objectRenderingData.text){
-                canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
-                texts = wrapText(//TODO: Wrap it until all the text get wraped
-                  canvas.context,
-                  strRef,
-                  objectWidthMargin + objectRenderingData.corner.x,
-                  objectHeightMargin + objectRenderingData.corner.y + fontSizeRenderingValue/2,
-                  objectWidth - objectWidthMargin*2,
-                  objectHeight - objectHeightMargin*2,
+            if(renderingData.sizeInDisplay<=0.003){
+              this.noRenderedItemsCount++;
+            }else{
+              let texts: Array<TextLine> = [];
+              if(renderingData.text){
+                const fontSize = renderingData.text.fontSize;
+                canvas.context.font = `${fontSize}px ${gObject.font}`;
 
-                  fontSizeRenderingValue,
-                  
-                  gObject.center,
-                  gObject.verticalCenter
-                ); 
+                if(renderingData.text?.value){
+                  texts = renderingData.text.value;
+                }else{
+                  texts = RenderMisc.wrapText(
+                    strRef as string,
+                    renderingData,
+                    gObject.center,
+                    gObject.verticalCenter,
+                    canvas.context);
+                }
+              }
 
-              }
-              if(objectRenderingData.text){
-                canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
-                texts = objectRenderingData.text;
-              }
               canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
-              if(gObject.rotate != 0){
+              if(renderingData.rotation % 360 != 0){
                 canvas.context.save();
                 canvas.context.setTransform(//transform using center as origin
                   1,
                   0,
                   0,
                   1,
-                  objectRenderingData.x, 
-                  objectRenderingData.y); // sets scale and origin
+                  renderingData.x, 
+                  renderingData.y); // sets scale and origin
                 canvas.context.rotate(gObject.rotateRad);
-
-                if(strRef != null){
-                  if(gObject.boxColor != "transparent"){
-                    canvas.context.fillStyle = gObject.boxColor;
-                    canvas.context.fillRect(
-                      objectRenderingData.corner.x - objectRenderingData.x,
-                      objectRenderingData.corner.y - objectRenderingData.y,
-                      objectRenderingData.width,
-                      objectRenderingData.height
-                      );
-                  }
-                  canvas.context.fillStyle = gObject.color;
-                  texts.forEach((text) => {
-                    canvas.context.fillText(
-                      text[0],
-                      text[1]-objectLeft,
-                      text[2]-objectTop
-                    );
-                  });
-                }
-                if(texRef != null){
-                  canvas.context.drawImage(
-                    texRef.getTexture(),
-                    objectRenderingData.corner.x - objectRenderingData.x,
-                    objectRenderingData.corner.y - objectRenderingData.y,
-                    objectRenderingData.width,
-                    objectRenderingData.height
-                  );
-                }
-
-                canvas.context.restore();
-              }else{
-              //*part three: draw image
-                if(strRef != null){
-                  if(gObject.boxColor != "transparent"){
-                    canvas.context.fillStyle = gObject.boxColor;
-                    canvas.context.fillRect(
-                      objectRenderingData.corner.x,
-                      objectRenderingData.corner.y,
-                      objectRenderingData.width,
-                      objectRenderingData.height
-                    );
-                  }
-                  canvas.context.fillStyle = gObject.color;
-                  texts.forEach((text) => {
-                    canvas.context.fillText(
-                      text[0],
-                      text[1],
-                      text[2]
-                    );
-                  });
-                }
-
-                if(texRef != null){
-                  canvas.context.drawImage(
-                    texRef.getTexture(),
-                    objectRenderingData.corner.x,
-                    objectRenderingData.corner.y,
-                    objectRenderingData.width,
-                    objectRenderingData.height
-                  );
-                }
               }
-            }else{
-              this.noRenderedItemsCount++;
+              
+              if(texRef != null){
+                RenderMisc.drawImage(
+                  texRef.getTexture(),
+                  renderingData,
+                  canvas.context);
+              }
+
+              if(renderingData.text){
+                if(gObject.boxColor != "transparent"){
+                  RenderMisc.drawRectangle(
+                    renderingData,
+                    gObject.boxColor,
+                    canvas.context);
+                }
+                RenderMisc.drawText(
+                  renderingData,
+                  texts,
+                  gObject.color,
+                  canvas.context);
+              }
+
+              if(renderingData.rotation % 360 != 0){
+                canvas.context.restore();
+              }
             }
 
             //*part four: anullate globalalpha and filters
@@ -644,16 +624,16 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           if(this.objectsToDebug.indexOf(gObject.id) != -1){
             //*part five: draw object info
             if(this.drawObjectLimits){
-              RenderMisc.drawObjectLimits(canvas.context,objectRenderingData,resolution,this.camera.position.z);
+              RenderMisc.drawObjectLimits(canvas.context,renderingData,resolution,this.camera.position.z);
             }
           }
           if(this.drawCollisionsMatrix){
-            RenderMisc.drawCollisionBox(canvas.context,objectRenderingData);
+            RenderMisc.drawCollisionBox(canvas.context,renderingData);
           }
           //* DRAW TRIGGERS
           if(this.drawTriggers){
             if(this.triggers.objects.filter(e=>{return e.enabled}).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
-              RenderMisc.drawTrigger(canvas.context,objectRenderingData);
+              RenderMisc.drawTrigger(canvas.context,renderingData);
             }
           }
           debugTime += performance.now()-debugTimePre;

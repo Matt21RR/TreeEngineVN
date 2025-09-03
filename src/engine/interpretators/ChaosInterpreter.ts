@@ -341,7 +341,6 @@ class ChaosInterpreter {
         result = res.result as Interpretation;
         matchName = supportedInstruction.constructor.name;
         isAgrupable = supportedInstruction.isAgrupable();
-        console.log(matchName,instruction);
         break;
       }
     }
@@ -355,6 +354,8 @@ class ChaosInterpreter {
 
     var tag = actualStructureDefinition.id;
     var nodeTag = "";
+
+    // console.log(interpretedInstructions);
 
     for (const interpretation of interpretedInstructions) {
       if(interpretation.itWasAScriptInstruction){

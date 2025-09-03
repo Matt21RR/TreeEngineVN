@@ -1,6 +1,7 @@
 import { lambdaConverter } from "../logic/Misc.ts"
 
-const dataType = {
+class GraphObjectDataType{
+  dataType = {
     id: "string",
     enabled : "boolean",
 
@@ -43,8 +44,9 @@ const dataType = {
     heightScale : "number",
     rotate : "number",
   }
+}
 
-class GraphObject{
+class GraphObject extends GraphObjectDataType{
   _enabled:boolean //TODO: use I'T
 
   _text:Function|string|null
@@ -97,12 +99,13 @@ class GraphObject{
 
   _getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
-    const propertyNames = Object.keys(dataType);
+    const propertyNames = Object.keys(this.dataType);
     const atributesNames = propertyNames.filter(key =>{return "get" in propertyDescriptors[key]});
     return atributesNames;
   }
 
   constructor(graphInfo:{[key:string]:any} = {}){
+    super();
     this._id =              graphInfo.id ?? "error";
     this._enabled =         graphInfo.enabled ?? false;//exclude from calculation and renderin
 
@@ -148,7 +151,7 @@ class GraphObject{
     this._rotate =          "rotate" in graphInfo ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0;
 
     //ignoreParallax forces the object to ignore the camera parallax movement
-    this._ignoreParallax = "z" in graphInfo;
+    this._ignoreParallax = !("z" in graphInfo);
     this._ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this._ignoreParallax
     //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
     //Todo: force the engine to use this when it's a text object.
@@ -473,4 +476,5 @@ class GraphObject{
     return d
   }
 }
+
 export {GraphObject}

@@ -29,7 +29,6 @@ class DialogInstruction extends AgrupableInstructionInterface{
       }
       throw new Error();
     }
-    console.log(dec);
     return dec.join(",");
   }
   protected isOfThisType(instruction){

@@ -53,7 +53,7 @@ function arrayiseTree(calculationOrder:CalculationOrder){
 }
 
 function generateRenderingOrder(dimentionsPack:Record<string,ObjectRenderingData>){
-  var zRefs = {};
+  var zRefs:{[z:string]:Array<string>} = {};
   var zetas:Array<number> = [];
   var renderingOrderById:Array<string> = [];
   Object.keys(dimentionsPack).forEach(id=>{
@@ -65,7 +65,7 @@ function generateRenderingOrder(dimentionsPack:Record<string,ObjectRenderingData
         zRefs[z].push(id);
       }
   });
-  zetas.sort((a, b) => a - b).reverse().forEach(zIndex => {
+  zetas.sort((a, b) => b - a).forEach(zIndex => {
     zRefs[zIndex.toString()].forEach((id:string) => {
       renderingOrderById.push(id);
     });

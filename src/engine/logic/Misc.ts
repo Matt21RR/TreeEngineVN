@@ -1,5 +1,7 @@
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 
+export type TextLine = {value:string,x:number,y:number};
+
 function mobileCheck() {
   return 'ontouchstart' in window ;
 };
@@ -11,12 +13,21 @@ function mobileCheck() {
 // @param maxWidth - la medida del ancho maximo del lugar donde se quiere agregar el texto.
 // @param lineHeight - altura entre linea y linea.
 // @returns an array of [ lineText, x, y ] for all lines
-function wrapText(ctx:CanvasRenderingContext2D, text:string, x:number, y:number, maxWidth:number, maxHeight:number, lineHeight:number,center = false, verticalCenter = false): Array<[string,number,number]> {
+function wrapText(
+  ctx:CanvasRenderingContext2D, 
+  text:string, 
+  x:number, 
+  y:number, 
+  maxWidth:number, 
+  maxHeight:number, 
+  lineHeight:number,
+  center = false, 
+  verticalCenter = false): Array<TextLine> {
   // First, start by splitting all of our text into words, but splitting it into an array split by spaces
   let words = text.replaceAll('\n',()=>{return ' \n '}).split(' ');
   let line = ''; // This will store the text of the current line
   let testLine = ''; // This will store the text when we add a word, to test if it's too long
-  let lineArray:any[] = []; // This is an array of lines, which the function will return
+  let lineArray:Array<TextLine> = []; // This is an array of lines, which the function will return
 
   const centering = () => {
     if(center){
@@ -38,7 +49,7 @@ function wrapText(ctx:CanvasRenderingContext2D, text:string, x:number, y:number,
     // If the width of this test line is more than the max width
     if ((testWidth > maxWidth && n > 0) || line.indexOf('\n') != -1) {
         // Then the line is finished, push the current line into "lineArray"
-        lineArray.push([line, x+centering(), y]);
+        lineArray.push({value:line,x: x+centering(), y});
         // Increase the line height, so a new line is started
         y += lineHeight;
         // Update line and test line to use this word as the first word on the next line
@@ -50,7 +61,7 @@ function wrapText(ctx:CanvasRenderingContext2D, text:string, x:number, y:number,
     }
     // If we never reach the full max width, then there is only one line.. so push it into the lineArray so we return something
     if(n === words.length - 1) {
-        lineArray.push([line, x+centering(), y]);
+        lineArray.push({value:line,x: x+centering(), y});
         //TODO: Medir el ancho disponible y
     }
   }
@@ -58,7 +69,7 @@ function wrapText(ctx:CanvasRenderingContext2D, text:string, x:number, y:number,
   if(verticalCenter){
     const compensationMeasurement = (maxHeight - lineArray.length * lineHeight) / 2;
     for (let index = 0; index < lineArray.length; index++) {
-      lineArray[index][2] += compensationMeasurement;
+      lineArray[index].y += compensationMeasurement;
     }
   }
   // Return the line array

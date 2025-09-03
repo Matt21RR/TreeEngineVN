@@ -1,9 +1,12 @@
+import { TextLine } from "../logic/Misc";
+
 export type ObjectRenderingData = {
   x:number, 
   y:number, 
   z:number, 
   width:number, 
   height:number, 
+  rotation:number,
   sizeInDisplay:number,
   /** corner is the top left coords of the rendered object */
   corner:{x:number, y:number},
@@ -14,8 +17,12 @@ export type ObjectRenderingData = {
     z: any;
   },
   id:string,
-  text?:Array<[string,number,number]>,
-  margin?:{horizontal:number,vertical:number}
+  text?:{
+    value?:Array<TextLine>,
+    margin:{horizontal:number,vertical:number},
+    fontSize:number
+  }
+  
 }
 
 type EngineRenderingData = {

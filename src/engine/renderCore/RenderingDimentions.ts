@@ -31,11 +31,14 @@ function generateObjectsDisplayDimentions(canvas: CanvasData, graphArray: RenLis
     const toAddSizeHelper = tangencialConstant*canvas.resolution.height*camera.maxZ;
 
     for (let index = 0; index < graphArray.length; index++) {
+
+      let res: ObjectRenderingData;
       
       const gObject = graphArray.get(arrayisedTree[index]);
       
       if(!gObject.pendingRenderingRecalculation){
-        dimentionsPack[gObject.id] = prevDimentionsPack[gObject.id]
+        dimentionsPack[gObject.id] = prevDimentionsPack[gObject.id];
+        //TODO: if text value is not null, jump to text attribs recalculation
         continue;
       }
       engine.redraw = true;
@@ -69,6 +72,7 @@ function generateObjectsDisplayDimentions(canvas: CanvasData, graphArray: RenLis
 
         const perspectiveDiff = 1-((1/objectZ)-(1))/perspectiveDiffHelper;
         const toAddSize = perspectiveDiff * (toAddSizeHelper);
+        console.table({objectZ,perspectiveDiff,toAddSizeHelper});
         const perspectiveScale = toAddSize/canvas.resolution.height;
         objectScale *= perspectiveScale;
         testD = perspectiveScale;
@@ -103,7 +107,7 @@ function generateObjectsDisplayDimentions(canvas: CanvasData, graphArray: RenLis
         }
       }
 
-      var res:ObjectRenderingData = {
+      res = {
         id: gObject.id,
         x : objectLeft,
         y : objectTop,
@@ -119,40 +123,54 @@ function generateObjectsDisplayDimentions(canvas: CanvasData, graphArray: RenLis
         },
         sizeInDisplay : testD,
         width : objectWidth,
-        height : objectHeight
+        height : objectHeight,
+        rotation: gObject.rotate
       };
-      //Recompute Object size
+
+      //TODO: texts requires continous recomputing
       const strRef = gObject.text == null ? null : getStr(gObject.text);
-      if(strRef != null && gObject.fitContent){
+      if(strRef == null){
+      }else{
         const fontSizeRenderingValue = gObject.fontSizeNumeric*canvas.resolution.scale*(developmentRatio)*testD;
         const objectWidthMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.horizontalMargin;
         const objectHeightMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.verticalMargin;
-        canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
-        var texts = wrapText(//TODO: Wrap it until all the text get wraped
-          canvas.context,
-          strRef,
-          objectWidthMargin + res.corner.x,
-          fontSizeRenderingValue/2,
-          res.width - objectWidthMargin*2,
-          0,
-          fontSizeRenderingValue,
-          gObject.center, 
-          false
-        );
 
-        const lastText = texts.at(-1);
-        if (lastText) {
-          objectHeight = lastText[2] + fontSizeRenderingValue/2 + objectHeightMargin*2;
+        Object.assign(res,{
+          text:{
+            fontSize:fontSizeRenderingValue,
+            margin:{
+              horizontal:objectWidthMargin, 
+              vertical:objectHeightMargin}
+            }
+          });
+
+        if(gObject.fitContent){
+          canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
+          var texts = wrapText(//TODO: Wrap it until all the text get wraped
+            canvas.context,
+            strRef,
+            objectWidthMargin + res.corner.x,
+            fontSizeRenderingValue/2,
+            res.width - objectWidthMargin*2,
+            0,
+            fontSizeRenderingValue,
+            gObject.center, 
+            false
+          );
+
+          const lastText = texts.at(-1);
+          if (lastText) {
+            objectHeight = lastText.y + fontSizeRenderingValue/2 + objectHeightMargin*2;
+          }
+
+          for (let index = 0; index < texts.length; index++) {
+            texts[index].y += objectHeightMargin + (objectTop - objectHeight/2) ;  
+          }
+
+          res.corner.y = (objectTop - objectHeight/2);
+          res.height = objectHeight;
+          res.text!.value = texts;
         }
-
-        for (let index = 0; index < texts.length; index++) {
-          texts[index][2] += objectHeightMargin + (objectTop - objectHeight/2) ;  
-        }
-
-        res.corner.y = (objectTop - objectHeight/2);
-        res.height = objectHeight;
-        res.text = texts;
-        res.margin = {horizontal:objectWidthMargin, vertical:objectHeightMargin};
       }
       dimentionsPack[gObject.id] = res;
       gObject.pendingRenderingRecalculation = false;
