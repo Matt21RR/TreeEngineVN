@@ -20,23 +20,20 @@ import JumpToInstruction from "./builders/JumpToInstruction.ts";
 import SetSpeakerInstruction from "./builders/SetSpeakerInstruction.ts";
 
 
-declare global{
-  interface Window{
-    backendRoute:string,
-    workRoute:string,
-    projectRoute:string
+class ChaosInterpreterResources {
+  scripts:{[key:string]:{main:string,nodes:{}}}
+  scriptsUrls:{[key:string]:string}
+  constructor(){
+    this.scripts = {};
+    this.scriptsUrls = {};
   }
 }
 
 class ChaosInterpreter {
-  sounds:{[key:string]:string}
-  textures:{[key:string]:string}
   scripts:{[key:string]:{main:string,nodes:{}}}
   scriptsUrls:{[key:string]:string}
   projectRoot:string
   constructor(){
-    this.sounds = {};
-    this.textures = {};
     this.scripts = {};
     this.scriptsUrls = {};
     this.projectRoot = window.projectRoute;
@@ -86,7 +83,7 @@ class ChaosInterpreter {
       });
     })
   }
-  loadScripts(doNothing){
+  loadScripts(doNothing:boolean){
     const self = this;
     return new Promise((resolve,reject)=>{
       if(doNothing){
@@ -102,6 +99,7 @@ class ChaosInterpreter {
                     self.kreator(res2,false).then(
                     (textScr)=>{
                       Object.assign(self.scripts,textScr);
+                      console.log(self.scripts);
                       resolveScript(null);
                     }
                   )}
@@ -354,8 +352,6 @@ class ChaosInterpreter {
 
     var tag = actualStructureDefinition.id;
     var nodeTag = "";
-
-    // console.log(interpretedInstructions);
 
     for (const interpretation of interpretedInstructions) {
       if(interpretation.itWasAScriptInstruction){

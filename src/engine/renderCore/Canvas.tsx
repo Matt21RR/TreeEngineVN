@@ -3,12 +3,6 @@ import $ from "jquery";
 import { rAF } from "../logic/rAF.ts";
 import { RenderEngine } from "./RenderEngine.tsx";
 
-declare global{
-  interface Window{
-    setFps:Function;
-  }
-}
-
 type CanvasData = {
   object:Canvas,
   context:CanvasRenderingContext2D,
@@ -110,8 +104,6 @@ class Canvas extends React.Component<CanvasProps>{
     this.animatingElapsed = 0;
     this.renderingElapsed = 0;
     this.totalEngineElapsedTime = 0;
-
-    window.setFps = this.setFps;
   }
   setFps(x:number){ 
     const canvas = this.element.current;
@@ -344,7 +336,7 @@ class Canvas extends React.Component<CanvasProps>{
           "GPU: "+(this.renderingElapsed).toFixed(2) + "ms" ,
           "CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,
           "cycle:"+(this.renderingElapsed+this.animatingElapsed).toFixed(2) + "ms" ,
-          "OrdeGrap: "+(orderingTime).toFixed(2) + "ms" ,
+          "OrderingTime: "+(orderingTime).toFixed(2) + "ms" ,
           "AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,
           "DrawTime: "+(drawingTime).toFixed(2) + "ms" ,
           "DebuTime: "+(debugTime).toFixed(2) + "ms" ,

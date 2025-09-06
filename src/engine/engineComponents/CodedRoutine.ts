@@ -1,18 +1,19 @@
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
+import EnabledObject from "./EnabledObject.ts";
 
-class CodedRoutine{
+class CodedRoutine extends EnabledObject{
   #id
-  #enabled
   #continious
 
   #code
 
   constructor(tInfo){
+    super();
     if(!("id" in tInfo))
       throw new Error("Trying to create a Trigger without id");
 
     this.#id = tInfo.id;
-    this.#enabled = tInfo.enabled || true;
+    this._enabled = tInfo.enabled || true;
     this.#continious = tInfo.continious || false;
     this.#code = tInfo.code || null;
   }
@@ -20,7 +21,7 @@ class CodedRoutine{
   print() {
     const output =  `CodedRoutine {
       id: ${this.#id},
-      enabled: ${this.#enabled},
+      enabled: ${this._enabled},
       continious: ${this.#continious},
       code: ${this.#code}
     }`;
@@ -29,9 +30,6 @@ class CodedRoutine{
   }
 
   get id(){return this.#id}
-
-  get enabled() {return this.#enabled;}
-  set enabled(x){this.#enabled = x;}
 
   get continious() {return this.#continious;}
   set continious(x) {this.#continious = x;}
@@ -56,7 +54,7 @@ class CodedRoutine{
         throw new Error(`Too much arguments (${numberOfArguments}) , for the codedRoutine "${this.id}"`);
       }
       if(!this.#continious){
-        this.#enabled = false;
+        this.enabled = false;
       } 
     } catch (error) {
       console.error(error);

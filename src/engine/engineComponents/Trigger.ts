@@ -1,10 +1,10 @@
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
+import EnabledObject from "./EnabledObject.ts";
 import { GraphObject } from "./GraphObject.ts";
 
-class Trigger{
+class Trigger extends EnabledObject{
   _id:string
   _relatedTo:string|null = null
-  _enabled:boolean
 
   private _onHold:Function|null
   private _onRelease:Function|null
@@ -14,6 +14,7 @@ class Trigger{
   private _onMouseMove:Function|null
 
   constructor(tInfo){
+    super();
     if(!("id" in tInfo))
       throw new Error("Trying to create a Trigger without id");
     if(!tInfo.relatedToBypass){
@@ -38,9 +39,6 @@ class Trigger{
 
   get relatedTo() {return this._relatedTo;}
   set relatedTo(x) {this._relatedTo = x;}
-
-  get enabled() {return this._enabled;}
-  set enabled(x){this._enabled = x;}
 
   get onHold() {return this._onHold;}
   set onHold(x) {this._onHold = x;}
@@ -81,15 +79,15 @@ class Trigger{
   }
 }
 
-class KeyboardTrigger{
+class KeyboardTrigger extends EnabledObject{
   private _keys:Array<string>;
-  private _enabled:boolean
 
   private _onPress:Function|null
   private _onHold:Function|null
   private _onRelease:Function|null
 
   constructor(tInfo){
+    super();
     this._keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
     this._enabled =     tInfo.enabled ?? true;
     this._onPress =     tInfo.onPress ?? null;
@@ -100,9 +98,6 @@ class KeyboardTrigger{
   get id(){return this._keys.join(" ")}
 
   get keys(){return this._keys}
-
-  get enabled() {return this._enabled;}
-  set enabled(x){this._enabled = x;}
 
   get onPress() {return this._onPress;}
   set onPress(x) {this._onPress = x;}

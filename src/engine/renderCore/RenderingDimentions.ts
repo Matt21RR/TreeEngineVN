@@ -6,7 +6,6 @@ import { CanvasData } from "./Canvas";
 import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
 import { RenderEngine } from "./RenderEngine.tsx";
 import { arrayiseTree } from "./RenderingOrder.ts";
-import { RenderMisc } from "./RenderMisc.ts";
 
 
 /**
@@ -14,14 +13,24 @@ import { RenderMisc } from "./RenderMisc.ts";
  * Se recalcula un objeto cuando su información o la información de la camara cambia
  * @returns 
  */
-function generateObjectsDisplayDimentions(canvas: CanvasData, graphArray: RenList<GraphObject>, dimentionsPack: Record<string,ObjectRenderingData>, calculationOrder: CalculationOrder, camera: CameraData){
-  const engine = RenderEngine.getInstance();
+function generateObjectsDisplayDimentions(
+  canvas: CanvasData, 
+  graphArray: RenList<GraphObject>, 
+  dimentionsPack: Record<string,ObjectRenderingData>, 
+  calculationOrder: CalculationOrder,
+  camera: CameraData){
+    var a = 0;
+
+    const ab = performance.now();
+  
+    const engine = RenderEngine.getInstance();
   
     const prevDimentionsPack = engineRenderingDataCloner(dimentionsPack);
 
     dimentionsPack = {}; //wipe
 
     const arrayisedTree = arrayiseTree(calculationOrder);
+
     
     const tangencialConstant = camera.position.angle;
 
@@ -30,7 +39,12 @@ function generateObjectsDisplayDimentions(canvas: CanvasData, graphArray: RenLis
     const perspectiveDiffHelper = ((1/camera.maxZ)-(1))
     const toAddSizeHelper = tangencialConstant*canvas.resolution.height*camera.maxZ;
 
+    a += performance.now()-ab;
+
+    var analyzed = 0;
+
     for (let index = 0; index < graphArray.length; index++) {
+      const as = performance.now();
 
       let res: ObjectRenderingData;
       
@@ -38,9 +52,12 @@ function generateObjectsDisplayDimentions(canvas: CanvasData, graphArray: RenLis
       
       if(!gObject.pendingRenderingRecalculation){
         dimentionsPack[gObject.id] = prevDimentionsPack[gObject.id];
+        a += performance.now() - as;
         //TODO: if text value is not null, jump to text attribs recalculation
         continue;
       }
+      a += performance.now() - as;
+      analyzed++;
       engine.redraw = true;
 
       const texRef = gObject.textureName == null ? null : engine.getTexture(gObject);
@@ -72,7 +89,6 @@ function generateObjectsDisplayDimentions(canvas: CanvasData, graphArray: RenLis
 
         const perspectiveDiff = 1-((1/objectZ)-(1))/perspectiveDiffHelper;
         const toAddSize = perspectiveDiff * (toAddSizeHelper);
-        console.table({objectZ,perspectiveDiff,toAddSizeHelper});
         const perspectiveScale = toAddSize/canvas.resolution.height;
         objectScale *= perspectiveScale;
         testD = perspectiveScale;
@@ -176,7 +192,7 @@ function generateObjectsDisplayDimentions(canvas: CanvasData, graphArray: RenLis
       gObject.pendingRenderingRecalculation = false;
 
     }
-
+    console.log(`Analyzed: ${analyzed} of ${graphArray.length} in ${performance.now()-ab}ms`);
     return dimentionsPack;
   }
 

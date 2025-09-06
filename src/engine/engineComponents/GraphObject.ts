@@ -104,6 +104,8 @@ class GraphObject extends GraphObjectDataType{
     return atributesNames;
   }
 
+  _updateEnabled:(id:string,enabled:boolean)=>void; //semi-observer for enabled list update
+
   constructor(graphInfo:{[key:string]:any} = {}){
     super();
     this._id =              graphInfo.id ?? "error";
@@ -164,7 +166,6 @@ class GraphObject extends GraphObjectDataType{
     return new Proxy(this, {
       set: (target, property, value) => {
         if (target[property] !== value) {
-          // console.log(`${property} value changed in ${target.id} to ${value}`);
           target.pendingRenderingRecalculation = true;
         }
         target[property] = value; // Set the property
@@ -173,8 +174,14 @@ class GraphObject extends GraphObjectDataType{
     });
   }
 
+  set updateEnabled(x:(id:string,enabled:boolean)=>void){
+    this._updateEnabled = x;
+    this._updateEnabled(this.id,this.enabled);
+  }
+
   get enabled() {return this._enabled}
   set enabled(x) {
+    this._updateEnabled(this.id,x);
     this._enabled = x;
   }
 

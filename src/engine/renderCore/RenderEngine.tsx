@@ -301,7 +301,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     $.get(scriptRoute).then(scriptFile=>{
       h.kreator(scriptFile).then(scriptData=>{
         try {
-          var commands = (scriptData as {[key:string]:string})[destination].main;
+          const commands = (scriptData as {[key:string]:string})[destination].main;
           this.nodes = (scriptData as {[key:string]:string})[destination].nodes;
           const commandsF = new Function ("engine","ExtendedObjects",commands);
           console.log(commandsF); 
@@ -497,14 +497,14 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       showFps={this.showFps}
       engine={this}
       renderGraphics={(canvas)=>{
-        const startOrdA = performance.now();
-        
         this.calculationOrder = generateCalculationOrder(this.graphArray);
+        const startOrdA = performance.now();
         const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.dimentionsPack,this.calculationOrder,this.camera);
+        const endOrdB = performance.now()-startOrdA;
         this.dimentionsPack = dimentionsPack;
         this.renderingOrderById = generateRenderingOrder(dimentionsPack);
 
-        const endOrdB = performance.now()-startOrdA;
+
 
         const orderingTime = endOrdB;
 

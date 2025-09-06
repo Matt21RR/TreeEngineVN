@@ -9,13 +9,15 @@ type RenElement = {
 type UnrelatedRenElement = {
   enabled?:boolean,
   id:string,
+  updateEnabled?:(id:string,enabled:boolean)=>void;
   [key: string]: any
 };
 
 class RenList <T extends RenElement|UnrelatedRenElement>{
   #dummy:{type:string, keys:string[],hasId:boolean, hasEnabled:boolean, hasRelatedTo:boolean}
   objects:Array<T>
-  #_ids:Array<String>
+  #_ids:Array<String> = []
+  #_enabledIds:Array<String> = []
   constructor() {
     this.#dummy = {
       type: '',
@@ -25,17 +27,22 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
       hasRelatedTo:false
     };
     this.objects = new Array<T>();
-    this.#_ids = [];
   }
   get length(){
     if(this.objects.length > 0){
       if(this.#dummy.hasId){
         if(this.#dummy.hasEnabled){
-          return this.objects.filter(e=>{return e.enabled}).length;
+          var itemCount = 0;
+          for(const object of this.objects){
+            if(object.enabled){
+              itemCount++;
+            }
+          }
+          return itemCount;
         }
       }
     }
-    return this.objects.length;
+    return 0;
   }
   push(element:T){
     if(this.exist(element.id)){
@@ -52,6 +59,19 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
           hasEnabled:getAttribs(classRef).includes("enabled"),
           hasRelatedTo:getAttribs(classRef).includes("relatedTo"),
         };
+      }
+    }
+
+    //TODO: if T has enabled, then add a observer for enabled
+    if(this.#dummy.hasEnabled){
+      if(this.#dummy.hasId){
+        element.updateEnabled = (id:string,enabled:boolean) =>{
+          if(enabled && !this.#_enabledIds.includes(id)){
+            this.#_enabledIds.push(id);
+          }else if(!enabled && this.#_enabledIds.includes(id)){
+            this.#_enabledIds.splice(this.#_enabledIds.indexOf(id));
+          }
+        }
       }
     }
 
@@ -80,7 +100,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     if(!this.#dummy.hasEnabled || includeDisabled){
       return this.objects.map(e => {return e.id;});
     }else{
-      return this.objects.filter(e => {return e.enabled;}).map(e => {return e.id;});
+      return this.enabledList().map(e => {return e.id;});
     }
     
   }
