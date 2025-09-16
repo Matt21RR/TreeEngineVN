@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
 class SetInstruction extends InstructionInterface{
@@ -13,7 +14,7 @@ class SetInstruction extends InstructionInterface{
     }
     return {match: false};
   }
-  interpretate(isInRoutineMode:boolean, extractedData: {[key:string]:any}) {
+  interpretate(isInRoutineMode:boolean, extractedData: Dictionary) {
     const branch:string = extractedData.branch;
     const id:string = extractedData.id;
     const value:string = extractedData.value;

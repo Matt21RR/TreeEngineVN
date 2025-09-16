@@ -68,13 +68,13 @@ class Canvas extends React.Component<CanvasProps>{
     super(props);
 
     if(props){
-      this.targetFps = props.fps ? (props.fps > 0 ? props.fps : 24) : 24;//suggesed max fps = 24
+      this.targetFps = (props.fps && props.fps > 0) ? props.fps : 24;//suggesed max fps = 24
       this.scale = props.scale ?? 1;//suggested scale for animated canvas = 0.55 | static canvas = 1
 
       this.renderEngine = props.engine;
 
-      this.onLoad = props.onLoad ?? ((canvas:CanvasData)=>{})//Do something after the canvas params have been set
-      this.onResize = props.onResize ?? ((canvas:CanvasData)=>{})//Do something after the canvas have been resized
+      this.onLoad = props.onLoad ?? ((canvas:CanvasData)=>{});//Do something after the canvas params have been set
+      this.onResize = props.onResize ?? ((canvas:CanvasData)=>{});//Do something after the canvas have been resized
 
       this.showFps = props.showFps ?? false;
     }
@@ -105,6 +105,13 @@ class Canvas extends React.Component<CanvasProps>{
     this.renderingElapsed = 0;
     this.totalEngineElapsedTime = 0;
   }
+
+  modFps(fpsModValue:number){
+    this.setFps(
+      this.targetFps + fpsModValue
+    )
+  }
+
   setFps(x:number){ 
     const canvas = this.element.current;
     if(canvas == null){return;}
@@ -213,7 +220,7 @@ class Canvas extends React.Component<CanvasProps>{
     this.engineThreads = 0;
     this.resolutionHeight = Math.floor(this.props.displayResolution.height * this.scale *window.devicePixelRatio);
     this.resolutionWidth = Math.floor(this.props.displayResolution.width * this.scale *window.devicePixelRatio);
-    const fps = this.props.fps ? (this.props.fps > 0 ? this.props.fps : 24) : 24;//suggesed max fps = 24
+    const fps = (this.props.fps && this.props.fps > 0) ? this.props.fps : 24;//suggesed max fps = 24
     this.setFps(fps);
     this.engine(this.loopId);
   }

@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import { ScriptStructure } from "../ChaosInterpreter.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
@@ -22,7 +23,7 @@ class StructureEndInstruction extends InstructionInterface{
       return {match:false};
     }
   }
-  protected interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}): Object {
+  protected interpretate(isInRoutineMode: boolean, extractedData:Dictionary): Object {
     return {end:extractedData.end};
   }
 }

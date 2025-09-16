@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 import Token from "../Token.ts";
 
@@ -13,7 +14,7 @@ class PlayInstruction extends InstructionInterface{
     }
     return {match: false};
   }
-  interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}) {
+  interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const song:string = extractedData.song;
     
     let res:Array<string> = [];

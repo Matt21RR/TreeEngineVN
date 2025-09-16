@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
 class NodeDefinitionInstruction extends InstructionInterface{
@@ -19,7 +20,7 @@ class NodeDefinitionInstruction extends InstructionInterface{
       return {match:false};
     }
   }
-  protected interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}): Object {
+  protected interpretate(isInRoutineMode: boolean, extractedData:Dictionary): Object {
     const nodeId: string = extractedData.nodeId;
     return {define:"node",id:nodeId};
   }

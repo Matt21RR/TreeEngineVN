@@ -18,11 +18,12 @@ import StructureEndInstruction from "./builders/StructureEndInstruction.ts";
 import AgrupableInstructionInterface from "./AgrupableInstructionInterface.ts";
 import JumpToInstruction from "./builders/JumpToInstruction.ts";
 import SetSpeakerInstruction from "./builders/SetSpeakerInstruction.ts";
+import { Dictionary } from "../../global.ts";
 
 
 class ChaosInterpreterResources {
-  scripts:{[key:string]:{main:string,nodes:{}}}
-  scriptsUrls:{[key:string]:string}
+  scripts: Dictionary<{main:string,nodes:{}}>
+  scriptsUrls: Dictionary<string>
   constructor(){
     this.scripts = {};
     this.scriptsUrls = {};
@@ -30,8 +31,8 @@ class ChaosInterpreterResources {
 }
 
 class ChaosInterpreter {
-  scripts:{[key:string]:{main:string,nodes:{}}}
-  scriptsUrls:{[key:string]:string}
+  scripts:Dictionary<{main:string,nodes:{}}>
+  scriptsUrls:Dictionary<string>
   projectRoot:string
   constructor(){
     this.scripts = {};
@@ -70,15 +71,15 @@ class ChaosInterpreter {
   private getTexture(){
     return this.projectRoot + "img/textures.json";
   }
-  listScripts(){
+  listScripts(): Promise<Dictionary>{
     const self = this;
     return new Promise((resolve,reject)=>{
-      fetch(self.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
+      fetch(self.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then((scriptsData:Dictionary) =>{
         Object.keys(scriptsData).forEach((scriptId)=>{
           scriptsData[scriptId] = self.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
         })
-        Object.assign(scriptsData,{"gameEntrypoint": self.projectRoot + "main.txt"})
-        self.scriptsUrls = scriptsData
+        Object.assign(scriptsData, {"gameEntrypoint": self.projectRoot + "main.txt"});
+        self.scriptsUrls = scriptsData;
         resolve(scriptsData);
       });
     })
@@ -323,7 +324,7 @@ class ChaosInterpreter {
 
   private interpretateInstruction(_instruction:Instruction,recursiveMode = false): Interpretation{
     var itWasAScriptInstruction = false;
-    let result:{[key:string]:any}|string|Instruction = _instruction;
+    let result:Dictionary<any>|string|Instruction = _instruction;
     let matchName = "";
     let isAgrupable = false;
     if(_instruction.length == 0){
@@ -346,7 +347,7 @@ class ChaosInterpreter {
   }
 
   private haveSceneOrModuleDefinition(interpretedInstructions:Array<Interpretation>){
-    var scenes: {[key:string]:{main:string,nodes:{}}} = {};
+    var scenes: Dictionary<{main:string,nodes:{}}> = {};
     var actualStructureDefinition = {define:ScriptStructure.Scene,id:"gameEntrypoint"};
     scenes[actualStructureDefinition.id] = {main:"",nodes:{}};
 

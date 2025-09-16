@@ -1,7 +1,18 @@
 import React from "react";
 import { Button1, IconButton, InputCheck, InputList, InputText } from "./components/Buttons.jsx";
 import { Chaos } from "../engine/interpretators/ChaosInterpreter.ts";
-class EngineTools extends React.Component{
+import { Dictionary } from "../global.ts";
+import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
+
+interface EngineToolsProps {
+  engine: RenderEngine
+}
+
+export default class EngineTools extends React.Component<EngineToolsProps>{
+  scripts:Dictionary;
+  sceneName:string;
+  selectedScript: number;
+  mounted:boolean;
   constructor(props){
     super(props);
     this.scripts = {};
@@ -55,24 +66,25 @@ class EngineTools extends React.Component{
   cameraControls(){
     
     const engine = this.props.engine;
+    const camera = engine.camera;
     return (
       <div className="flex flex-col text-white">
-        {JSON.stringify(engine.camera.position)}
-        <InputCheck label="Use perspective" checked={engine.camera.usePerspective} action={(res)=>{engine.camera.usePerspective = res}}/>
+        {JSON.stringify(camera.position)}
+        <InputCheck label="Use perspective" checked={camera.usePerspective} action={(res:boolean)=>{camera.usePerspective = res}}/>
         <div className="flex ">
           X
-          <IconButton icon="minus" action={()=>{engine.camera.position.x-= 0.1;this.forceUpdate();}}/>
-          <IconButton icon="plus" action={()=>{engine.camera.position.x+= 0.1;this.forceUpdate();}}/>
+          <IconButton icon="minus" action={()=>{camera.position.x-= 0.1;this.forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{camera.position.x+= 0.1;this.forceUpdate();}}/>
         </div>
         <div className="flex ">
           Y
-          <IconButton icon="minus" action={()=>{engine.camera.position.y-= 0.1;this.forceUpdate();}}/>
-          <IconButton icon="plus" action={()=>{engine.camera.position.y+= 0.1;this.forceUpdate();}}/>
+          <IconButton icon="minus" action={()=>{camera.position.y-= 0.1;this.forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{camera.position.y+= 0.1;this.forceUpdate();}}/>
         </div>
         <div className="flex ">
           Z
-          <IconButton icon="minus" action={()=>{engine.camera.position.z-= 0.1;this.forceUpdate();}}/>
-          <IconButton icon="plus" action={()=>{engine.camera.position.z+= 0.1;this.forceUpdate();}}/>
+          <IconButton icon="minus" action={()=>{camera.position.z-= 0.1;this.forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{camera.position.z+= 0.1;this.forceUpdate();}}/>
         </div>
 
       </div>
@@ -82,10 +94,10 @@ class EngineTools extends React.Component{
     const engine = this.props.engine;
     if("object" in engine.canvasRef){
       const canvasObject = engine.canvasRef.object;
-      const fps = canvasObject.fps;
+      const fps = canvasObject.targetFps;
       return (
         <div className="flex flex-row text-white">
-          <IconButton icon="minus" action={()=>{canvasObject.setFps(fps-1);this.forceUpdate();}}/>
+          <IconButton icon="minus" action={()=>{canvasObject.modFps(-1); this.forceUpdate();}}/>
           <input 
             className="bg-transparent" 
             type="number" 
@@ -99,7 +111,7 @@ class EngineTools extends React.Component{
               canvasObject.setFps(value);
               this.forceUpdate();
             }}/>
-          <IconButton icon="plus" action={()=>{canvasObject.setFps(fps+1);this.forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{canvasObject.modFps(1); this.forceUpdate();}}/>
           <span>Target FPS: {fps}</span>
         </div>
       );
@@ -140,4 +152,3 @@ class EngineTools extends React.Component{
     </>)
   }
 }
-export {EngineTools}

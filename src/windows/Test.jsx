@@ -2,7 +2,7 @@ import React  from "react";
 import { WindowsEnvironment } from "./WindowsEnvironment";
 import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
 import { ObjectsE } from "../tools/SubTools";
-import { EngineTools } from "../tools/EngineTools";
+import EngineTools from "../tools/EngineTools";
 import { FileExplorer } from "../tools/FileExplorer";
 import { EditorKeys } from "../tools/EditorKeys";
 import { TexturesE } from "../tools/TexturesE";
@@ -29,7 +29,7 @@ class Test extends React.Component{
             cyclesPerSecond={60}
             setEngine={(engine)=>{this.engine=engine; this.windowsEnvironment.renderSecondaryContent = true; this.windowsEnvironment.forceUpdate(); this.forceUpdate();}}/>
         }
-        content={{
+        windows={{
           fileExplorer:{
             title:"File Explorer",
             content:<FileExplorer/>,

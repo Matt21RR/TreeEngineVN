@@ -1,7 +1,7 @@
 import React, { JSX } from 'react';
 import $ from "jquery";
 import Draggable from 'react-draggable';
-import { IconButton } from "../tools/components/Buttons";
+import { IconButton } from "../tools/components/Buttons.ts";
 import gsap from 'gsap';
 
 interface WindowProps{
@@ -10,7 +10,7 @@ interface WindowProps{
   minimized:boolean,
   preview:boolean,
   title?:string,
-  onResize?:Function,
+  onResize?: ()=>void,
   minRes:{width:number,height:number},
   resizeBlocked?:boolean,
   clicked:Function,

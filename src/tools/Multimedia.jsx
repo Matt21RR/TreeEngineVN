@@ -1,6 +1,6 @@
 import React from 'react';
 import $ from "jquery";
-import { AudioPlayer } from './AudioPlayer';
+import AudioPlayer from './AudioPlayer';
 import { Button1, IconButton, InputTextArea } from './components/Buttons.jsx';
 import Swal from 'sweetalert2';
 

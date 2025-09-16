@@ -1,21 +1,46 @@
 import React from "react";
-import { BaseButton } from "../tools/components/Buttons";
+import { BaseButton } from "../tools/components/Buttons.jsx";
 import Window from "./Window.tsx";
+import { ConnectedComponent, Dictionary } from "../global.ts";
 
-class WindowsEnvironment extends React.Component{
-  constructor(props){
+
+type WindowContent = {
+  title: string,
+  content: React.JSX.Element
+  minimized: boolean,
+  disabled: boolean,
+
+  onResize?: ()=> void,
+  minRes?: {width:number, height:number}
+  resizeBlocked?: boolean
+}
+
+
+interface WindowsEnvironmentProps extends ConnectedComponent{
+  windows: Dictionary<WindowContent>,
+  mainContent: React.JSX.Element
+}
+
+class WindowsEnvironment extends React.Component<WindowsEnvironmentProps>{
+  renderSecondaryContent: boolean;
+  windowsContent: Dictionary<WindowContent>;
+  executionDict: Dictionary<boolean>;
+  minimizedTable: Array<string>
+  previewTable: Array<string>
+  renderingOrder: Array<string>
+  constructor(props: WindowsEnvironmentProps){
     super(props);
     if(props.refAssigner){
       props.refAssigner(this);
     }
-    if(!(this.props)){return;}
+    if(!(props)){return;}
     this.renderSecondaryContent = false;
-    this.windowsContent = "content" in this.props ? this.props.content : {};
-    this.executionTable = {};
+    this.windowsContent = "windows" in props ? props.windows : {};
+    this.executionDict = {};
     this.minimizedTable = [];
     this.previewTable = [];
     Object.keys(this.windowsContent).map(windowId=>{
-      Object.assign(this.executionTable, 
+      Object.assign(this.executionDict, 
         {[windowId]:!(this.windowsContent[windowId].disabled ?? true)}
       );
     });
@@ -26,7 +51,7 @@ class WindowsEnvironment extends React.Component{
     });
     this.renderingOrder = Object.keys(this.windowsContent);
   }
-  clickWindow(windowId){
+  clickWindow(windowId: string){
     if(this.renderingOrder.indexOf(windowId) == (this.renderingOrder.length-1)){
       return;
     }
@@ -38,32 +63,45 @@ class WindowsEnvironment extends React.Component{
   }
   renderWindows(){
     if(!this.renderSecondaryContent){return;}
-    const windowsContent = this.props.content;
+    const windowsContent = this.props.windows;
     return(
       Object.keys(windowsContent).filter(
         windowId=>{return !(windowsContent[windowId].disabled ?? true)}
-      ).map((contentId)=>(
+      ).map((contentId)=>{
+        const windowAtTop = this.renderingOrder.indexOf(contentId)+1 == this.renderingOrder.length
+        return (
         <div 
           className="relative" 
           style={{
             zIndex:this.renderingOrder.indexOf(contentId)+1, 
-            filter:"opacity("+(this.renderingOrder.indexOf(contentId)+1 == this.renderingOrder.length ? 1 : .9)+") "+(this.renderingOrder.indexOf(contentId)+1 != this.renderingOrder.length ? "grayscale(.3)" : "")}}
+            filter:
+              `
+                opacity(${windowAtTop ? 1 : .9}) 
+                ${windowAtTop ? "" : "grayscale(.3)"}
+              `
+          }}
         >
           <Window 
             content={windowsContent[contentId].content} 
-            minimize={()=>{this.minimizedTable.push(contentId);this.previewTable.splice(this.previewTable.indexOf(contentId),1);this.forceUpdate();}}
+            minimize={
+              ()=>{
+                this.minimizedTable.push(contentId);
+                this.previewTable.splice(
+                  this.previewTable.indexOf(contentId),1
+                );
+                this.forceUpdate();
+              }}
             minimized={this.minimizedTable.indexOf(contentId) != -1}
             preview={this.previewTable.indexOf(contentId) != -1}
             title={windowsContent[contentId].title} 
-            onResize={"onResize" in windowsContent[contentId] ? windowsContent[contentId].onResize : ()=>{}}
-            minRes={"minRes" in windowsContent[contentId] ? windowsContent[contentId].minRes : {width:600,height:450} }
-            resizeBlocked={"resizeBlocked" in windowsContent[contentId] ? windowsContent[contentId].resizeBlocked : false }
+            onResize={windowsContent[contentId].onResize ?? (()=>{}) }
+            minRes={windowsContent[contentId].minRes ?? {width:600,height:450} }
+            resizeBlocked={windowsContent[contentId].resizeBlocked ?? false }
             clicked={()=>this.clickWindow(contentId)}
             reRender={()=>this.forceUpdate()}
           />
         </div>
-        
-      ))
+      )})
     );  
   }
   renderTaskBar(){

@@ -2,7 +2,7 @@ import { engineRenderingDataCloner, ObjectRenderingData } from "../engineCompone
 import { GraphObject } from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
 import { getStr, wrapText } from "../logic/Misc.ts";
-import { CanvasData } from "./Canvas";
+import { CanvasData } from "./Canvas.ts";
 import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
 import { RenderEngine } from "./RenderEngine.tsx";
 import { arrayiseTree } from "./RenderingOrder.ts";
@@ -192,7 +192,7 @@ function generateObjectsDisplayDimentions(
       gObject.pendingRenderingRecalculation = false;
 
     }
-    console.log(`Analyzed: ${analyzed} of ${graphArray.length} in ${performance.now()-ab}ms`);
+    // console.log(`Analyzed: ${analyzed} of ${graphArray.length} in ${performance.now()-ab}ms`);
     return dimentionsPack;
   }
 

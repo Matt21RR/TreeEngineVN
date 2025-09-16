@@ -1,3 +1,4 @@
+import { Dictionary } from "../../global.ts";
 import { getAttribs } from "../logic/Misc.ts";
 
 type RenElement = {
@@ -16,8 +17,8 @@ type UnrelatedRenElement = {
 class RenList <T extends RenElement|UnrelatedRenElement>{
   #dummy:{type:string, keys:string[],hasId:boolean, hasEnabled:boolean, hasRelatedTo:boolean}
   objects:Array<T>
-  #_ids:Array<String> = []
-  #_enabledIds:Array<String> = []
+  #_ids:Array<string> = []
+  #_enabledIds:Array<string> = []
   constructor() {
     this.#dummy = {
       type: '',
@@ -32,13 +33,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     if(this.objects.length > 0){
       if(this.#dummy.hasId){
         if(this.#dummy.hasEnabled){
-          var itemCount = 0;
-          for(const object of this.objects){
-            if(object.enabled){
-              itemCount++;
-            }
-          }
-          return itemCount;
+          return this.#_enabledIds.length;
         }
       }
     }
@@ -51,13 +46,13 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     }
     if(this.objects.length == 0){
       if(this.#dummy.type == ""){
-        const classRef = element.__proto__.constructor;
+        const className = element.__proto__.constructor.name;
         this.#dummy = {
-          type: classRef.name,
-          keys: getAttribs(classRef),
-          hasId:getAttribs(classRef).includes("id"),
-          hasEnabled:getAttribs(classRef).includes("enabled"),
-          hasRelatedTo:getAttribs(classRef).includes("relatedTo"),
+          type: className,
+          keys: getAttribs(element),
+          hasId:getAttribs(element).includes("id"),
+          hasEnabled:getAttribs(element).includes("enabled"),
+          hasRelatedTo:getAttribs(element).includes("relatedTo"),
         };
       }
     }
@@ -69,7 +64,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
           if(enabled && !this.#_enabledIds.includes(id)){
             this.#_enabledIds.push(id);
           }else if(!enabled && this.#_enabledIds.includes(id)){
-            this.#_enabledIds.splice(this.#_enabledIds.indexOf(id));
+            console.log("deletedItems:",this.#_enabledIds.splice(this.#_enabledIds.indexOf(id)));
           }
         }
       }
@@ -100,7 +95,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     if(!this.#dummy.hasEnabled || includeDisabled){
       return this.objects.map(e => {return e.id;});
     }else{
-      return this.enabledList().map(e => {return e.id;});
+      return this.#_enabledIds;
     }
     
   }
@@ -108,7 +103,8 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     return this.objects.map(e => {return {[e.id]:e.relatedTo};});
   }
   enabledList(){
-    return this.objects.filter(e =>{return e.enabled;})
+    // return this.objects.filter(e =>{return e.enabled;});
+    return this.#_enabledIds.map(id => this.get(id))
   }
 
   #verifyRelatedToInClass(this: RenList<T>){
@@ -119,7 +115,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
 }
 
   relatedToReversedList(this: RenList<T>){
-    var list:{[key:string]:Array<string>} = {};
+    var list: Dictionary<Array<string>> = {};
     if(this.objects.length == 0){
       return list;
     }

@@ -3,7 +3,6 @@ import EnabledObject from "./EnabledObject.ts";
 import { GraphObject } from "./GraphObject.ts";
 
 class Trigger extends EnabledObject{
-  _id:string
   _relatedTo:string|null = null
 
   private _onHold:Function|null

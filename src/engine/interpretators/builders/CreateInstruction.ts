@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
 
@@ -12,7 +13,11 @@ class CreateInstruction extends InstructionInterface{
           if(getToken(2).type == "word" && getToken(2).value == "new"){
             if(getToken(3).type == "word" && creatableObjects.includes(getToken(3).value)){
               if(getToken(4).constructor.name == "Array"){
-                return {match:true, branch: getToken(3).value, id: getToken(0).type == "word" ? '"'+getToken(0).value+'"' : getToken(0).value};
+                return {
+                  match:true, 
+                  branch: getToken(3).value, 
+                  id: getToken(0).type == "word" ? '"'+getToken(0).value+'"' : getToken(0).value
+                };
               }
             }
           }
@@ -22,7 +27,11 @@ class CreateInstruction extends InstructionInterface{
       if(getToken(0).type == "word" && getToken(0).value == "new"){
         if(getToken(1).type == "word" && getToken(1).value == "KeyboardTrigger"){
           if(getToken(2).constructor.name == "Array"){
-            return {match: true, branch: getToken(1).value, id: null};
+            return {
+              match: true, 
+              branch: getToken(1).value, 
+              id: null
+            };
           }
         }
       }
@@ -31,7 +40,7 @@ class CreateInstruction extends InstructionInterface{
       return {match:false};
     }
   }
-  interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}): string{
+  interpretate(isInRoutineMode: boolean, extractedData:Dictionary): string{
     const value:string = extractedData.value;
     const branch:string = extractedData.branch;
     const id:string = extractedData.id;

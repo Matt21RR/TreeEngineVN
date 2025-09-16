@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
 class SetSpeakerInstruction extends InstructionInterface{
@@ -14,7 +15,7 @@ class SetSpeakerInstruction extends InstructionInterface{
       return {match:false};
     }
   }
-  interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}) {
+  interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const actor:string  = extractedData.actor;
 
     let res :Array<string> = [];

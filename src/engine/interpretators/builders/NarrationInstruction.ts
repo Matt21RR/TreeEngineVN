@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import AgrupableInstructionInterface from "../AgrupableInstructionInterface.ts";
 import { Interpretation } from "../ChaosInterpreter.ts";
 
@@ -15,7 +16,7 @@ class NarrationInstruction extends AgrupableInstructionInterface{
       return {match:false}; 
     }
   }
-  interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}) {
+  interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const narration:string = extractedData.narration;
     const res =
     `engine.routines.push((engine)=>{

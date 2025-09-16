@@ -1,11 +1,12 @@
-import { GraphObject } from "./GraphObject"
+import { Dictionary } from "../../global.ts";
+import { GraphObject } from "./GraphObject.ts"
 
 type ActorType = {
   id:string;
   active?:boolean;
   name:string;
   body:GraphObject;
-  emotions?:{[key:string]:GraphObject}|null;
+  emotions?:Dictionary<GraphObject>|null;
   emotion?:string;
 }
 
@@ -14,7 +15,7 @@ class Actor{
   #active:boolean;
   #name:string;
   #body:GraphObject;
-  #emotions:{[key:string]:GraphObject}|null;
+  #emotions:Dictionary<GraphObject>|null;
   #activeEmotionLayer:GraphObject|null;
   #emotion:string|null;
 

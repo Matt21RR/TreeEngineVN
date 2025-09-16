@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import { isTemplateLiteral, templateLiteralSplitter } from "../../logic/Misc.ts";
 import AgrupableInstructionInterface from "../AgrupableInstructionInterface.ts";
 import { Interpretation } from "../ChaosInterpreter.ts";
@@ -58,7 +59,7 @@ class DialogInstruction extends AgrupableInstructionInterface{
       return {match:false};
     }
   }
-  interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}) {
+  interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const dialog:string = "["+extractedData.dialog+"]";
     const dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
     const res =

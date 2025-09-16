@@ -6,6 +6,7 @@ import { Trigger } from "../engineComponents/Trigger.ts";
 import { mobileCheck, sortByReference } from "../logic/Misc.ts";
 import { CanvasData } from "./Canvas.tsx";
 import { RenderEngine } from "./RenderEngine.tsx";
+import { Dictionary } from "../../global.ts";
 
 class PointerCalculation extends React.Component{
   DOMElementId: string;
@@ -24,6 +25,7 @@ class PointerCalculation extends React.Component{
   }
   dataCleaner(){//TODO: Implementar en RenderEngine
     this.enteredTriggers = [];
+    document.body.style.cursor = "auto"
   }
   private checkTriggers(
     mouseEvent:React.MouseEvent|React.TouchEvent,
@@ -85,7 +87,7 @@ class PointerCalculation extends React.Component{
 
   private triggersMouseCollisionManagement(
     collisionedTriggers:Array<string>,
-    objectsWithTriggersList:{[key:string]:Array<string>},
+    objectsWithTriggersList: Dictionary<Array<string>>,
     reversedRenderOrderList:Array<string>,
     triggers:RenList<Trigger>,
     action:string){
@@ -97,6 +99,7 @@ class PointerCalculation extends React.Component{
           if(!this.enteredTriggers.includes(triggerId)){
             triggers.get(triggerId).check(RenderEngine.getInstance(),"onEnter");
             this.enteredTriggers.push(triggerId);
+            document.body.style.cursor = "pointer";
           }
 
           try {
@@ -124,6 +127,10 @@ class PointerCalculation extends React.Component{
           trigger.check(RenderEngine.getInstance(),"onLeave");
         }
         this.enteredTriggers.splice(this.enteredTriggers.indexOf(triggerId));
+        //TODO: check if the mouse are not inside any graph asociated trigger
+        if(!this.enteredTriggers.length){
+          document.body.style.cursor = "auto";
+        }
       }
     });
   }

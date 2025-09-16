@@ -155,15 +155,23 @@ function rad2Deg(rad:number){
  * @param elConstructor T
  * @returns 
  */
-function getAttribs<T>(elConstructor: new () => T){
-  const propertyDescriptors = (Object.getOwnPropertyDescriptors(elConstructor.prototype));
+function getAttribs<T>(element: T){
+  //Todo: if the prototype have a prototype
+  var proto = Object.getPrototypeOf(element);
   var attributesNames:Array<string> = [];
-  for(const descriptorName in propertyDescriptors){
-    const descriptor = propertyDescriptors[descriptorName];
-    if("get" in descriptor){
-      attributesNames.push(descriptorName);
+  //*Iterate the prototype and arent prototypes
+  while(proto && proto !== Object.prototype){
+    const propertyDescriptors = (Object.getOwnPropertyDescriptors(proto));
+    for(const descriptorName in propertyDescriptors){
+      const descriptor = propertyDescriptors[descriptorName];
+      if("get" in descriptor){
+        attributesNames.push(descriptorName);
+      }
     }
+
+    proto = Object.getPrototypeOf(proto);
   }
+
   return attributesNames;
 }
 

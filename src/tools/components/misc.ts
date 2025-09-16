@@ -1,11 +1,12 @@
 import $ from "jquery";
 import Swal, { SweetAlertInput } from "sweetalert2";
+import { Dictionary } from "../../global.ts";
 function isUndef( val: any){
   return val === undefined;
 }
 
 const backendRoute = "http://192.168.137.191:10000/api/";//TODO: CAMBIAR CUANDO SE TENGA
-function request(url:string,method:"get"|"post"|"put"|"delete",body:{[key:string]:any} = {}){
+function request(url:string,method:"get"|"post"|"put"|"delete",body:Dictionary = {}){
   return new Promise((resolve,reject)=>{
     $.ajax({
       url: backendRoute + url,
@@ -25,7 +26,7 @@ function request(url:string,method:"get"|"post"|"put"|"delete",body:{[key:string
     });
   })
 }
-function requestMultipart(url:string,method:"get"|"post"|"put"|"delete",body:{[key:string]:any} = {}){
+function requestMultipart(url:string,method:"get"|"post"|"put"|"delete",body:Dictionary = {}){
   return new Promise((resolve,reject)=>{
     var formData = new FormData();
     Object.keys(body).forEach((key)=>{
@@ -71,7 +72,7 @@ function requestInputValue(label:string,type:SweetAlertInput="text"):Promise<any
     });
   })
 }
-function requestInputSelect(label:string,options:{[key:string]:string}):Promise<any>{
+function requestInputSelect(label:string,options: Dictionary<string>):Promise<any>{
   return new Promise((resolve)=>{
     Swal.fire({
       title: label,

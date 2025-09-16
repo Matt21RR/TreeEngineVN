@@ -1,4 +1,5 @@
-import { Chaos } from "../ChaosInterpreter";
+import { Dictionary } from "../../../global.ts";
+import { Chaos } from "../ChaosInterpreter.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
 class LoadInstruction extends InstructionInterface{
@@ -15,7 +16,7 @@ class LoadInstruction extends InstructionInterface{
     }
     return {match:false};
   }
-  interpretate(isInRoutineMode: boolean, extractedParams:{[key:string]:any}): string {
+  interpretate(isInRoutineMode: boolean, extractedParams:Dictionary): string {
     const loadBranch:string = extractedParams.loadBranch;
     const loadId:string = extractedParams.loadId;
     const chaosReference:Chaos = extractedParams.chaosReference;

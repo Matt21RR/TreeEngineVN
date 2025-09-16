@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
 class WaitInstruction extends InstructionInterface{
@@ -13,7 +14,7 @@ class WaitInstruction extends InstructionInterface{
     }
     return {match:false}
   }
-  interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}) {
+  interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const waitTime:string|null = extractedData.waitTime;
     let res:Array<string> = [];
 

@@ -1,7 +1,7 @@
 import gsap from "gsap";
 import React from "react";
-import { Decision } from "../engineComponents/ScriptNode";
-import { RenderEngine } from "./RenderEngine";
+import { Decision } from "../engineComponents/ScriptNode.ts";
+import { RenderEngine } from "./RenderEngine.ts";
 
 class UI extends React.Component{
   private static instance: UI;

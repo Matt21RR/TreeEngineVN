@@ -1,14 +1,49 @@
 import React from 'react';
 import $ from "jquery";
-import { Button1, IconButton, MenuButton } from './components/Buttons';
+import { Button1, IconButton, MenuButton } from './components/Buttons.jsx';
 import Swal from 'sweetalert2';
-import { Loading } from './components/alerts';
+import { Loading } from './components/alerts.jsx';
 import byteSize from 'byte-size';
-import { Multimedia } from './Multimedia';
+import { Multimedia } from './Multimedia.jsx';
 import download from 'downloadjs';
 
+type DirData = {
+  index:number,
+  name:string,
+  type:string,
+  route:string,
+  content:Array<DirData|FileData>
+}
+type FileData = {
+  index:number,
+  name:string,
+  type:string,
+  mime:string,
+  size:number,
+  route:string,
+}
+type SelectedFileProperties = {
+  index:number,
+  name:string,
+  route:string,
+  mime:string,
+  src:string,
+  show:boolean,
+  actualContentLength:number
+}
 
 class FileExplorer extends React.Component{
+  gameContent
+  fileIndexList
+  fileIndexReverse
+  numericalRoute: Array<number>
+  actualRoute: string;
+  actualContent
+  contextMenuData
+  mounted: boolean;
+  selected: SelectedFileProperties;
+  uploadProgress: {percentage:number, inStack:number}
+  id: string;
   constructor(props){
     super(props);
     this.gameContent=[];
@@ -49,6 +84,7 @@ class FileExplorer extends React.Component{
     .then((response) => {
       return JSON.parse(response);})
     .then(res =>{
+      console.log(res);
       this.gameContent = [res];
       this.setActualContent();
       this.forceUpdate();
@@ -123,30 +159,27 @@ class FileExplorer extends React.Component{
       uploader(uploadRequests);
     }
   }
-  rename(route,newName){
+  rename(route:string, newName:string){
     var spl = route.split("/");
     spl.pop();
     const newRoute = spl.join("/") + "/" + newName;
     this.backendRequest({action: "rename", oldRoute:route, newRoute:newRoute})
   }
-  delete(dir,type){
+  delete(dir:string, type:string){
     this.backendRequest({action: "delete", dir:dir, type:type})
   }
-  download(dir,type){
-
-      this.backendRequest({action: "download", dir, type}).then((res)=>{
+  download(dir:string, type:string){
+    this.backendRequest({action: "download", dir, type})
+      .then((res:string)=>{
         download(JSON.parse(res).dataUrl,dir.split("/").at(-1));
       },(error)=>{
         console.error(error);
-      });
-      
-      // 
-    
+      });    
   }
-  createFile(dir,filename){
+  createFile(dir:string, filename:string){
     this.backendRequest({action: "createFile", dir:dir, filename:filename})
   }
-  createDir(dir,folderName){
+  createDir(dir:string, folderName:string){
     this.backendRequest({action: "createDir", dir:dir, folderName:folderName})
   }
   setActualContent(){
@@ -304,7 +337,7 @@ class FileExplorer extends React.Component{
     this.contextMenuData.info = resInfo;
     this.forceUpdate();
   }
-  res(resInfo,index){
+  res(resInfo,index:number){
     if(resInfo.type == "dir"){
       return (
         <div 
@@ -371,7 +404,7 @@ class FileExplorer extends React.Component{
         <div className='relative w-full overflow-hidden h-full'>
           <div className='flex flex-row grow h-full'>
             <div className='grow h-full overflow-y-auto ml-3'>
-              {this.actualContent.map((el,index)=>{return this.res(el,index)})}
+              {this.actualContent.map((el,index: number)=>{return this.res(el,index)})}
             </div>
             {this.rightControls()}
           </div>

@@ -1,9 +1,25 @@
 import React from 'react';
 import {Howl} from 'howler';
 import $ from "jquery";
-import { IconButton } from './components/Buttons';
+import { IconButton } from './components/Buttons.jsx';
 
-class AudioPlayer extends React.Component{
+interface AudioPlayerProps{
+  src:string
+}
+
+export default class AudioPlayer extends React.Component<AudioPlayerProps>{
+  mounted:boolean;
+  stats:{
+    loop:boolean;
+    playing:boolean;
+    info:Array<string>
+  }
+  soundReady:boolean;
+  src:string;
+  id:string;
+
+  sound:Howl
+
   constructor(props){
     super(props);
     this.mounted = false;
@@ -13,23 +29,19 @@ class AudioPlayer extends React.Component{
       info:[]
     }
     this.soundReady = false;
-    this.src = "src" in this.props ? this.props.src : window.backendRoute + "/renderEngineBackend/game/egoismo.mp3"
+    this.src = this.props.src ?? window.backendRoute + "/renderEngineBackend/game/egoismo.mp3"
     this.id = "progression" + String(window.performance.now()).replaceAll(".","");
   }
-  timeConverter(sec){
-    var toSeconds = (sec % 60);
-    var toMinutes = (sec-toSeconds)/60;
-    toSeconds = toSeconds.toFixed(0);
-    toMinutes = toMinutes.toFixed(0);
-    if(toSeconds<10){
-      toSeconds = "0"+toSeconds;
-    }
-    if(toMinutes<10){
-      toMinutes = "0"+toMinutes;
-    }
+  private timeConverter(sec: number){
+    const addZero = (number:string)=>{return number.length == 1 ? `0${number}` : number }
+    const secsNumeric = (sec % 60);
+    var toSeconds = secsNumeric.toFixed(0);
+    var toMinutes = ((sec-secsNumeric)/60).toFixed(0);
+    toSeconds = addZero(toSeconds);
+    toMinutes = addZero(toMinutes);
     return toMinutes + ":" +toSeconds;
   }
-  setStyle(constant){
+  setStyle(constant: number){
       $("#"+this.id).width((constant * 100) + "%");
       $("#range"+this.id).val(constant);
       $("#time"+this.id).text(
@@ -108,7 +120,7 @@ class AudioPlayer extends React.Component{
             defaultValue={0} 
             step={0.0001} 
             onChange={(e)=>{
-              const value =e.target.value;
+              const value = parseFloat(e.target.value);
               this.sound.seek(value*this.sound.duration());
               this.setStyle(value);
             }}
@@ -162,5 +174,3 @@ class AudioPlayer extends React.Component{
     </>);
   }
 }
-
-export {AudioPlayer}

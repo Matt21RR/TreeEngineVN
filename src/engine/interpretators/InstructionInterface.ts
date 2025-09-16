@@ -1,3 +1,4 @@
+import { Dictionary } from "../../global.ts";
 import { arrayFlatter } from "../logic/Misc.ts";
 import { Chaos } from "./ChaosInterpreter.ts";
 import Instruction from "./Instruction.ts";
@@ -5,8 +6,8 @@ import Token from "./Token.ts";
 
 
 abstract class InstructionInterface{
-  protected abstract isOfThisType(instruction: Instruction|Token):{[key:string]:any};
-  protected abstract interpretate(isInRoutineMode:boolean, extractedData:{[key:string]:any}):(string|{[key:string]:any});
+  protected abstract isOfThisType(instruction: Instruction|Token): Dictionary;
+  protected abstract interpretate(isInRoutineMode:boolean, extractedData:Dictionary):(string|Dictionary);
   protected agrupable = false;
 
   isAgrupable(){

@@ -1,5 +1,5 @@
-import { ObjectRenderingData } from "../engineComponents/CollisionLayer";
-import { TextLine, wrapText } from "../logic/Misc";
+import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
+import { TextLine, wrapText } from "../logic/Misc.ts";
 
 class RenderMiscForDebug{
   static drawObjectLimits(ctx:CanvasRenderingContext2D, object: ObjectRenderingData, canvasResolution: {width:number, height:number}, cameraZ:number){

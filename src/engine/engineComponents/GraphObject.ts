@@ -1,3 +1,4 @@
+import { Dictionary } from "../../global.ts"
 import { lambdaConverter } from "../logic/Misc.ts"
 
 class GraphObjectDataType{
@@ -106,7 +107,7 @@ class GraphObject extends GraphObjectDataType{
 
   _updateEnabled:(id:string,enabled:boolean)=>void; //semi-observer for enabled list update
 
-  constructor(graphInfo:{[key:string]:any} = {}){
+  constructor(graphInfo: Dictionary = {}){
     super();
     this._id =              graphInfo.id ?? "error";
     this._enabled =         graphInfo.enabled ?? false;//exclude from calculation and renderin
@@ -154,13 +155,13 @@ class GraphObject extends GraphObjectDataType{
 
     //ignoreParallax forces the object to ignore the camera parallax movement
     this._ignoreParallax = !("z" in graphInfo);
-    this._ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this._ignoreParallax
+    this._ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this._ignoreParallax;
     //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
     //Todo: force the engine to use this when it's a text object.
     this._widthScale =     graphInfo.widthScale ?? 1;
     this._heightScale =    graphInfo.heightScale ?? 1;
 
-    this._useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits : ("parent" in graphInfo ? false : true); //for scale
+    this._useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits : !("parent" in graphInfo); //for scale
   
     // Initialize a proxy to intercept property sets
     return new Proxy(this, {

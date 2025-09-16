@@ -1,3 +1,4 @@
+import { Dictionary } from "../../global.ts";
 import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 import { GraphObject } from "./GraphObject.ts";
@@ -24,15 +25,15 @@ class Animation{
   #startedAt:number
   #dStartedAt
   #delay
-  #to: {[key:string]:any}
-  #from: {[key:string]:any}
+  #to: Dictionary
+  #from: Dictionary
   #onComplete: Function|null
 
-  #keyframes: {[key:number]:any}
+  #keyframes:  Dictionary
   #keyFrameNumber:number
   #timeline
 
-  constructor(aInfo:{[key:string]:any}){
+  constructor(aInfo: Dictionary){
     this.#id = aInfo.id;
     this.#relatedTo = aInfo.relatedTo; //the gO related to the animation
     this.#ease = aInfo.ease ?? ease["linear"];
@@ -192,7 +193,7 @@ class Animation{
       }
     }
   }
-  updateAnimation (gObject:GraphObject|{[key:string]:any},elapsed:number,engine:RenderEngine) {
+  updateAnimation (gObject:GraphObject|Dictionary,elapsed:number,engine:RenderEngine) {
     const engineTime = elapsed;
 
     const setAnimationVars = (forced = false)=>{

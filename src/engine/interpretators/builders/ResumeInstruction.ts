@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
 class ResumeInstruction extends InstructionInterface{
@@ -8,7 +9,7 @@ class ResumeInstruction extends InstructionInterface{
     }
     return {match:false};
   }
-  interpretate(isInRoutineMode: boolean,extractedData:{[key:string]:any}) {
+  interpretate(isInRoutineMode: boolean,extractedData:Dictionary) {
     let res:Array<string> = [];
 
     if(isInRoutineMode){

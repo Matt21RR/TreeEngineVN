@@ -1,5 +1,6 @@
 import { Howl } from "howler";
 import { Shader } from "./Shaders.ts";
+import { Dictionary } from "../../global.ts";
 
 
 
@@ -26,7 +27,7 @@ class ResourceLoader{
               })
             )).then((sounds) => {
               let soundsListRes: Array<{sound:Howl,id:string}> = [];
-              (sounds as Array<{[key:string]:any}>).forEach(snd => {
+              (sounds as Array<Dictionary>).forEach(snd => {
                 var sound = new Howl({
                   src: [snd.Base64],
                   format: snd.ext

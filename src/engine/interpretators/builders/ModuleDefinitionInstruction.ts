@@ -1,4 +1,4 @@
-import { ScriptStructure } from "../ChaosInterpreter.ts";
+import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 import Token from "../Token.ts";
 
@@ -14,7 +14,7 @@ class ModuleDefinitionInstruction extends InstructionInterface{
     }
     return {match:false};
   }
-  interpretate(isInRoutineMode: boolean, extractedData:{[key:string]:any}): Object {
+  interpretate(isInRoutineMode: boolean, extractedData:Dictionary): Object {
     const moduleId: string = extractedData.moduleId;
     return {define:"module",id:moduleId};
   }

@@ -1,4 +1,5 @@
-import { TextLine } from "../logic/Misc";
+import { Dictionary } from "../../global.ts";
+import { TextLine } from "../logic/Misc.ts";
 
 export type ObjectRenderingData = {
   x:number, 
@@ -25,9 +26,7 @@ export type ObjectRenderingData = {
   
 }
 
-type EngineRenderingData = {
-  [key:string]:ObjectRenderingData
-};
+type EngineRenderingData = Dictionary<ObjectRenderingData>;
 
 function engineRenderingDataCloner(engineRenderingData:EngineRenderingData){
   var newData:EngineRenderingData = {};
@@ -40,7 +39,7 @@ function engineRenderingDataCloner(engineRenderingData:EngineRenderingData){
 
 class CollisionLayer {
   collisionMatrix:string[][][];
-  refTable:{[key:string]:Array<[number,number]>};
+  refTable: Dictionary<Array<[number,number]>>;
   private renderingData:EngineRenderingData;
 
   constructor() {

@@ -1,3 +1,4 @@
+import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 import Token from "../Token.ts";
 
@@ -13,7 +14,7 @@ class SceneDefinitionInstruction extends InstructionInterface{
     }
     return {match:false};
   }
-  interpretate(isInRoutineMode: boolean, extractedData: {[key:string]:any}): Object {
+  interpretate(isInRoutineMode: boolean, extractedData: Dictionary): Object {
     const sceneId: string = extractedData.sceneId;
     return {define:"scene",id:sceneId};
   }

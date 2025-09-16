@@ -30,6 +30,7 @@ import UI from "./UI.tsx";
 import Actor from "../engineComponents/Actor.ts";
 import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
 import Swal from "sweetalert2";
+import { Dictionary } from "../../global.ts";
 
 interface RenderEngineProps {
   clientSideResources?: boolean;
@@ -93,10 +94,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
   //*ScriptNode stuff
   actors:RenList<Actor>
-  nodes:{[key:string]:string};
+  nodes: Dictionary<string>;
   scenicPositions: RenList<any>;
   callThisShitWhenDialogEnds:(engine:RenderEngine)=>void;
-  callThisShitWhenDecisionEnds:(engine:RenderEngine,data:{[key:string]:any})=>void;
+  callThisShitWhenDecisionEnds:(engine:RenderEngine,data:Dictionary)=>void;
   //*Rendering stuff
   developmentDeviceHeight: number;
   engineDisplayRes: { width: number; height: number };
@@ -301,8 +302,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     $.get(scriptRoute).then(scriptFile=>{
       h.kreator(scriptFile).then(scriptData=>{
         try {
-          const commands = (scriptData as {[key:string]:string})[destination].main;
-          this.nodes = (scriptData as {[key:string]:string})[destination].nodes;
+          const commands = (scriptData as Dictionary<string>)[destination].main;
+          this.nodes = (scriptData as Dictionary<string>)[destination].nodes;
           const commandsF = new Function ("engine","ExtendedObjects",commands);
           console.log(commandsF); 
           commandsF(self,ExtendedObjects);
