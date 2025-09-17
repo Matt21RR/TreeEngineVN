@@ -1,7 +1,7 @@
 import React, { JSX } from 'react';
 import $ from "jquery";
 import Draggable from 'react-draggable';
-import { IconButton } from "../tools/components/Buttons.ts";
+import { IconButton } from "../tools/components/Buttons.jsx";
 import gsap from 'gsap';
 
 interface WindowProps{

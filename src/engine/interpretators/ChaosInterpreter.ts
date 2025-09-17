@@ -84,7 +84,7 @@ class ChaosInterpreter {
       });
     })
   }
-  loadScripts(doNothing:boolean){
+  loadScripts(doNothing:boolean):Promise<null>{
     const self = this;
     return new Promise((resolve,reject)=>{
       if(doNothing){
@@ -112,12 +112,12 @@ class ChaosInterpreter {
       }
     })
   }
-  kreator(script:string,loadAudioVisual = true){
+  kreator(script:string,loadAudioVisual = true):Promise<Dictionary<{main:string,nodes:Dictionary<string>}>>{
     return new Promise((resolve,reject)=>{ 
       //TODO: add textures and sounds js exists check
       this.loadScripts(!loadAudioVisual).then(()=>{
         //TODO: ignore lines with no content
-        var scenes = this.instructionsDesintegrator(script);
+        var scenes = this.instructionsDesintegrator(script) as Dictionary<{main:string,nodes:Dictionary<string>}>;
         resolve(scenes);
       })
     });
@@ -347,7 +347,7 @@ class ChaosInterpreter {
   }
 
   private haveSceneOrModuleDefinition(interpretedInstructions:Array<Interpretation>){
-    var scenes: Dictionary<{main:string,nodes:{}}> = {};
+    var scenes: Dictionary<{main:string,nodes:Dictionary<string>}> = {};
     var actualStructureDefinition = {define:ScriptStructure.Scene,id:"gameEntrypoint"};
     scenes[actualStructureDefinition.id] = {main:"",nodes:{}};
 

@@ -6,9 +6,15 @@ interface ConnectedComponent <Extension = {}>{
   refAssigner: (ref: any) => void;
 }
 
-type Dictionary<T = any> = {
-  [key:string]:T
+type Dictionary<T = any, K extends readonly string[] = string[]> = {
+  //K will probable be unused
+  [key in K[number]]:T
 }
+
+
+
+
+
 
 declare global{
   interface Window{

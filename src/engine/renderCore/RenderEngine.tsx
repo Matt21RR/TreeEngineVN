@@ -299,18 +299,19 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     const h = new Chaos();         
     var self = this;
     
-    $.get(scriptRoute).then(scriptFile=>{
-      h.kreator(scriptFile).then(scriptData=>{
+    $.get(scriptRoute).then((scriptFile:string)=>{
+      h.kreator(scriptFile)
+        .then(scriptData=>{
         try {
-          const commands = (scriptData as Dictionary<string>)[destination].main;
-          this.nodes = (scriptData as Dictionary<string>)[destination].nodes;
+          const commands = scriptData[destination].main;
+          this.nodes = scriptData[destination].nodes;
           const commandsF = new Function ("engine","ExtendedObjects",commands);
           console.log(commandsF); 
           commandsF(self,ExtendedObjects);
           self.isReady = true;
           self.forceUpdate();
         } catch (error) {
-          let timerInterval;
+          let timerInterval: NodeJS.Timeout;
           Swal.fire({
             title: "Error al ejecutar el script",
             html: "compruebe la consola!",
@@ -377,7 +378,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         }
         
       } catch (error) {
-        // console.error(id +" Texture or TextureAnim wasn't found");
         return this.noImageTexture;
       }
     }
