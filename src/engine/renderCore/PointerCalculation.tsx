@@ -41,7 +41,9 @@ class PointerCalculation extends React.Component{
 
     const reversedRenderOrderList = renderingOrderById;
     const triggersIdList = triggersRef.enabledList().map(e=>{return e.id});
+    //!Bottleneck
     const objectsWithTriggersList = triggersRef.relatedToReversedList();
+    //!Bottleneck
     const collisionedTriggers = collisionLayer.checkMouse(mX,mY,resolution).filter(e=>{return e in objectsWithTriggersList});
     
     this.triggersMouseCollisionManagement(collisionedTriggers,objectsWithTriggersList,reversedRenderOrderList,triggersRef,action);

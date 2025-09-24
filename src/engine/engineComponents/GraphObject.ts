@@ -1,5 +1,6 @@
 import { Dictionary } from "../../global.ts"
 import { lambdaConverter } from "../logic/Misc.ts"
+import Proxificator from "./EventProxy.ts"
 
 class GraphObjectDataType{
   dataType = {
@@ -163,16 +164,14 @@ class GraphObject extends GraphObjectDataType{
 
     this._useEngineUnits = "useEngineUnits" in graphInfo ? graphInfo.useEngineUnits : !("parent" in graphInfo); //for scale
   
-    // Initialize a proxy to intercept property sets
-    return new Proxy(this, {
-      set: (target, property, value) => {
+    //Initialize a proxy to intercept property sets
+    return Proxificator.proxify(this,[
+      (target,property,value)=>{
         if (target[property] !== value) {
           target.pendingRenderingRecalculation = true;
         }
-        target[property] = value; // Set the property
-        return true; // Indicate success
       }
-    });
+    ])
   }
 
   set updateEnabled(x:(id:string,enabled:boolean)=>void){
