@@ -164,19 +164,19 @@ class Canvas extends React.Component<CanvasProps>{
       }
 
       let self = this;
-      $(window).off("blur");
-      $(window).on("blur", function (e) {
-        if(self.windowHasFocus){
-          self.renderEngine.pressedKeys = [];
-          self.windowHasFocus = false;
-        }
-      });
-      $(window).off("focus");
-      $(window).on("focus", function (e) {
-        if(!self.engineKilled && !self.windowHasFocus){
-          self.windowHasFocus = true;
-        }
-      });
+      // $(window).off("blur");
+      // $(window).on("blur", function (e) {
+      //   if(self.windowHasFocus){
+      //     self.renderEngine.pressedKeys = [];
+      //     self.windowHasFocus = false;
+      //   }
+      // });
+      // $(window).off("focus");
+      // $(window).on("focus", function (e) {
+      //   if(!self.engineKilled && !self.windowHasFocus){
+      //     self.windowHasFocus = true;
+      //   }
+      // });
       //set the every graphic object data
       if(canvas){
         this.onLoad({

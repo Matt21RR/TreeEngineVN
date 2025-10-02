@@ -1,16 +1,27 @@
 import React from 'react';
 
-import { MenuButton, Button1, ListCheckedBox, InputText, InputCheck } from "./components/Buttons";
+import { MenuButton, Button1 } from "./components/Buttons.jsx";
 import { GraphObject } from "../engine/engineComponents/GraphObject.ts";
 import Swal from 'sweetalert2';
+import { RenderEngine } from '../engine/renderCore/RenderEngine.tsx';
+import InputCheck from './components/inputs/InputCheck.tsx';
+import InputText from './components/inputs/InputText.tsx';
 
+interface PropertyProps {
+  object:GraphObject,
+  defaultValue:any,
+  type:string,
+  keyd:string
+}
 
-class Property extends React.Component{
+class Property extends React.Component<PropertyProps>{
+  checkNullRef:InputCheck;
+  inputRef: HTMLInputElement;
+  isNull:boolean;
   constructor(props){
     super(props);
-    this.inputRef = {}
-    this.checkNullRef = null
-    this.checkFunctionRef = {}
+    this.inputRef = null;
+    this.checkNullRef = null;
 
     this.isNull = this.props.defaultValue==null;
   }
@@ -36,7 +47,7 @@ class Property extends React.Component{
           <div className='w-48'>{key}</div>
           {type == "boolean"?
             <InputCheck
-              defaultValue={defaultValue}
+              checked={defaultValue}
               action={(e)=>{
                 change(e);
               }}
@@ -65,7 +76,7 @@ class Property extends React.Component{
               action={(e)=>{
                 if(e){
                   this.isNull = true;
-                  this.inputRef.val("");
+                  this.inputRef.value = "";
                   change(null);
                 }
               }}/>
@@ -74,7 +85,21 @@ class Property extends React.Component{
     );
   }
 }
-class ObjectsE extends React.Component {
+
+interface ObjectsEProps {
+  engine:RenderEngine,
+  selfRef:(el:ObjectsE)=>void,
+  reRender:()=>void
+}
+class ObjectsE extends React.Component<ObjectsEProps> {
+  object: GraphObject
+  selectedObject: string
+  hoveredObject: string
+  mounted: boolean
+  hide: boolean
+  showStates: boolean
+  keys: number
+  value:string
   constructor(props){
     super(props);
     this.object = new GraphObject();

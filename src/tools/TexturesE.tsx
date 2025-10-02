@@ -1,11 +1,15 @@
 import React from 'react';
 
-import { Button1, MenuButton } from "./components/Buttons";
+import { Button1, MenuButton } from "./components/Buttons.jsx";
+import { Dictionary } from '../global.ts';
 
 class TexturesE extends React.Component {
+  textures: Dictionary<string>;
+  configRoute:string;
+  mounted:boolean;
   constructor(props) {
     super(props);
-    this.textures = []
+    this.textures = {};
     this.configRoute = window.backendRoute + "/renderEngineBackend/game/img/textures.json";
     this.mounted = false;
   }

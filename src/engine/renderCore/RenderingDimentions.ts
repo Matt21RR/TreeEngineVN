@@ -102,7 +102,8 @@ function generateObjectsDisplayDimentions(
         objectLeft *= perspectiveLayer.width;
         objectTop *= perspectiveLayer.height;
         //now add the origin of the perspectiveLayer
-        objectLeft += -(perspectiveLayer.width-canvas.resolution.height)*camera.origin.x;
+        // objectLeft += -(perspectiveLayer.width-canvas.resolution.height)*camera.origin.x;
+        objectLeft += -(perspectiveLayer.width-canvas.resolution.height)*(1.77/2);
         objectTop += -(perspectiveLayer.height-canvas.resolution.height)*camera.origin.y;
       }
 

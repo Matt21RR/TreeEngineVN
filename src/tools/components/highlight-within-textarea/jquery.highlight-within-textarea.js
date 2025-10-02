@@ -9,7 +9,6 @@ import $ from 'jquery'
 	let ID = 'hwt';
 
 	let HighlightWithinTextarea = function($el, config) {
-		console.error($el)
 		this.init($el, config);
 	};
 

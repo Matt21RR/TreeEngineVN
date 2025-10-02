@@ -1,13 +1,23 @@
 import React from 'react';
 
-import { MenuButton, Button1, ListCheckedBox } from "./components/Buttons";
+import { MenuButton, Button1 } from "./components/Buttons.jsx";
+import { RenderEngine } from '../engine/renderCore/RenderEngine.tsx';
+import { ObjectsE } from './SubTools.tsx';
+import ListCheckedBox from './components/inputs/ListCheckedBox.tsx';
 
+interface TriggersEProps {
+  engine:RenderEngine,
+  objectsERef:ObjectsE,
+  reRender:()=>void
+}
 
-class TriggersE extends React.Component {
+class TriggersE extends React.Component<TriggersEProps> {
   constructor(props) {super(props);}
   list() {
     const engine = this.props.engine;
+
     const objectsERef = this.props.objectsERef;
+
     const reRender = this.props.reRender;
     let triggers = this.props.engine.triggers.objects;
     return (

@@ -4,9 +4,8 @@ import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
 import { ObjectsE } from "../tools/SubTools";
 import EngineTools from "../tools/EngineTools";
 import { FileExplorer } from "../tools/FileExplorer";
-import { EditorKeys } from "../tools/EditorKeys";
-import { TexturesE } from "../tools/TexturesE";
-import { TriggersE } from "../tools/TriggersE.jsx";
+import { TexturesE } from "../tools/TexturesE.tsx";
+import { TriggersE } from "../tools/TriggersE.tsx";
 
 class Test extends React.Component{
   constructor(props){
@@ -44,7 +43,13 @@ class Test extends React.Component{
           },
           objectsInfo:{
             title:"Objetos en escena",
-            content:<ObjectsE engine={this.engine} reRender={()=>{this.windowsEnvironment.forceUpdate()}} selfRef={(ref)=>{this.ObjectsERef = ref; this.windowsEnvironment.forceUpdate();}}/>,
+            content:<ObjectsE 
+              engine={this.engine} 
+              reRender={()=>{this.windowsEnvironment.forceUpdate()}} 
+              selfRef={(ref)=>{
+                this.ObjectsERef = ref; 
+                this.windowsEnvironment.forceUpdate();
+              }}/>,
             minimized:true,
             disabled:this.engine == null
           },
@@ -52,12 +57,6 @@ class Test extends React.Component{
             title:"Herramientas del motor",
             content:<EngineTools engine={this.engine} reRender={()=>{this.windowsEnvironment.forceUpdate()}}/>,
             minimized:true,
-            disabled:this.engine == null
-          },
-          editorKeys:{
-            title:"Shorcuts",
-            content:<EditorKeys/>,
-            minimized:false,
             disabled:this.engine == null
           },
           textures:{

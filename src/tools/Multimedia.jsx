@@ -1,7 +1,8 @@
 import React from 'react';
 import $ from "jquery";
+import InputTextArea from "./components/inputs/InputTextArea.tsx";
 import AudioPlayer from './AudioPlayer';
-import { Button1, IconButton, InputTextArea } from './components/Buttons.jsx';
+import { Button1, IconButton } from './components/Buttons.jsx';
 import Swal from 'sweetalert2';
 
 class Multimedia extends React.Component{

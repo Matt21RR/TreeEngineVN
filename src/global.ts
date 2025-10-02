@@ -2,7 +2,7 @@ interface ComponentChildren{
   children?:React.JSX.Element | Array<React.JSX.Element>
 }
 
-interface ConnectedComponent <Extension = {}>{
+interface ConnectedComponent {
   refAssigner: (ref: any) => void;
 }
 

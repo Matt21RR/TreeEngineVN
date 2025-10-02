@@ -2,6 +2,18 @@ import { Dictionary } from "../../global.ts"
 import { lambdaConverter } from "../logic/Misc.ts"
 import Proxificator from "./EventProxy.ts"
 
+enum FiltersName {
+  Brightness,
+  Contrast,
+  Grayscale,
+  HueRotate,
+  Invert,
+  Blur,
+  Saturate,
+  Sepia
+}
+
+
 class GraphObjectDataType{
   dataType = {
     id: "string",
@@ -49,55 +61,57 @@ class GraphObjectDataType{
 }
 
 class GraphObject extends GraphObjectDataType{
-  _enabled:boolean //TODO: use I'T
+  _enabled:boolean;
 
-  _text:Function|string|null
-  _fitContent:boolean
-  _center:boolean
-  _verticalCenter:boolean
-  _color:string
-  _font:string
-  _fontSize:number
-  _boxColor:string
-  _horizontalMargin:number
-  _verticalMargin:number
+  _text:Function|string|null;
+  _fitContent:boolean;
+  _center:boolean;
+  _verticalCenter:boolean;
+  _color:string;
+  _font:string;
+  _fontSize:number;
+  _boxColor:string;
+  _horizontalMargin:number;
+  _verticalMargin:number;
 
-  _textureName:string|null
+  _textureName:string|null;
 
-  _id:string
-  _brightness:number
-  _contrast:number
-  _grayscale:number
-  _hueRotate:number
+  _id:string;
+  _brightness:number;
+  _contrast:number;
+  _grayscale:number;
+  _hueRotate:number;
 
-  _blur:number
-  _aberration:number
-  _aberrationType:string
+  _blur:number;
+  _aberration:number;
+  _aberrationType:string;
 
-  _invert:number
-  _saturate:number
-  _sepia:number
+  _invert:number;
+  _saturate:number;
+  _sepia:number;
 
-  _opacity:number
+  _filterStrings:Array<string> = [];
 
-  _x:number
-  _y:number
-  _z:number
+  _opacity:number;
 
-  _scale:number
-  _widthScale:number
-  _heightScale:number
-  _rotate:number
+  _x:number;
+  _y:number;
+  _z:number;
 
-  _ignoreParallax:boolean
+  _scale:number;
+  _widthScale:number;
+  _heightScale:number;
+  _rotate:number;
+
+  _ignoreParallax:boolean;
 
   _pendingRenderingRecalculation:boolean = true;
 
-  _useEngineUnits:boolean
+  _useEngineUnits:boolean;
 
-  _parent:""
+  _parent:string = "";
   
-  _accomulatedZ:number //Engine related var, dont changeit through a gamescript
+  _accomulatedZ:number; //Engine related var, dont changeit through a gamescript
 
   _getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
@@ -251,10 +265,12 @@ class GraphObject extends GraphObjectDataType{
   get brightness() {return this._brightness;}
   set brightness(x) {
     if(!isNaN(x)){
-      if(x < 0){
+      if(x <= 0){
         this._brightness = 0;
+        this._filterStrings[FiltersName.Brightness] = "";
       }else{
         this._brightness = x;
+        this._filterStrings[FiltersName.Brightness] = `brightness(${x})`;
       }
     }
   }
@@ -264,8 +280,10 @@ class GraphObject extends GraphObjectDataType{
     if(!isNaN(x)){
       if(x < 0){
         this._contrast = 0;
+        this._filterStrings[FiltersName.Contrast] = "";
       }else{
         this._contrast = x;
+        this._filterStrings[FiltersName.Contrast] = `contrast(${x})`;
       }
     }
   }
@@ -275,10 +293,13 @@ class GraphObject extends GraphObjectDataType{
     if(!isNaN(x)){
       if(x<0){
         this._grayscale = 0;
+        this._filterStrings[FiltersName.Grayscale] = "";
       }else if(x>1){
         this._grayscale = 1;
+        this._filterStrings[FiltersName.Grayscale] = "grayscale(1)";
       }else{
         this._grayscale = x;
+        this._filterStrings[FiltersName.Grayscale] = `grayscale(${x})`;
       }  
     }
   }
@@ -286,9 +307,14 @@ class GraphObject extends GraphObjectDataType{
   get hueRotate() {return this._hueRotate+"deg";}
   set hueRotate(x) {
     if(typeof x == "string"){
-      this._hueRotate = parseFloat(x) || 0;
+      this._hueRotate = parseFloat(x) % 360 || 0;
     }else if(typeof x == "number"){
       this._hueRotate = x;
+    }
+    if(this._hueRotate == 0){
+      this._filterStrings[FiltersName.HueRotate] = "";
+    }else{
+      this._filterStrings[FiltersName.HueRotate] = `hue-rotate(${x})`;
     }
   }
 
@@ -296,31 +322,27 @@ class GraphObject extends GraphObjectDataType{
 
   get blur() {return this._blur;}
   get blurPX() {return this._blur + "px";}
-  set blur(x:any) {this._blur = parseFloat(x) || 0;}
-
-  get aberration() {return this._aberration}
-  set aberration(x) {
-    if(!isNaN(x)){
-      if(x<0){
-        this._aberration = 0;
-      }else{
-        this._aberration = x;
-      }
+  set blur(x:any) {
+    this._blur = parseFloat(x) || 0;
+    if(this._blur == 0){
+      this._filterStrings[FiltersName.Blur] = "";
+    }else{
+      this._filterStrings[FiltersName.Blur] = `blur(${x}px)`;
     }
   }
-
-  get aberrationType() {return this._aberrationType;}
-  set aberrationType(x) {this._aberrationType = x;}
 
   get invert() {return this._invert;}
   set invert(x) {
     if(!isNaN(x)){
       if(x<0){
         this._invert = 0;
+        this._filterStrings[FiltersName.Invert] = "";
       }else if(x>1){
         this._invert = 1;
+        this._filterStrings[FiltersName.Invert] = "invert(1)";
       }else{
         this._invert = x;
+        this._filterStrings[FiltersName.Invert] = `invert(${x})`;
       }  
     }
   }
@@ -330,8 +352,10 @@ class GraphObject extends GraphObjectDataType{
     if(!isNaN(x)){
       if(x<0){
         this._saturate = 0;
+        this._filterStrings[FiltersName.Saturate] = "";
       }else{
         this._saturate = x;
+        this._filterStrings[FiltersName.Saturate] = `saturate(${x}px)`;
       }  
     }
   }
@@ -341,47 +365,19 @@ class GraphObject extends GraphObjectDataType{
     if(!isNaN(x)){
       if(x<0){
         this._sepia = 0;
+        this._filterStrings[FiltersName.Sepia] = "";
       }else if(x>1){
         this._sepia = 1;
+        this._filterStrings[FiltersName.Sepia] = "sepia(1)";
       }else{
         this._sepia = x;
+        this._filterStrings[FiltersName.Sepia] = `sepia(${x})`;
       }  
     }
   }
     
   get filterString() {
-    const filtersName = {
-      brightness:"brightness",
-      contrast:"contrast",
-      grayscale:"grayscale",
-      hueRotate:"hue-rotate",
-      dropShadow:"dropShadow",
-      invert:"invert",
-      blurPX:"blur",
-      saturate:"saturate",
-      sepia:"sepia",
-    }
-    var filters:Array<string> = [];
-    var filterstr = "";
-    
-    if(this._brightness != 1){filters.push("brightness");}
-    if(this._contrast != 1){filters.push("contrast");}
-    if((this._grayscale % 360) != 0){filters.push("grayscale");}
-    if(this._hueRotate != 0){filters.push("hueRotate");}
-    if(this._invert != 0){filters.push("invert");}
-    if(this._blur != 0){filters.push("blurPX")}
-    if(this._saturate != 1){filters.push("saturate");}
-    if(this._sepia != 0){filters.push("sepia");}
-
-    filters.forEach(element => {
-      filterstr += " "+filtersName[element]+"("+this[element]+")";
-    });
-    
-    if(filterstr == ""){
-      filterstr = "none";
-    }else{
-      filterstr = filterstr.replace(' ','');
-    }
+    const filterstr = this._filterStrings.join(" ").trim() || "none";
 
     return filterstr;
   }

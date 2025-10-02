@@ -1,8 +1,10 @@
 import React from "react";
-import { Button1, IconButton, InputCheck, InputList, InputText } from "./components/Buttons.jsx";
+import { Button1, IconButton, InputList} from "./components/Buttons.jsx";
 import { Chaos } from "../engine/interpretators/ChaosInterpreter.ts";
 import { Dictionary } from "../global.ts";
 import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
+import InputText from "./components/inputs/InputText.tsx";
+import InputCheck from "./components/inputs/InputCheck.tsx";
 
 interface EngineToolsProps {
   engine: RenderEngine
