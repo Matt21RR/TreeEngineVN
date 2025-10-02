@@ -413,7 +413,7 @@ class GraphObject extends GraphObjectDataType{
   get rotate() {return (this._rotate*180)/Math.PI;}
   set rotateRad(x) {this._rotate = x}
   get rotateRad() {return this._rotate;}
-  set rotate(x:any) {this._rotate =( parseFloat(x) || 0)*Math.PI/180;}
+  set rotate(x:any) {this._rotate = (parseFloat(x)*Math.PI/180) || 0;}
 
   get z() {return this._z;}
   set z(x:any) {
