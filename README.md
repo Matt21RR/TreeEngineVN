@@ -1,6 +1,6 @@
 # TreeEngineVN
 
-The engine have two modes: the backend mode, and the frontend mode. Simplifying, that determine were the resources of your game are.
+The engine have two modes: the backend mode, and the frontend mode. Simplifying, that determine were the resources of your game must be.
 
 The frontend mode is used for general prupose game development
 
