@@ -15,7 +15,7 @@ window.projectRoute = window.workRoute + "game/";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-document.title = "RenderEngine";
+document.title = "TreeEngineVN";
 
 root.render(
 <>
