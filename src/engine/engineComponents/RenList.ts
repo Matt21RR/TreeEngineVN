@@ -34,6 +34,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
   private dummy = new Dummy();
   objects:Array<T>;
   #_ids:Array<string> = [];
+  #_elementsDict:Dictionary<T> = {};  //Dictionary of references
   #_enabledIds:Array<string> = [];
   #_relatedToIds: Dictionary<string> = {};
   #_reversedRelatedToLists: Dictionary<Array<string>> = {};
@@ -98,39 +99,34 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
           this.#_reversedRelatedToLists[element.relatedTo] = [element.id];
         }
       }
-
-      // element = Proxificator.proxify(element,[
-      //   (_,property,value)=>{
-      //     if(property == "relatedTo"){
-      //       this.#_relatedToIds[element.id] = value; 
-      //       // if(value in this.#_relatedToIds[element.id]){
-      //       //   this.#_relatedToIds[element.id].splice(this.#_enabledIds.indexOf(value));
-      //       // }
-      //     }
-      //   }
-      // ]);
     }
 
     this.#_ids.push(element.id);
+    this.#_elementsDict[element.id] = element;
     this.objects.push(element);
   }
   remove(objectId:string){
-    const numId = this.#_ids.indexOf(objectId);
-    if(numId != -1){
+    let element: T;
+    if(!(element = this.#_elementsDict[objectId])){
+      //*Nothing to remove
+    }else{
+      const numId = this.#_ids.indexOf(objectId);
       this.objects.splice(numId,1);
       this.#_ids.splice(numId,1);
+      delete this.#_elementsDict[objectId];
     }
   }
-  get(objectId:string){
-    const numId = this.#_ids.indexOf(objectId);
-    if(numId != -1){
-      return this.objects[numId];
+  get(objectId:string): T|null{
+    let element: T;
+    if(!(element = this.#_elementsDict[objectId])){
+      // throw new Error(objectId +" don't exists in this list");
+      return null;
     }else{
-      throw new Error(objectId +" don't exists in this list");
+      return element;
     }
   }
   exist(objectId: string){
-    return this.#_ids.includes(objectId);
+    return !!(this.#_elementsDict[objectId]);
   }
   ids(includeDisabled = false){
     if(!this.dummy.hasEnabled || includeDisabled){

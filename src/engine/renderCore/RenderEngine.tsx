@@ -497,16 +497,18 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       showFps={this.showFps}
       engine={this}
       renderGraphics={(canvas)=>{
-        this.calculationOrder = generateCalculationOrder(this.graphArray);
         const startOrdA = performance.now();
+        this.calculationOrder = generateCalculationOrder(this.graphArray);
+        const orderingTime = performance.now()-startOrdA;
+
+        const renderingOrdA = performance.now();
         const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.dimentionsPack,this.calculationOrder,this.camera);
-        const endOrdB = performance.now()-startOrdA;
+
         this.dimentionsPack = dimentionsPack;
         this.renderingOrderById = generateRenderingOrder(dimentionsPack);
+        const renderingOrdTime = performance.now()-renderingOrdA;
 
 
-
-        const orderingTime = endOrdB;
 
         if(!this.redraw){
           return [0];
@@ -527,22 +529,25 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
         const objectsToRender = availableIdsToRender.length;
 
-        // canvas.context.globalCompositeOperation = "destination-over";
+
+        var excludedIds:Dictionary<boolean> = {};
 
         for (let index = 0; index < objectsToRender; index++) {
           let infoAdjudicationPre = performance.now();
-          const gObject = this.getObject(availableIdsToRender[index]);
-
+          const gObject = this.getObject(availableIdsToRender[index]); //!Non-confirmed bottleneck
+          
           const renderingData = dimentionsPack[gObject.id];
-
+          
           const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
           const strRef = gObject.text == null ? null : getStr(gObject.text);
 
           infoAdjudicationTime += performance.now()-infoAdjudicationPre;
 
           let drawingTimePre = performance.now();
-          if(!(gObject.opacity == 0)){
-
+          if(gObject.opacity == 0 || renderingData.sizeInDisplay<=0.003){
+            this.noRenderedItemsCount++;
+            excludedIds[gObject.id] = true;
+          }else{
               //*part one: global alpha
             canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
 
@@ -614,8 +619,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
             if(filterString != "none")
               canvas.context.filter = "none";
             canvas.context.globalAlpha = 1;
-          }else{
-            this.noRenderedItemsCount++;
           }
           drawingTime += performance.now()-drawingTimePre;
 
@@ -642,14 +645,13 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         if(this.drawCollisionsMatrix){
           RenderMisc.drawCollisionsMatrix(canvas.context,resolution);
         }
-        // console.warn("Objects excluded: ",this.noRenderedItemsCount);
 
         var updatingColsTime = performance.now();
-        this.collisionLayer.update(dimentionsPack,resolution.width,resolution.height);
+        this.collisionLayer.update(dimentionsPack,resolution.width,resolution.height,excludedIds);
         updatingColsTime = performance.now()-updatingColsTime;
 
         // this.redraw = false;
-        return [orderingTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,updatingColsTime];
+        return [orderingTime,renderingOrdTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,updatingColsTime,this.noRenderedItemsCount];
       }} 
       onLoad={(canvas)=>{
         this.canvasRef = canvas;

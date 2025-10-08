@@ -1,6 +1,6 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { GraphObject } from "../engineComponents/GraphObject.ts";
-import RenList from "../engineComponents/RenList";
+import RenList from "../engineComponents/RenList.ts";
 import { CalculationOrder } from "./RenderEngine.d.tsx";
 
 /**
@@ -10,25 +10,29 @@ function generateCalculationOrder(graphArray:RenList<GraphObject>){
   var ordered = 0;
   var order:CalculationOrder = [];
   var dictionary:Array<string> = [];
+  var orderList:Array<string> = [];
   while (ordered < graphArray.length) {
     graphArray.ids().forEach(id=>{
-      if(dictionary.indexOf(id) == -1){
+      if(!dictionary[id]){
         const gObject = graphArray.get(id);
         const parent = gObject.parent;
-        if(parent == "" || !graphArray.exist(parent) || (parent != "" && !graphArray.get(parent).enabled)){
+        //No parent, or parent dont exist, or parent not enabled
+        if(parent == "" || !(graphArray.get(parent)?.enabled)){
           order.push({id:id,weight:0,z:gObject.z});
           gObject.accomulatedZ = gObject.z;
-          dictionary.push(id);
+          orderList.push(id);
+          dictionary[id] = true;
           ordered++;
-        }else if(dictionary.indexOf(parent) != -1){
+        }else if(!dictionary[parent]){
           const gParent = graphArray.get(parent);
           if(gParent.pendingRenderingRecalculation){
             gObject.pendingRenderingRecalculation = true;
           }
           const elementZ = gObject.z + gParent.accomulatedZ;
           gObject.accomulatedZ = elementZ;
-          order.push({id,weight:order[dictionary.indexOf(parent)].weight +1, z:elementZ});
-          dictionary.push(id);
+          order.push({id,weight:order[orderList.indexOf(parent)].weight +1, z:elementZ});
+          orderList.push(id);
+          dictionary[id] = true;
           ordered++;
         }
       }
@@ -58,7 +62,7 @@ function generateRenderingOrder(dimentionsPack:Record<string,ObjectRenderingData
   var renderingOrderById:Array<string> = [];
   Object.keys(dimentionsPack).forEach(id=>{
     const z:string = dimentionsPack[id].z.toString(); 
-      if(Object.keys(zRefs).indexOf(z) == -1){
+      if(zRefs[z] == undefined){ //Element with name z is not in objectZrefs
         Object.assign(zRefs,{[z]:[id]});
         zetas.push(parseFloat(z))
       }else{

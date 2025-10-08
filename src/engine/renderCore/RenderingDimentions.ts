@@ -36,8 +36,9 @@ function generateObjectsDisplayDimentions(
 
     const developmentRatio = canvas.resolution.height/engine.developmentDeviceHeight;
 
-    const perspectiveDiffHelper = ((1/camera.maxZ)-(1))
-    const toAddSizeHelper = tangencialConstant*canvas.resolution.height*camera.maxZ;
+    const perspectiveDiffHelper = (1/camera.maxZ) - 1
+    // 1-((1/objectZ)-(1))/((1/camera.maxZ)-(1))
+    const toAddSizeHelper = (tangencialConstant*canvas.resolution.height*camera.maxZ) / canvas.resolution.height;
 
     a += performance.now()-ab;
 
@@ -83,13 +84,12 @@ function generateObjectsDisplayDimentions(
       var testD = 0.99;
       
       if(camera.usePerspective && !gObject.ignoreParallax){
-        objectLeft = gObject.x + origin.x - camera.position.x+0.5;
-        objectTop = gObject.y + origin.y - camera.position.y+0.5;
-        objectZ = gObject.accomulatedZ - camera.position.z+0.56;
+        objectLeft = gObject.x + origin.x - camera.position.x + 0.5;
+        objectTop = gObject.y + origin.y - camera.position.y + 0.5;
+        objectZ = gObject.accomulatedZ - camera.position.z + 0.56;
 
-        const perspectiveDiff = 1-((1/objectZ)-(1))/perspectiveDiffHelper;
-        const toAddSize = perspectiveDiff * (toAddSizeHelper);
-        const perspectiveScale = toAddSize/canvas.resolution.height;
+        const perspectiveDiff = 1 - ((1/objectZ)-1)/perspectiveDiffHelper;
+        const perspectiveScale = perspectiveDiff * toAddSizeHelper;
         objectScale *= perspectiveScale;
         testD = perspectiveScale;
 
@@ -102,7 +102,6 @@ function generateObjectsDisplayDimentions(
         objectLeft *= perspectiveLayer.width;
         objectTop *= perspectiveLayer.height;
         //now add the origin of the perspectiveLayer
-        // objectLeft += -(perspectiveLayer.width-canvas.resolution.height)*camera.origin.x;
         objectLeft += -(perspectiveLayer.width-canvas.resolution.height)*(1.77/2);
         objectTop += -(perspectiveLayer.height-canvas.resolution.height)*camera.origin.y;
       }

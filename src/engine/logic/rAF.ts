@@ -17,12 +17,12 @@ declare global {
 
       if(nextTime < 0){
         const engDelta = now - prevCycleStartedAt;
-        return callback((now - prevCycleStartedAt),engDelta,loopId);
+        return callback(engDelta,loopId);
       }else{
         return setTimeout(
           function() { 
             const engDelta = window.performance.now() - prevCycleStartedAt;
-            callback(interval,engDelta,loopId); 
+            callback(engDelta,loopId); 
           }, 
           nextTime-1
         ); 

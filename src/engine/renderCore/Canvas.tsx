@@ -316,11 +316,13 @@ class Canvas extends React.Component<CanvasProps>{
       const renderingStartAt = performance.now();
       const [
         orderingTime,
+        renderingOrdTime,
         infoAdjudicationTime,
         drawingTime,
         debugTime,
         objectsToRender,
-        updateColsTime
+        updateColsTime,
+        excludedObjects
       ] = this.props.renderGraphics({
         object:this,
         context:context,
@@ -344,12 +346,14 @@ class Canvas extends React.Component<CanvasProps>{
           "CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,
           "cycle:"+(this.renderingElapsed+this.animatingElapsed).toFixed(2) + "ms" ,
           "OrderingTime: "+(orderingTime).toFixed(2) + "ms" ,
+          "RenderingOrderingTime: "+(renderingOrdTime).toFixed(2) + "ms" ,
           "AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,
           "DrawTime: "+(drawingTime).toFixed(2) + "ms" ,
           "DebuTime: "+(debugTime).toFixed(2) + "ms" ,
           "",
           "UpdColsT: "+(updateColsTime).toFixed(2) + "ms",
-          "Objects: "+ objectsToRender
+          "Objects: "+ objectsToRender,
+          "ExcludedObjects: "+ excludedObjects
         ];
         this.canvasWriter(fpsData,{x:5,y:15},15);
 
@@ -375,7 +379,7 @@ class Canvas extends React.Component<CanvasProps>{
 
       if(performance.now()-startTimer >1000){
         maxCps=drawnFrames-1;
-        startTimer = window.performance.now();
+        startTimer = window.performance.now();  
         drawnFrames=1;
         promedio.fps = this.fpsCounter;
         promedio.cps = maxCps;
@@ -383,7 +387,7 @@ class Canvas extends React.Component<CanvasProps>{
       }
 
       if(lId == this.loopId){
-        rAF.modelFour(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
+        rAF.modelThree(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
       }
 
       if(this.windowHasFocus){

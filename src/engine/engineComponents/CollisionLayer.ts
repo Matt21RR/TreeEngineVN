@@ -47,11 +47,15 @@ class CollisionLayer {
     this.refTable = {};
     this.renderingData = {};
   }
-  update(renderingData:EngineRenderingData, displayWidth:number, displayHeight:number) {
+  update(renderingData:EngineRenderingData, displayWidth:number, displayHeight:number, excludedIds: Dictionary<boolean>) {
     this.collisionMatrix = [];
     this.refTable = {};
     this.renderingData = renderingData;
     for (let key in renderingData) {
+      //*Aparently this increases the process load
+      // if(!!excludedIds[key]){
+      //   continue;
+      // }
       const data = renderingData[key];
       //Horizontal boundaries
       const x = Math.floor( 10 * (data.corner.x / displayWidth));
@@ -62,8 +66,12 @@ class CollisionLayer {
       const y = Math.floor( 10 * (data.corner.y / displayHeight));
       const yEnd = Math.ceil( (10 * ((data.corner.y + data.height)/displayHeight)));
 
+      //*DONE: Ignore everything that are outside the display
+
       for(let i = x; i < xEnd; i++) {
+        if(i<0 || i>11){continue}
         for(let j = y; j < yEnd; j++) {
+          if(j<0 || i>11){continue}
           if(!this.collisionMatrix[i]) {
             this.collisionMatrix[i] = [];
           }
