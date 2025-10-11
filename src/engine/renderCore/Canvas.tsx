@@ -313,7 +313,6 @@ class Canvas extends React.Component<CanvasProps>{
 
       context.filter = 'none';
       
-      const renderingStartAt = performance.now();
       const [
         orderingTime,
         renderingOrdTime,
@@ -322,13 +321,13 @@ class Canvas extends React.Component<CanvasProps>{
         debugTime,
         objectsToRender,
         updateColsTime,
-        excludedObjects
+        excludedObjects,
+        total
       ] = this.props.renderGraphics({
         object:this,
         context:context,
         resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
         fps:fps});
-      this.renderingElapsed = performance.now()-renderingStartAt;
 
       const actualGlobalAlpha = context.globalAlpha;
 
@@ -342,9 +341,9 @@ class Canvas extends React.Component<CanvasProps>{
           "Res: "+this.resolutionWidth+"x"+this.resolutionHeight,
           "EngTime: "+this.totalEngineElapsedTime.toFixed(2) + "ms",
           "Keys: "+this.renderEngine.pressedKeys.join(" "),
-          "GPU: "+(this.renderingElapsed).toFixed(2) + "ms" ,
+          "GPU: "+(total).toFixed(2) + "ms" ,
           "CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,
-          "cycle:"+(this.renderingElapsed+this.animatingElapsed).toFixed(2) + "ms" ,
+          "cycle:"+(total+this.animatingElapsed).toFixed(2) + "ms" ,
           "OrderingTime: "+(orderingTime).toFixed(2) + "ms" ,
           "RenderingOrderingTime: "+(renderingOrdTime).toFixed(2) + "ms" ,
           "AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,
@@ -387,7 +386,7 @@ class Canvas extends React.Component<CanvasProps>{
       }
 
       if(lId == this.loopId){
-        rAF.modelThree(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
+        rAF.modelFour(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
       }
 
       if(this.windowHasFocus){

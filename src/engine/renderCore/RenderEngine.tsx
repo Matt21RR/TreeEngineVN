@@ -651,7 +651,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         updatingColsTime = performance.now()-updatingColsTime;
 
         // this.redraw = false;
-        return [orderingTime,renderingOrdTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,updatingColsTime,this.noRenderedItemsCount];
+        return [orderingTime,renderingOrdTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,updatingColsTime,this.noRenderedItemsCount,performance.now()-startOrdA];
       }} 
       onLoad={(canvas)=>{
         this.canvasRef = canvas;

@@ -1,3 +1,4 @@
+import { Dictionary } from "../../global.ts";
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { GraphObject } from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
@@ -9,8 +10,10 @@ import { CalculationOrder } from "./RenderEngine.d.tsx";
 function generateCalculationOrder(graphArray:RenList<GraphObject>){
   var ordered = 0;
   var order:CalculationOrder = [];
-  var dictionary:Array<string> = [];
+  var dictionary:Dictionary<boolean> = {};
   var orderList:Array<string> = [];
+
+  var i = 0;
   while (ordered < graphArray.length) {
     graphArray.ids().forEach(id=>{
       if(!dictionary[id]){
@@ -23,7 +26,7 @@ function generateCalculationOrder(graphArray:RenList<GraphObject>){
           orderList.push(id);
           dictionary[id] = true;
           ordered++;
-        }else if(!dictionary[parent]){
+        }else if(dictionary[parent]){
           const gParent = graphArray.get(parent);
           if(gParent.pendingRenderingRecalculation){
             gObject.pendingRenderingRecalculation = true;
