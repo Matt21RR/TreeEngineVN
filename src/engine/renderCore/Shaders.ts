@@ -1,5 +1,3 @@
-import {GraphObject} from "../engineComponents/GraphObject.ts"
-
 class Shader{
   #image: HTMLImageElement;
   #resolution: {width:number,height:number};

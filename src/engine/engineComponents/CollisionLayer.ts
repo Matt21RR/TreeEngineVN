@@ -29,11 +29,10 @@ export type ObjectRenderingData = {
 type EngineRenderingData = Dictionary<ObjectRenderingData>;
 
 function engineRenderingDataCloner(engineRenderingData:EngineRenderingData){
-  var newData:EngineRenderingData = {};
-  for(const id in engineRenderingData){
-    const el = engineRenderingData[id]
-    newData[id] = el;
-  }
+  var newData:EngineRenderingData = engineRenderingData;
+  // for(const id in engineRenderingData){
+  //   newData[id] = engineRenderingData[id];
+  // }
   return newData;
 }
 

@@ -26,7 +26,9 @@ function generateObjectsDisplayDimentions(
   
     const engine = RenderEngine.getInstance();
   
+    // const cloneT= performance.now();
     const prevDimentionsPack = engineRenderingDataCloner(dimentionsPack);
+    // console.log(performance.now()-cloneT);
 
     dimentionsPack = {}; //wipe
 
@@ -70,7 +72,8 @@ function generateObjectsDisplayDimentions(
     let objectLeft = 0;
     let objectTop = 0;
     let objectZ = 0;
-    let perspectiveLayer = {width:0,height:0};
+    let perspectiveLayerWidth = 0;
+    let perspectiveLayerHeight = 0;
     let objectWidth = 0;
     let objectHeight = 0;
     let testD = 0;
@@ -126,15 +129,15 @@ function generateObjectsDisplayDimentions(
         testD = perspectiveScale;
 
         //*recalculate gObject coords
-        perspectiveLayer.width = canvas.resolution.height*perspectiveScale;
-        perspectiveLayer.height = canvas.resolution.height*perspectiveScale;
+        perspectiveLayerWidth = canvas.resolution.height*perspectiveScale;
+        perspectiveLayerHeight = canvas.resolution.height*perspectiveScale;
 
         //it will calc were the image must to be, inside the perspectiveLayer
-        objectLeft *= perspectiveLayer.width;
-        objectTop *= perspectiveLayer.height;
+        objectLeft *= perspectiveLayerWidth;
+        objectTop *= perspectiveLayerHeight;
         //now add the origin of the perspectiveLayer
-        objectLeft += -(perspectiveLayer.width-canvas.resolution.height)*(1.77/2);
-        objectTop += -(perspectiveLayer.height-canvas.resolution.height)*camera.origin.y;
+        objectLeft += -(perspectiveLayerWidth-canvas.resolution.height)*(1.77/2);
+        objectTop += -(perspectiveLayerHeight-canvas.resolution.height)*camera.origin.y;
       }
       a += performance.now() - as;
 
@@ -148,8 +151,8 @@ function generateObjectsDisplayDimentions(
 
       if(texRef != null){
         if(gObject.useEngineUnits){
-          objectWidth = texRef.resolution.width*objectScale*gObject.widthScale*(developmentRatio);
-          objectHeight = texRef.resolution.height*objectScale*gObject.heightScale*(developmentRatio);
+          objectWidth = texRef.resolution.width*objectScale*gObject.widthScale*developmentRatio;
+          objectHeight = texRef.resolution.height*objectScale*gObject.heightScale*developmentRatio;
         }else{
           objectHeight = (texRef.resolution.height/texRef.resolution.width)*canvas.resolution.width*objectScale*gObject.heightScale;
         }
@@ -162,7 +165,7 @@ function generateObjectsDisplayDimentions(
       const cornerX = objectLeft - objectWidth/2;
       const cornerY = objectTop - objectHeight/2;
 
-      if((cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0 || cornerX > canvas.resolution.width || cornerY > canvas.resolution.height){
+      if(cornerX > canvas.resolution.width || cornerY > canvas.resolution.height || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
         continue;
       }
 
