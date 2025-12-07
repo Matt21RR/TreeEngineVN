@@ -11,11 +11,6 @@ type Dictionary<T = any, K extends readonly string[] = string[]> = {
   [key in K[number]]:T
 }
 
-
-
-
-
-
 declare global{
   interface Window{
     projectRoute:string;//CHAOS

@@ -1,3 +1,5 @@
+import { Dictionary } from "../../global.ts";
+
 class ExtendedObjects{
   /**
    * Modifica un valor en un objeto usando una ruta hacia ese valor, separada por '/'
@@ -52,9 +54,8 @@ class ExtendedObjects{
    * Despues
    * {alistar/konasharp/hikari:9,alistar/konasharp/hikari/scorn:12}
    * @param {object} Objeto original
-   * @returns Objeto resultante
    */
-  static buildObjectsWithRoutes(k){
+  static buildObjectsWithRoutes(k): Dictionary{
     const internalFunction = (k,res,tail="")=>{
       if(typeof k == "object"){
         Object.keys(k).forEach((key)=>{
@@ -69,7 +70,7 @@ class ExtendedObjects{
           Object.assign(res,{[tail]:k});
       }
     }
-    var result = {};
+    let result:Dictionary = {};
     internalFunction(k,result);
     return result;
   }

@@ -10,7 +10,7 @@ class CodedRoutine extends EnabledObject{
   constructor(tInfo){
     super();
     if(!("id" in tInfo))
-      throw new Error("Trying to create a Trigger without id");
+      throw new Error("Trying to create a CodedRoutine without id");
 
     this.#id = tInfo.id;
     this._enabled = tInfo.enabled || true;

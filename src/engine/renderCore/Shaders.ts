@@ -1,6 +1,6 @@
 class Shader{
   #image: HTMLImageElement;
-  #resolution: {width:number,height:number};
+  #resolution: {width:number,height:number, widthHeightRelation:number, heightWidthRelation:number};
   #id:string;
 
   constructor(image: HTMLImageElement,id:string){
@@ -10,8 +10,11 @@ class Shader{
     
     const width = image.naturalWidth;
     const height = image.naturalHeight;
+    const widthHeightRelation = width/height;
+    const heightWidthRelation = height/width;
 
-    this.#resolution = {width,height};
+
+    this.#resolution = {width,height, widthHeightRelation, heightWidthRelation};
   }
   get id(){return this.#id;}
   // get texture(){return this.#image;}

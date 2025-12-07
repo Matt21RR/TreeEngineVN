@@ -6,7 +6,7 @@ import EngineTools from "../tools/EngineTools";
 import { FileExplorer } from "../tools/FileExplorer";
 import { TexturesE } from "../tools/TexturesE.tsx";
 import { TriggersE } from "../tools/TriggersE.tsx";
-
+import ShorcutsE from "../tools/ShorcutsE.tsx";
 class Test extends React.Component{
   constructor(props){
     super(props);
@@ -62,6 +62,12 @@ class Test extends React.Component{
           textures:{
             title:"Texturas",
             content:<TexturesE/>,
+            minimized:false,
+            disabled:this.engine == null
+          },
+          shorcuts:{
+            title:"Shorcuts",
+            content:<ShorcutsE/>,
             minimized:false,
             disabled:this.engine == null
           },
