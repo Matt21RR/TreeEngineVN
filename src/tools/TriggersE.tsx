@@ -29,17 +29,21 @@ class TriggersE extends React.Component<TriggersEProps> {
               <Button1 text={"Select"} 
                 action={()=>{
                   objectsERef.selectedObject = trigger.relatedTo;
-                  engine.objectsToDebug = [trigger.relatedTo];
+                  engine.objectsToDebug.clear();
+                  engine.objectsToDebug.add(trigger.relatedTo);
                   reRender();
                 }}
                 enter={()=>{
                   objectsERef.hoveredObject = trigger.relatedTo;
-                  engine.objectsToDebug = [objectsERef.selectedObject, trigger.relatedTo];
+                  engine.objectsToDebug.clear();
+                  engine.objectsToDebug.add(objectsERef.selectedObject);
+                  engine.objectsToDebug.add(trigger.relatedTo);
                   reRender();
                 }}
                 leave={()=>{
                   objectsERef.hoveredObject = "";
-                  engine.objectsToDebug = [objectsERef.selectedObject];
+                  engine.objectsToDebug.clear();
+                  engine.objectsToDebug.add(objectsERef.selectedObject);
                   reRender();
                 }}
               />

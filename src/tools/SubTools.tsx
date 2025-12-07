@@ -129,19 +129,23 @@ class ObjectsE extends React.Component<ObjectsEProps> {
         <Button1 text={graphObject.id} 
           color={graphObject.enabled ? undefined : "bg-orange-400"}
           action={()=>{
-            engine.objectsToDebug = [graphObject.id];
+            engine.objectsToDebug.clear();
+            engine.objectsToDebug.add(graphObject.id);
             reRender();
             this.selectedObject = graphObject.id;
             this.forceUpdate();
           }}
           enter={()=>{
             this.hoveredObject = graphObject.id;
-            engine.objectsToDebug = [this.selectedObject, graphObject.id];
+            engine.objectsToDebug.clear();
+            engine.objectsToDebug.add(this.selectedObject);
+            engine.objectsToDebug.add(graphObject.id);
             reRender();
           }}
           leave={()=>{
             this.hoveredObject = "";
-            engine.objectsToDebug = [this.selectedObject];
+            engine.objectsToDebug.clear();
+            engine.objectsToDebug.add(this.selectedObject);
             reRender();
           }}
         />
@@ -314,7 +318,7 @@ class ObjectsE extends React.Component<ObjectsEProps> {
             </div>
             {this.creationButton()}
             {this.cloneButton()}
-            <MenuButton text="Unselect" action={()=>{eng.objectsToDebug = [];this.selectedObject=""; this.forceUpdate();}}/>
+            <MenuButton text="Unselect" action={()=>{eng.objectsToDebug.clear();this.selectedObject=""; this.forceUpdate();}}/>
             <div className="relative w-full overflow-auto">
               {this.objectsList()}
             </div>
