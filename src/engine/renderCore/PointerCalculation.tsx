@@ -144,7 +144,7 @@ class PointerCalculation extends React.Component{
     }
     const resolution = engRef.canvasRef.resolution;
 
-    var offset = $("#"+this.DOMElementId).offset() as JQuery.Coordinates;
+    const offset = $("#"+this.DOMElementId).offset() as JQuery.Coordinates;
 
     const mouseVirtualPosition = this.calcMouseVirtualPosition(mouse,offset,action);
 

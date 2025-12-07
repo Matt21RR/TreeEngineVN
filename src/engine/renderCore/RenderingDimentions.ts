@@ -17,20 +17,14 @@ import { Shader } from "./Shaders.ts";
 function generateObjectsDisplayDimentions(
   canvas: CanvasData, 
   graphArray: RenList<GraphObject>, 
-  dimentionsPack: Record<string,ObjectRenderingData>, 
+  // dimentionsPack: Record<string,ObjectRenderingData>, 
+  prevNDico:Array<string>,
   calculationOrder: CalculationOrder,
   camera: CameraData){
-    var a = 0;
-
-    const ab = performance.now();
-  
     const engine = RenderEngine.getInstance();
-  
-    // const cloneT= performance.now();
-    const prevDimentionsPack = engineRenderingDataCloner(dimentionsPack);
-    // console.log(performance.now()-cloneT);
 
-    dimentionsPack = {}; //wipe
+    let nDico = [];
+    let nDicoSet = new Set();
 
     const arrayisedTree = arrayiseTree(calculationOrder);
 
@@ -48,23 +42,10 @@ function generateObjectsDisplayDimentions(
 
     const toAddSizeHelper = (tangencialConstant*canvas.resolution.height*camera.maxZ) / canvas.resolution.height;
 
-    a += performance.now()-ab;
+    let analyzed = 0;
 
-    var analyzed = 0;
+    let origin = {x:0, y:0};
 
-    var origin = {x:0, y:0};
-
-    // Instead of adding properties later, initialize all at once:
-    let res: ObjectRenderingData = {
-      id: "",
-      x: 0, y: 0, z: 0,
-      corner: { x: 0, y: 0 },
-      base: { x: 0, y: 0, z: 0 },
-      sizeInDisplay: 0,
-      width: 0, height: 0,
-      rotation: 0,
-      text: undefined
-    };
     let gObject: GraphObject;
     let texRef: Shader;
     let addition = {x:0,y:0};
@@ -72,32 +53,43 @@ function generateObjectsDisplayDimentions(
     let objectLeft = 0;
     let objectTop = 0;
     let objectZ = 0;
-    let perspectiveLayerWidth = 0;
-    let perspectiveLayerHeight = 0;
+    let perspectiveLayer = 0;
     let objectWidth = 0;
     let objectHeight = 0;
     let testD = 0;
 
+    let perspectiveDiff = 0;
+    let perspectiveScale = 0;
+
+    let cornerX = 0;
+    let cornerY = 0;
+
+    const finalCameraHorizontalPixelOrigin = (camera.origin.x-0.5)*canvas.resolution.width;
+
+
     for (let index = 0; index < graphArray.length; index++) {
-      const as = performance.now();
-      
-      gObject = graphArray.get(arrayisedTree[index]);
-      
+      gObject = graphArray.fasterGet(arrayisedTree[index]);
       if(!gObject.pendingRenderingRecalculation){
-        dimentionsPack[gObject.id] = prevDimentionsPack[gObject.id];
-        a += performance.now() - as;
+        nDico.push(gObject.id);
+        nDicoSet.add(gObject.id);
         //TODO: if text value is not null, jump to text attribs recalculation
         continue;
       }
 
+      objectZ = gObject.accomulatedZ;
+      if(objectZ + camCenter.z < 0){
+        continue;
+      }
       analyzed++;
-      // engine.redraw = true;
+      const dimentionsPack = gObject.dimentionsPack;
 
-      texRef = gObject.textureName == null ? null : engine.getTexture(gObject);
+      texRef = gObject.textureName ? engine.getTexture(gObject.textureName) : null;
+      
 
-      if(gObject.parent != "" && gObject.parent in dimentionsPack){
-        origin.x = dimentionsPack[gObject.parent].base.x;
-        origin.y = dimentionsPack[gObject.parent].base.y;
+      if(!!gObject.parent && nDicoSet.has(gObject.parent)){
+        const parent = graphArray.fasterGet(gObject.parent);
+        origin.x = parent.dimentionsPack.base.x;
+        origin.y = parent.dimentionsPack.base.y;
       }
 
       if (!camera.usePerspective && gObject.ignoreParallax){
@@ -106,20 +98,20 @@ function generateObjectsDisplayDimentions(
       }
 
       objectScale = gObject.scale;
-      objectZ = gObject.accomulatedZ;
+
       testD = 0.99;
 
       if(!camera.usePerspective || gObject.ignoreParallax){
-        objectLeft = ((gObject.x + origin.x + addition.x)*canvas.resolution.height) + (camera.origin.x-0.5)*canvas.resolution.width;
-        objectTop = (gObject.y + origin.y + addition.y + (camera.origin.y-0.5))*canvas.resolution.height;
-        //objectZ = gObject.accomulatedZ + camera.position.z;
+        objectLeft = ((gObject.x + origin.x + addition.x)*canvas.resolution.height) + finalCameraHorizontalPixelOrigin; //*(camera.origin.x-0.5)*canvas.resolution.width
+        objectTop = (gObject.y + origin.y + addition.y + (camera.origin.y-0.5))*canvas.resolution.height; //* (camera.origin.y-0.5))*canvas.resolution.height
       }else{
         objectLeft = gObject.x + origin.x + camCenter.x;
         objectTop = gObject.y + origin.y + camCenter.y;
         objectZ += camCenter.z;
 
-        const perspectiveDiff = 1 - ((1/objectZ)-1)/perspectiveDiffHelper;
-        const perspectiveScale = perspectiveDiff * toAddSizeHelper;
+        perspectiveDiff = 1 - ((1/objectZ)-1)/perspectiveDiffHelper;
+
+        perspectiveScale = perspectiveDiff * toAddSizeHelper;
 
         //*with testD > 0.003 we ensure the very far of|behind the camera elements won't be further calculated
         if(perspectiveScale<=0.003){
@@ -129,65 +121,56 @@ function generateObjectsDisplayDimentions(
         testD = perspectiveScale;
 
         //*recalculate gObject coords
-        perspectiveLayerWidth = canvas.resolution.height*perspectiveScale;
-        perspectiveLayerHeight = canvas.resolution.height*perspectiveScale;
+        perspectiveLayer = canvas.resolution.height*perspectiveScale;
 
         //it will calc were the image must to be, inside the perspectiveLayer
-        objectLeft *= perspectiveLayerWidth;
-        objectTop *= perspectiveLayerHeight;
+        objectLeft *= perspectiveLayer;
+        objectTop *= perspectiveLayer;
         //now add the origin of the perspectiveLayer
-        objectLeft += -(perspectiveLayerWidth-canvas.resolution.height)*(1.77/2);
-        objectTop += -(perspectiveLayerHeight-canvas.resolution.height)*camera.origin.y;
+        objectLeft += -(perspectiveLayer-canvas.resolution.height)*(0.88889); // 177/2 :display horizontal center
+        objectTop += -(perspectiveLayer-canvas.resolution.height)*camera.origin.y;
       }
-      a += performance.now() - as;
-
-      // if(objectLeft>canvas.resolution.width || objectTop>canvas.resolution.height){
-      //   continue;
-      // }
 
       //By default values for the textboxes
       objectWidth = canvas.resolution.width*objectScale*gObject.widthScale;
       objectHeight = canvas.resolution.height*objectScale*gObject.heightScale;
 
-      if(texRef != null){
+      if(texRef){
+        dimentionsPack.solvedTextureName = texRef.id;
         if(gObject.useEngineUnits){
           objectWidth = texRef.resolution.width*objectScale*gObject.widthScale*developmentRatio;
           objectHeight = texRef.resolution.height*objectScale*gObject.heightScale*developmentRatio;
         }else{
-          objectHeight = (texRef.resolution.height/texRef.resolution.width)*canvas.resolution.width*objectScale*gObject.heightScale;
+          objectHeight = (texRef.resolution.heightWidthRelation)*canvas.resolution.width*objectScale*gObject.heightScale;
         }
       }else{
+        //dimentionsPack.solvedTextureName = ""; Unused in RenderEngine
         if(gObject.useEngineUnits){
           objectWidth = canvas.resolution.height*objectScale*gObject.widthScale;
         }
       }
 
-      const cornerX = objectLeft - objectWidth/2;
-      const cornerY = objectTop - objectHeight/2;
+      cornerX = objectLeft - objectWidth*0.5;
+      cornerY = objectTop - objectHeight*0.5;
 
       if(cornerX > canvas.resolution.width || cornerY > canvas.resolution.height || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
         continue;
       }
 
-      res = {
-        id: gObject.id,
-        x : objectLeft,
-        y : objectTop,
-        z : objectZ,
-        corner:{
-          x:cornerX,
-          y:cornerY
-        },
-        base:{
-          x:origin.x + gObject.x,
-          y:origin.y + gObject.y,
-          z:gObject.accomulatedZ
-        },
-        sizeInDisplay : testD,
-        width : objectWidth,
-        height : objectHeight,
-        rotation: gObject.rotate
-      };
+      dimentionsPack.x  = Math.trunc(objectLeft);
+      dimentionsPack.y  = Math.trunc(objectTop);
+      dimentionsPack.z  = objectZ;
+      dimentionsPack.corner.x = Math.trunc(cornerX);
+      dimentionsPack.corner.y = Math.trunc(cornerY);
+
+      dimentionsPack.base.x = origin.x + gObject.x;
+      dimentionsPack.base.y = origin.y + gObject.y;
+      dimentionsPack.base.z = gObject.accomulatedZ;
+
+      dimentionsPack.sizeInDisplay  = testD;
+      dimentionsPack.width  = Math.trunc(objectWidth);
+      dimentionsPack.height  = Math.trunc(objectHeight);
+      dimentionsPack.rotation = Math.trunc(gObject.rotate);
 
       //TODO: texts requires continous recomputing
       const strRef = gObject.text == null ? null : getStr(gObject.text);
@@ -196,21 +179,21 @@ function generateObjectsDisplayDimentions(
         const objectWidthMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.horizontalMargin;
         const objectHeightMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.verticalMargin;
 
-        res.text = {
-            fontSize:fontSizeRenderingValue,
-            margin:{
-              horizontal:objectWidthMargin, 
-              vertical:objectHeightMargin}
-            }
+        dimentionsPack.text = {
+          fontSize:fontSizeRenderingValue,
+          margin:{
+            horizontal:objectWidthMargin, 
+            vertical:objectHeightMargin}
+        };
 
         if(gObject.fitContent){
           canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
           var texts = wrapText(//TODO: Wrap it until all the text get wraped
             canvas.context,
             strRef,
-            objectWidthMargin + res.corner.x,
+            objectWidthMargin + dimentionsPack.corner.x,
             fontSizeRenderingValue/2,
-            res.width - objectWidthMargin*2,
+            dimentionsPack.width - objectWidthMargin*2,
             0,
             fontSizeRenderingValue,
             gObject.center, 
@@ -226,17 +209,21 @@ function generateObjectsDisplayDimentions(
             texts[index].y += objectHeightMargin + (objectTop - objectHeight/2) ;  
           }
 
-          res.corner.y = (objectTop - objectHeight/2);
-          res.height = objectHeight;
-          res.text!.value = texts;
+          dimentionsPack.corner.y = (objectTop - objectHeight/2);
+          dimentionsPack.height = objectHeight;
+          console.log(texts);
+          dimentionsPack.text!.value = texts;
         }
+      }else{
+        dimentionsPack.text = null;
       }
-      dimentionsPack[gObject.id] = res;
+      nDico.push(gObject.id);
+      nDicoSet.add(gObject.id);
+
       gObject.pendingRenderingRecalculation = false;
 
     }
-    // console.log(`Analyzed: ${analyzed} of ${graphArray.length} in ${performance.now()-ab}ms non: ${a}`);
-    return dimentionsPack;
+    return nDico;
   }
 
 export {generateObjectsDisplayDimentions}
