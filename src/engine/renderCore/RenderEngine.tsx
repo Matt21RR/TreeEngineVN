@@ -25,7 +25,7 @@ import ResourceLoader from "./ResourceLoader.ts";
 import PointerCalculation from "./PointerCalculation.tsx";
 //@ts-ignore
 import gsap from "gsap";
-import { generateObjectsDisplayDimentions } from "./RenderingDimentions.ts";
+import { generateObjectsDisplayDimentions} from "./RenderingDimentions.ts";
 import UI from "./UI.tsx";
 import Actor from "../engineComponents/Actor.ts";
 import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
@@ -103,7 +103,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   engineDisplayRes: { width: number; height: number };
   camera: CameraData;
   calculationOrder: CalculationOrder;
-  dimentionsPack: Record<string, ObjectRenderingData>;
+  // dimentionsPack: Record<string, ObjectRenderingData>;
+  dimentionsPack: Array<string>;
   renderingOrderById: Array<string>;
 
   mouse: { x: number; y: number; origin: any };
@@ -112,7 +113,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   drawObjectLimits: boolean;
   drawCollisionsMatrix: boolean;
   drawTriggers: boolean;
-  objectsToDebug: Array<string>;
+  objectsToDebug: Set<string>;
 
   lambdaConverter: Function;
   getStr: Function;
@@ -173,7 +174,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.drawCollisionsMatrix = false;
     this.drawTriggers = false;
 
-    this.objectsToDebug = [];//id of the object
+    this.objectsToDebug = new Set();//id of the object
 
     this.lambdaConverter = lambdaConverter;
     this.getStr = getStr;
@@ -199,6 +200,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     RenderEngine.instance = this;
     if (!this.mounted) {
       this.mounted = true;
+      // initDimensionCalculation(10000, this.developmentDeviceHeight);
       //* ASPECT RATIO
       window.setTimeout(() => {
         this.displayResolutionCalc();
@@ -356,31 +358,27 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   }
   getObject(id:string){
     //todo: Adapt to autoparse the data
-    return this.graphArray.get(id);
+    // return this.graphArray.get(id);
+    return this.graphArray.fasterGet(id);
   }
 
-  getTexture(gObject: GraphObject):Shader{
-    var id = gObject.textureName;
-    if(id == null){
-      console.warn(`no textureName in ${gObject.id}`);
+  getTexture(id: string):Shader{
+    if(this.textureAnims.exist(id)){
+      id = this.textureAnims.get(id).getTexture(this.engineTime);
+    }
+    if(id){ //id != null
+      return this.texturesList.get(id);
+    }else{
       return this.noImageTexture;
     }
-    else{
-      if(this.textureAnims.exist(id)){
-        id = this.textureAnims.get(id).getTexture(this.engineTime);
-      }
-      try {
-        if(id != null){
-          return this.texturesList.get(id);
-        }else{
-          return this.noImageTexture;
-        }
-        
-      } catch (error) {
-        return this.noImageTexture;
-      }
-    }
+  }
 
+  getSolvedTexture(id: string):Shader{
+    if(id){ //id != ""
+      return this.texturesList.get(id);
+    }else{
+      return this.noImageTexture;
+    }
   }
 
   componentDidCatch(error,info){
@@ -438,7 +436,9 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     const self = this;
     const handler = {
       get(target, prop:string) {
-        return typeof  target[prop] === 'object' &&  target[prop] !== null ? new Proxy(target[prop],handler) :  target[prop];
+        // return typeof  target[prop] === 'object' &&  target[prop] !== null ? new Proxy(target[prop],handler) :  target[prop];
+        // return typeof  target[prop] === 'object' ? new Proxy(target[prop],handler) :  target[prop];
+        return target[prop];
       },
       set(target, prop:string, value:any) {
         target[prop] = value;
@@ -454,18 +454,18 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.camera = new Proxy({
       id:"engineCamera",
       maxZ:10000,
-      origin:{x:.5,y:.5},
-      position:{
+      origin:new Proxy({x:.5,y:.5},handler),
+      position:new Proxy({
         x:.5,
         y:.5,
         z:0,
-        angle: canvas ? canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width) : 0},
+        angle: canvas ? canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width) : 0}, handler),
       usePerspective:false
     }, handler);
     
     this.calculationOrder = [];
 
-    this.dimentionsPack = {};
+    this.dimentionsPack = [];
     this.renderingOrderById = [];
  
     this.codedRoutines = new RenList();
@@ -505,14 +505,14 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.dimentionsPack,this.calculationOrder,this.camera);
 
         this.dimentionsPack = dimentionsPack;
-        this.renderingOrderById = generateRenderingOrder(dimentionsPack);
+
+        let dimentionsObject = {};
+        dimentionsPack.forEach(key => {
+          dimentionsObject[key] = this.graphArray.fasterGet(key).dimentionsPack;
+        });
+
+        this.renderingOrderById = generateRenderingOrder(dimentionsObject);
         const renderingOrdTime = performance.now()-renderingOrdA;
-
-
-
-        if(!this.redraw){
-          return [0];
-        }
 
         this.canvasRef = canvas;
         const resolution = canvas.resolution;
@@ -529,36 +529,32 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
         const objectsToRender = availableIdsToRender.length;
 
-
-        var excludedIds:Dictionary<boolean> = {};
+        let excludedIds:Dictionary<boolean> = {};
 
         for (let index = 0; index < objectsToRender; index++) {
           let infoAdjudicationPre = performance.now();
           const gObject = this.getObject(availableIdsToRender[index]); //!Non-confirmed bottleneck
           
-          const renderingData = dimentionsPack[gObject.id];
+          const renderingData = gObject.dimentionsPack;
+
+          const objectIsRotated = renderingData.rotation % 360 != 0;
           
-          const texRef = gObject.textureName == null ? null : this.getTexture(gObject);
+          const texRef = gObject.textureName ? this.getTexture(gObject.textureName) : null; //Null works as false / not assigned
           const strRef = gObject.text == null ? null : getStr(gObject.text);
 
           infoAdjudicationTime += performance.now()-infoAdjudicationPre;
 
           let drawingTimePre = performance.now();
-          if(gObject.opacity == 0 || renderingData.sizeInDisplay<=0.003){
+          if(gObject.opacity == 0){
             this.noRenderedItemsCount++;
             excludedIds[gObject.id] = true;
           }else{
               //*part one: global alpha
-            canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
+              canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
 
-            //*part two: filtering
-            var filterString = gObject.filterString;
+              //*part two: filtering
+              const filterString = gObject.filterString;
 
-            //*part three
-            //with testD > 0.003 we ensure the very far of|behind the camera elements won't be rendered
-            if(renderingData.sizeInDisplay<=0.003){
-              this.noRenderedItemsCount++;
-            }else{
               let texts: Array<TextLine> = [];
               if(renderingData.text){
                 const fontSize = renderingData.text.fontSize;
@@ -577,7 +573,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               }
 
               canvas.context.filter = filterString;//if the element to render have filtering values != of the previous element
-              if(renderingData.rotation % 360 != 0){
+              if(objectIsRotated){
                 canvas.context.save();
                 canvas.context.setTransform(//transform using center as origin
                   1,
@@ -589,7 +585,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
                 canvas.context.rotate(gObject.rotateRad);
               }
               
-              if(texRef != null){
+              if(texRef){
                 RenderMisc.drawImage(
                   texRef.getTexture(),
                   renderingData,
@@ -610,21 +606,19 @@ class RenderEngine extends React.Component<RenderEngineProps>{
                   canvas.context);
               }
 
-              if(renderingData.rotation % 360 != 0){
+              if(objectIsRotated){
                 canvas.context.restore();
               }
-            }
-
-            //*part four: anullate globalalpha and filters
-            if(filterString != "none")
-              canvas.context.filter = "none";
-            canvas.context.globalAlpha = 1;
+              //*part four: anullate globalalpha and filters
+              if(filterString != "none")
+                canvas.context.filter = "none";
+              canvas.context.globalAlpha = 1;
           }
           drawingTime += performance.now()-drawingTimePre;
 
           //*DEBUG INFO
           let debugTimePre = performance.now();
-          if(this.objectsToDebug.indexOf(gObject.id) != -1){
+          if(this.objectsToDebug.has(gObject.id)){
             //*part five: draw object info
             if(this.drawObjectLimits){
               RenderMisc.drawObjectLimits(canvas.context,renderingData,resolution,this.camera.position.z);
@@ -647,7 +641,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         }
 
         var updatingColsTime = performance.now();
-        this.collisionLayer.update(dimentionsPack,resolution.width,resolution.height,excludedIds);
+        this.collisionLayer.update(dimentionsObject,resolution.width,resolution.height,excludedIds);
         updatingColsTime = performance.now()-updatingColsTime;
 
         // this.redraw = false;

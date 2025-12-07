@@ -91,7 +91,7 @@ class ChaosInterpreter {
     console.log(`=> Trying to load ${scriptFileName}`)
     return new Promise(resolve=>{
       fetch(jsonPath).then(          
-        scriptData => {return scriptData.text();}).then((res)=>{
+        scriptData => scriptData.text()).then((res)=>{
           self.kreator(res,false).then(
           (textScr)=>{
             console.log(`${scriptFileName} loaded`)
