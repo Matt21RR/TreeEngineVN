@@ -18,6 +18,7 @@ export type ObjectRenderingData = {
     z: any;
   },
   id:string,
+  solvedTextureName:string,
   text?:{
     value?:Array<TextLine>,
     margin:{horizontal:number,vertical:number},
@@ -57,20 +58,20 @@ class CollisionLayer {
       // }
       const data = renderingData[key];
       //Horizontal boundaries
-      const x = Math.floor( 10 * (data.corner.x / displayWidth));
-      const xEnd = Math.ceil( (10 * ((data.corner.x + data.width)/displayWidth)));
-
+      //*Done: ignore everything that are outside the display
+      let x = Math.floor( 10 * (data.corner.x / displayWidth));
+      if(x<0){x=0;}
+      let xEnd = Math.ceil( (10 * ((data.corner.x + data.width)/displayWidth)));
+      if(xEnd>11){xEnd=11;}
     
       //Vertical boundaries
-      const y = Math.floor( 10 * (data.corner.y / displayHeight));
-      const yEnd = Math.ceil( (10 * ((data.corner.y + data.height)/displayHeight)));
-
-      //*DONE: Ignore everything that are outside the display
+      let y = Math.floor( 10 * (data.corner.y / displayHeight));
+      if(y<0){y=0;}
+      let yEnd = Math.ceil( (10 * ((data.corner.y + data.height)/displayHeight)));
+      if(yEnd>11){yEnd=11;}
 
       for(let i = x; i < xEnd; i++) {
-        if(i<0 || i>11){continue}
         for(let j = y; j < yEnd; j++) {
-          if(j<0 || i>11){continue}
           if(!this.collisionMatrix[i]) {
             this.collisionMatrix[i] = [];
           }
