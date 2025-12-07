@@ -71,7 +71,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
       return;
     }
     if(this.objects.length == 0){
-      if(this.dummy.type == ""){
+      if(!this.dummy.type){ //this.dummy.type == ""
         this.setDummyInformation(element);
       }
     }
@@ -124,6 +124,9 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     }else{
       return element;
     }
+  }
+  fasterGet(objectId:string):T {
+    return this.#_elementsDict[objectId];
   }
   exist(objectId: string){
     return !!(this.#_elementsDict[objectId]);

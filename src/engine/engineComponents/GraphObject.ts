@@ -1,5 +1,6 @@
 import { Dictionary } from "../../global.ts"
 import { lambdaConverter } from "../logic/Misc.ts"
+import { ObjectRenderingData } from "./CollisionLayer.ts";
 import Proxificator from "./EventProxy.ts"
 
 enum FiltersName {
@@ -41,8 +42,6 @@ class GraphObjectDataType{
     sepia : "number",
 
     blur : "number",
-    aberration : "number",
-    aberrationType : "string",
 
     opacity : "number",
 
@@ -83,9 +82,6 @@ class GraphObject extends GraphObjectDataType{
   _hueRotate:number;
 
   _blur:number;
-  _aberration:number;
-  _aberrationType:string;
-
   _invert:number;
   _saturate:number;
   _sepia:number;
@@ -112,6 +108,18 @@ class GraphObject extends GraphObjectDataType{
   _parent:string = "";
   
   _accomulatedZ:number; //Engine related var, dont changeit through a gamescript
+
+  dimentionsPack:ObjectRenderingData = {
+    id: "",
+    solvedTextureName:"",
+    x: 0, y: 0, z: 0,
+    corner: { x: 0, y: 0 },
+    base: { x: 0, y: 0, z: 0 },
+    sizeInDisplay: 0,
+    width: 0, height: 0,
+    rotation: 0,
+    text: null
+  };
 
   _getAtribs(){// ? Could be a global function ?
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
@@ -146,8 +154,6 @@ class GraphObject extends GraphObjectDataType{
     this._hueRotate =       "hueRotate" in graphInfo ? parseFloat(graphInfo.hueRotate): 0;//deg
     //***SHADERS
     this._blur =            "blur" in graphInfo ? parseFloat(graphInfo.blur): 0;//px
-    this._aberration =      "aberration" in graphInfo ? parseFloat(graphInfo.aberration): 0;
-    this._aberrationType =  graphInfo.aberrationType ?? "static";
     //static or shaky
     // _dither:graphInfo.dither != undefined ? graphInfo.dither : 1,
     //***END SHADERS
@@ -454,7 +460,7 @@ class GraphObject extends GraphObjectDataType{
    * @param {string} cloneId The id for the clone of the original object
    */
   clone(cloneId:string){
-    if(cloneId == null)
+    if(!cloneId)
       throw new Error("the id for the clonning operation that uses the object with id '"+this._id+"' is not defined");
 
     const atributesNames = this._getAtribs();
@@ -467,16 +473,15 @@ class GraphObject extends GraphObjectDataType{
     return new GraphObject(graphData);
   }
   /**
-   * Show in console the graphObject params
-   * @param {*} graphObject 
+   * Create a dictionary with the object params
    */
-  dump(){
-    var d = new Object();
+  dump(): Dictionary{
+    let d:Dictionary = {};
     this._getAtribs().forEach(key => {
 
       d[key] = this[key];
     });
-    return d
+    return d;
   }
 }
 

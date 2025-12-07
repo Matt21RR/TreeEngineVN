@@ -60,7 +60,7 @@ class Trigger extends EnabledObject{
   check(engineOrMouseRef:RenderEngine|React.MouseEvent|React.TouchEvent, action:string){
     if(action == "mouseMove")//check onEnter
       action = "onEnter";
-    if(this[action] == null || !this.enabled){
+    if(!this[action]|| !this.enabled){
       return;
     }
     const numberOfArguments = this[action].length;
@@ -109,7 +109,7 @@ class KeyboardTrigger extends EnabledObject{
 
 
   check(engineRef:RenderEngine,action:string){
-    if(this[action] == null || !this.enabled){
+    if(!this[action] || !this.enabled){
       return;
     }
     const numberOfArguments = this[action].length;
