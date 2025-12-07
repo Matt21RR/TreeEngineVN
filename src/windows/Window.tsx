@@ -78,9 +78,21 @@ class Window extends React.Component<WindowProps> {
   }
   private coordsExtractor(){
     var w = document.getElementById("body"+this.id) as HTMLDivElement;
-    var coords = w.style.transform.replace("translate(","").replace(")","").replaceAll("px","").split(",").map(el=>parseFloat(el)*-1);
+    var coords = w.style.transform.replace(/[^0-9,-]/g,"").split(",").map(el=>parseFloat(el));
     if(coords.length == 0){
       coords = [0,0];
+    }
+    return coords;
+  }
+
+  private absoluteCoordsExtractor(){
+    const w = document.getElementById("body"+this.id) as HTMLDivElement;
+    let coords = [0,0];
+    const transformCoords = w.style.transform.replace(/[^0-9,-]/g,"").split(",").map(el=>parseFloat(el));
+    coords = [parseFloat(w.style.left) || 0,parseFloat(w.style.top) || 0];
+    if(transformCoords.length == 2){
+      coords[0] += transformCoords[0];
+      coords[1] += transformCoords[1];
     }
     return coords;
   }
@@ -100,8 +112,8 @@ class Window extends React.Component<WindowProps> {
     
     gsap.to("#body"+this.id,{duration:.15,width:window.innerWidth,ease:"linear",
       height:window.innerHeight,
-      left:coords[0],
-      top:coords[1],
+      left:-coords[0],
+      top:-coords[1],
       onComplete:()=>{this.onResize();}
     }); 
   }
@@ -109,7 +121,7 @@ class Window extends React.Component<WindowProps> {
     this.fullSized = false;
     this.forceUpdate();
 
-    gsap.to("#body"+this.id,{duration:.15,ease:"linear",
+    gsap.to("#body"+this.id,{duration:.1,ease:"linear",
       width:this.unfullSizedData.width,
       height:this.unfullSizedData.height,
       left:this.unfullSizedData.left,
@@ -165,85 +177,90 @@ class Window extends React.Component<WindowProps> {
         window.style.width = (width+mov.x)+"px";
         break;
     }
+
+    if(parseFloat(window.style.width) <this.props.minRes.width){
+      this.resizeBlocked = true;
+      window.style.width = (this.props.minRes.width)+"px";
+    }
+    if(parseFloat(window.style.height) <this.props.minRes.height){
+      this.resizeBlocked = true;
+      window.style.height = (this.props.minRes.height)+"px";
+    }
     this.onResize();
   }
+  private compensateOutCoords(){
+    const coords = this.absoluteCoordsExtractor();
+    console.log(coords);
+
+    this.unfullSizedData.left -= coords[0] < 0 ? coords[0] : 0;
+    this.unfullSizedData.top -= coords[1] < 0 ? coords[1] : 0;
+
+    if(coords[0]+150>window.innerWidth){
+      this.unfullSizedData.left += window.innerWidth - coords[0]-150;
+    }
+
+    if(coords[1]+35>window.innerHeight){
+      this.unfullSizedData.top += window.innerHeight - coords[1]-35;
+    }
+
+    gsap.to("#body"+this.id,{duration:.1,ease:"linear",
+      left:this.unfullSizedData.left,
+      top:this.unfullSizedData.top
+    }).then(()=>console.log(this.absoluteCoordsExtractor()));
+  }
+
   renderResizeBorders(){
+    const releaseMouseMove = ()=>{
+      $("body").off("mousemove");
+      this.resizeBlocked = false;
+    };
+
     if(!this.fullSized){
+      let laterals = {
+        top: "-top-[3px] h-[6px] w-full cursor-n-resize",
+        bottom: "-bottom-[3px] h-[6px] w-full cursor-n-resize",
+        left: "-left-[3px] top-0 h-full w-[6px] cursor-e-resize",
+        right: "-right-[3px] top-0 h-full w-[6px] cursor-e-resize",
+      };
+
+      let corners = {
+        topLeft: "-top-2 -left-2 cursor-se-resize",
+        topRight: "-top-2 -right-2 cursor-ne-resize",
+        bottomRight:"-bottom-2 -right-2 cursor-se-resize",
+        bottomLeft: "-bottom-2 -left-2 cursor-ne-resize",  
+      };
+      
+
       return(<>
-        <div 
-          className="absolute -top-[3px] h-[6px] w-full cursor-n-resize" 
-          id={"top"+this.id}
-          onMouseDown={(e)=>{
-            e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.resize("top",e);e.preventDefault();});
-            $("body").on("mouseup",()=>{$("body").off("mousemove");});
-          }}
-          />
-        <div 
-          className="absolute -bottom-[3px] h-[6px] w-full cursor-n-resize"
-          id={"bottom"+this.id}
-          onMouseDown={(e)=>{
-            e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.resize("bottom",e);e.preventDefault();});
-            $("body").on("mouseup",()=>{$("body").off("mousemove");});
-          }}
-          />
-        <div 
-          className="absolute -left-[3px] top-0 h-full w-[6px] cursor-e-resize"
-          id={"left"+this.id}
-          onMouseDown={(e)=>{
-            e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.resize("left",e);e.preventDefault();});
-            $("body").on("mouseup",()=>{$("body").off("mousemove");});
-          }}
-          />
-        <div 
-          className="absolute -right-[3px] top-0 h-full w-[6px] cursor-e-resize"
-          id={"right"+this.id}
-          onMouseDown={(e)=>{
-            e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.resize("right",e);e.preventDefault();});
-            $("body").on("mouseup",()=>{$("body").off("mousemove");});
-          }}
-          />
-  
-  
-        <div 
-          className="absolute -top-2 -left-2 h-3 w-3 cursor-se-resize"
-          id={"topLeft"+this.id}
-          onMouseDown={(e)=>{
-            e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.resize("topLeft",e);e.preventDefault();});
-            $("body").on("mouseup",()=>{$("body").off("mousemove");});
-          }}
-          />
-        <div 
-          className="absolute -top-2 -right-2 h-3 w-3 cursor-ne-resize"
-          id={"topRight"+this.id}
-          onMouseDown={(e)=>{
-            e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.resize("topRight",e);e.preventDefault();});
-            $("body").on("mouseup",()=>{$("body").off("mousemove");});
-          }}
-          />
-        <div 
-          className="absolute -bottom-2 -right-2 h-3 w-3 cursor-se-resize"
-          id={"bottomRight"+this.id}
-          onMouseDown={(e)=>{
-            e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.resize("bottomRight",e);e.preventDefault();});
-            $("body").on("mouseup",()=>{$("body").off("mousemove");});
-          }}
-          />
-        <div 
-          className="absolute -bottom-2 -left-2 h-3 w-3 cursor-ne-resize"
-          id={"bottomLeft"+this.id}
-          onMouseDown={(e)=>{
-            e.preventDefault();
-            $("body").on("mousemove",(e)=>{this.resize("bottomLeft",e);e.preventDefault();});
-            $("body").on("mouseup",()=>{$("body").off("mousemove");});
-          }}
-          />
+        {
+          Object.keys(laterals).map((key)=>{
+            const classString = laterals[key];
+            return  <div 
+                      className={`absolute ${classString}`}
+                      id={key+this.id}
+                      onMouseDown={(e)=>{
+                        e.preventDefault();
+                        $("body").on("mousemove",(e)=>{this.resize(key,e);e.preventDefault();});
+                        $("body").on("mouseup",releaseMouseMove);
+                      }}
+                    />
+          })
+        }
+
+        {
+          Object.keys(corners).map((key)=>{
+            const classString = corners[key];
+            return  <div 
+              className={`absolute h-3 w-3 ${classString}`}
+              id={key+this.id}
+              onMouseDown={(e)=>{
+                e.preventDefault();
+                $("body").on("mousemove",(e)=>{this.resize(key,e);e.preventDefault();});
+                $("body").on("mouseup",releaseMouseMove);
+              }}
+            />
+          })
+        }
       </>);
     }
   }
@@ -256,6 +273,9 @@ class Window extends React.Component<WindowProps> {
             this.props.clicked();
           }
         }
+        onStop={(e)=>{
+          this.compensateOutCoords();
+        }}
         onStart={(e)=>{
           const m = e as React.MouseEvent;
           if(this.fullSized){
