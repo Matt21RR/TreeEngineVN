@@ -114,7 +114,7 @@ class Canvas extends React.Component<CanvasProps>{
 
   setFps(x:number){ 
     const canvas = this.element.current;
-    if(canvas == null){return;}
+    if(!canvas){return;}
     this.targetFps = x; 
     this.stopEngine = (x == 0) && !this.stopEngine; 
     this.interval = Math.floor(1000 / x); 
@@ -224,23 +224,45 @@ class Canvas extends React.Component<CanvasProps>{
     this.setFps(fps);
     this.engine(this.loopId);
   }
+  private renderErrorLog(canvas,context: CanvasRenderingContext2D ,processName:string,error: Error){
+    context.clearRect(0, 0, canvas.width, canvas.height);//cleanning window
+
+    let errorData: Array<string> = [
+      //@ts-ignore
+      `Engine Killed due fatal error during ${processName} process in line: ${error.lineNumber}`,
+      "-error message:",
+      "  "+error,
+      "-function executed when the engine crashed:",
+      "============================================================================================================================="
+    ];
+
+    errorData = errorData.concat(error.stack.toString().split("\n"));
+    errorData.push("=============================================================================================================================");
+
+    this.canvasWriter(errorData,{x:5,y:15},15);
+
+    this.stopEngine = true;
+    this.engineKilled = true;
+    console.error(`Engine Killed due fatal error during ${processName} process`,error);
+    debugger;
+  }
   // Engine starter
   engine(loopId:string) {
     if(loopId != this.loopId){
       return;
     }
-    if(this.element == null){
+    if(!this.element){
       console.error("element reference error");
       this.element = React.createRef() as React.RefObject<HTMLCanvasElement>;
     }
     const canvas = this.element.current;
-    if(canvas == null){
+    if(!canvas){
       console.error("canvas reference error");
       return;
     }
-    var context = canvas.getContext("2d") as CanvasRenderingContext2D;
+    let context = canvas.getContext("2d") as CanvasRenderingContext2D;
 
-    var checkEvents = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
+    let checkEvents = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
       try {
         this.props.events();
         animator(fps);
@@ -252,32 +274,14 @@ class Canvas extends React.Component<CanvasProps>{
       }
     }
 
-    var animator = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
+    let animator = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
       //*ANIMATE
       try {
         const animateStartAt = performance.now();
         this.props.animateGraphics(fps);
         this.animatingElapsed = performance.now()-animateStartAt;
       } catch (error) {//!KILL ENGINE
-        context.clearRect(0, 0, canvas.width, canvas.height);//cleanning window
-
-        var errorData: Array<string> = [
-          "Engine Killed due fatal error during animating process in line: "+error.lineNumber,
-          "-error message:",
-          "  "+error,
-          "-function executed when the engine crashed:",
-          "============================================================================================================================="
-        ];
-
-        errorData = errorData.concat(error.stack.toString().split("\n"));
-        errorData.push("=============================================================================================================================");
-
-        this.canvasWriter(errorData,{x:5,y:15},15);
-
-        this.stopEngine = true;
-        this.engineKilled = true;
-        console.error("Engine Killed due fatal error during animating process process",error);
-        debugger;
+        this.renderErrorLog(canvas,context,"animating",error);
         return;
       }
       //*RENDER
@@ -288,28 +292,11 @@ class Canvas extends React.Component<CanvasProps>{
         }
       }
       catch (error) {//!KILL ENGINE
-        context.clearRect(0, 0, canvas.width, canvas.height);//cleanning window
-
-        var errorData: Array<string> = [
-          "Engine Killed due fatal error during rendering process in line: "+error.lineNumber,
-          "-error message:",
-          "  "+error,
-          "-function executed when the engine crashed:",
-          "============================================================================================================================="
-        ];
-        errorData = errorData.concat(error.stack.toString().split("\n"));
-        errorData.push("=============================================================================================================================");
-
-        this.canvasWriter(errorData,{x:5,y:15},15);
-
-        this.stopEngine = true;
-        this.engineKilled = true;
-        console.error("Engine Killed due fatal error during rendering process");
-        console.log(error);
-        debugger;
+        this.renderErrorLog(canvas,context,"rendering",error);
+        return;
       }
     }
-    var renderer = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
+    let renderer = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
 
       context.filter = 'none';
       
@@ -332,7 +319,7 @@ class Canvas extends React.Component<CanvasProps>{
       const actualGlobalAlpha = context.globalAlpha;
 
       if(this.showFps){
-        var mouse = this.renderEngine.mouse;
+        const mouse = this.renderEngine.mouse;
 
         const fpsData: Array<string> = [
           "CPS: "+fps.promedio.cps + "/ FPS: "+fps.promedio.fps,
@@ -341,28 +328,27 @@ class Canvas extends React.Component<CanvasProps>{
           "Res: "+this.resolutionWidth+"x"+this.resolutionHeight,
           "EngTime: "+this.totalEngineElapsedTime.toFixed(2) + "ms",
           "Keys: "+this.renderEngine.pressedKeys.join(" "),
-          "GPU: "+(total).toFixed(2) + "ms" ,
-          "CPU: "+(this.animatingElapsed).toFixed(2) + "ms" ,
-          "cycle:"+(total+this.animatingElapsed).toFixed(2) + "ms" ,
-          "OrderingTime: "+(orderingTime).toFixed(2) + "ms" ,
-          "RenderingOrderingTime: "+(renderingOrdTime).toFixed(2) + "ms" ,
-          "AdjuTime: "+(infoAdjudicationTime).toFixed(2) + "ms" ,
-          "DrawTime: "+(drawingTime).toFixed(2) + "ms" ,
-          "DebuTime: "+(debugTime).toFixed(2) + "ms" ,
+          "GPU: "+(total | 0) + "ms" ,
+          "CPU: "+(this.animatingElapsed | 0) + "ms" ,
+          "cycle:"+(total+this.animatingElapsed | 0) + "ms" ,
+          "OrderingTime: "+(orderingTime | 0) + "ms" ,
+          "RenderingOrderingTime: "+(renderingOrdTime | 0) + "ms" ,
+          "AdjuTime: "+(infoAdjudicationTime | 0) + "ms" ,
+          "DrawTime: "+(drawingTime | 0) + "ms" ,
+          "DebuTime: "+(debugTime | 0) + "ms" ,
           "",
-          "UpdColsT: "+(updateColsTime).toFixed(2) + "ms",
+          "UpdColsT: "+(updateColsTime | 0) + "ms",
           "Objects: "+ objectsToRender,
           "ExcludedObjects: "+ excludedObjects
         ];
         this.canvasWriter(fpsData,{x:5,y:15},15);
 
         context.globalAlpha = actualGlobalAlpha;
-        context.globalCompositeOperation = "source-over";
       }
     }
-    var promedio = {cps:this.targetFps,fps:this.targetFps};
-    var drawnFrames = 0, startTimer = window.performance.now(),maxCps = 0;
-    var draw = (engDelta:number,lId:string) => {       
+    let promedio = {cps:this.targetFps,fps:this.targetFps};
+    let drawnFrames = 0, startTimer = window.performance.now(),maxCps = 0;
+    const draw = (engDelta:number,lId:string) => {       
 
       if(engDelta <0){
         debugger;
@@ -386,7 +372,7 @@ class Canvas extends React.Component<CanvasProps>{
       }
 
       if(lId == this.loopId){
-        rAF.modelFour(draw,(1000 / this.targetFps),operativeTimeStartedAt,lId);
+        rAF.modelFour(draw,this.interval,operativeTimeStartedAt,lId);
       }
 
       if(this.windowHasFocus){
