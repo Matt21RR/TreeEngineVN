@@ -19,7 +19,7 @@ import AgrupableInstructionInterface from "./AgrupableInstructionInterface.ts";
 import JumpToInstruction from "./builders/JumpToInstruction.ts";
 import SetSpeakerInstruction from "./builders/SetSpeakerInstruction.ts";
 import { Dictionary } from "../../global.ts";
-
+import sequencedPromise from "./new.ts";
 
 class ChaosInterpreterResources {
   scripts: Dictionary<{main:string,nodes:{}}>
@@ -73,7 +73,7 @@ class ChaosInterpreter {
   }
   listScripts(): Promise<Dictionary>{
     const self = this;
-    return new Promise((resolve,reject)=>{
+    return new Promise((resolve)=>{
       fetch(self.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then((scriptsData:Dictionary) =>{
         Object.keys(scriptsData).forEach((scriptId)=>{
           scriptsData[scriptId] = self.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
@@ -84,30 +84,40 @@ class ChaosInterpreter {
       });
     })
   }
+  private interpretateFile(scriptFileName:string): Promise<Dictionary<{main:string,nodes:Dictionary<string>}>>{
+    const self = this;
+    const jsonPath = `${self.projectRoot}scripts/${scriptFileName}`;
+
+    console.log(`=> Trying to load ${scriptFileName}`)
+    return new Promise(resolve=>{
+      fetch(jsonPath).then(          
+        scriptData => {return scriptData.text();}).then((res)=>{
+          self.kreator(res,false).then(
+          (textScr)=>{
+            console.log(`${scriptFileName} loaded`)
+            Object.assign(self.scripts,textScr);
+            resolve(textScr);
+          }
+        )}
+      )
+    })
+  }
   loadScripts(doNothing:boolean):Promise<null>{
     const self = this;
     return new Promise((resolve,reject)=>{
       if(doNothing){
         resolve(null);
       }else{ 
-        fetch(self.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then(scriptsData=>{
-          Promise.all(
-            Object.keys(scriptsData).map(scriptId => {
-              const jsonPath = self.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
-              return new Promise(resolveScript=>{
-                fetch(jsonPath).then(          
-                  scriptData => {return scriptData.text();}).then((res2)=>{
-                    self.kreator(res2,false).then(
-                    (textScr)=>{
-                      Object.assign(self.scripts,textScr);
-                      console.log(self.scripts);
-                      resolveScript(null);
-                    }
-                  )}
-                )
+        fetch(self.projectRoot + "scripts/scripts.json").then(res => res.json() ).then(scriptsData=>{
+          const h = Object.keys(scriptsData).map(scriptId => 
+            ()=>{
+              return new Promise(resolveInner=>{
+                const scriptFileName = scriptsData[scriptId].replace("./","");
+                self.interpretateFile(scriptFileName).then( ()=>{resolveInner(null)} );
               })
-            })
-          ).then(()=>{resolve(null)});
+            }
+          );
+          sequencedPromise(h).then( ()=>resolve(null) );
         });
       }
     })
