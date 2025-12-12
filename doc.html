@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GraphObject API Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        nav {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .section {
+            background: white;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        h3 {
+            color: #764ba2;
+            font-size: 1.3em;
+            margin: 20px 0 10px 0;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .property {
+            padding: 10px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+
+        .property-name {
+            font-weight: bold;
+            color: #764ba2;
+            font-family: monospace;
+        }
+
+        .property-value {
+            color: #666;
+            margin-left: 10px;
+        }
+
+        .comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .note strong {
+            color: #856404;
+        }
+
+        ul {
+            margin: 10px 0 10px 20px;
+        }
+
+        li {
+            margin: 5px 0;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #c7254e;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>GraphObject API</h1>
+        <p class="subtitle">Complete Reference Documentation</p>
+    </header>
+
+    <div class="container">
+        <nav>
+            <div class="nav-links">
+                <a href="#graphobject">GraphObject</a>
+                <a href="#keyboard">KeyboardTrigger</a>
+                <a href="#trigger">Trigger</a>
+                <a href="#texture">TextureAnim</a>
+                <a href="#animation">Animation</a>
+                <a href="#routine">CodedRoutine</a>
+            </div>
+        </nav>
+
+        <section id="graphobject" class="section">
+            <h2>GraphObject</h2>
+            
+            <h3>Creation Command</h3>
+            <div class="code-block">
+id = new GraphObject(properties...)
+            </div>
+            
+            <ul>
+                <li><strong>id:</strong> <code>string</code></li>
+                <li><strong>properties:</strong> <code>Dictionary&lt;any&gt;</code></li>
+            </ul>
+
+            <h3>Properties</h3>
+            
+            <div class="property">
+                <span class="property-name">enabled</span>
+                <span class="property-value">= false</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">text</span>
+                <span class="property-value">= null</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">fitContent</span>
+                <span class="property-value">= false</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">center</span>
+                <span class="property-value">= false</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">verticalCenter</span>
+                <span class="property-value">= false</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">color</span>
+                <span class="property-value">= "gray"</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">font</span>
+                <span class="property-value">= "Arial"</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">fontSize</span>
+                <span class="property-value">= 18</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">boxColor</span>
+                <span class="property-value">= "transparent"</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">horizontalMargin</span>
+                <span class="property-value">= 0</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">verticalMargin</span>
+                <span class="property-value">= 0</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">textureName</span>
+                <span class="property-value">= null</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">brightness</span>
+                <span class="property-value">= 1</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">contrast</span>
+                <span class="property-value">= 1</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">grayscale</span>
+                <span class="property-value">= 0</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">hueRotate</span>
+                <span class="property-value">= 0 <span class="comment">// deg</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">blur</span>
+                <span class="property-value">= 0 <span class="comment">// px</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">invert</span>
+                <span class="property-value">= 0</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">saturate</span>
+                <span class="property-value">= 1</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">sepia</span>
+                <span class="property-value">= 0</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">opacity</span>
+                <span class="property-value">= 1</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">parent</span>
+                <span class="property-value">= ""</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">x</span>
+                <span class="property-value">= 0</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">y</span>
+                <span class="property-value">= 0</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">z</span>
+                <span class="property-value">= 0</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">scale</span>
+                <span class="property-value">= 1 <span class="comment">// multipliers of canvasResolution</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">rotate</span>
+                <span class="property-value">= 0 <span class="comment">// deg (imageRotation)</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">ignoreParallax</span>
+                <span class="property-value">= !("z" in graphInfo) <span class="comment">// forces the object to ignore camera parallax movement</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">widthScale</span>
+                <span class="property-value">= 1 <span class="comment">// if defined (!=1), ignores imageScale for individual scale</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">heightScale</span>
+                <span class="property-value">= 1 <span class="comment">// if defined (!=1), ignores imageScale for individual scale</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">useEngineUnits</span>
+                <span class="property-value">= !("parent" in graphInfo) <span class="comment">// for scale</span></span>
+            </div>
+        </section>
+
+        <section id="keyboard" class="section">
+            <h2>KeyboardTrigger</h2>
+            
+            <h3>Creation Command</h3>
+            <div class="code-block">
+new KeyboardTrigger(keyboardShortcut..., behaviors...)
+            </div>
+            
+            <ul>
+                <li><strong>keyboardShortcut:</strong> <code>Array&lt;string&gt;</code> or <code>string</code> — where string is the keyCode(s), array is for key code chains</li>
+                <li><strong>behaviors:</strong> <code>Dictionary&lt;Function&gt;</code></li>
+            </ul>
+
+            <div class="note">
+                <strong>Note:</strong> The <code>keyboardShortcut</code> is used also as KeyboardTrigger id
+            </div>
+
+            <h3>Triggerable Methods</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>onPress</code></td>
+                        <td>Triggered when key is pressed</td>
+                    </tr>
+                    <tr>
+                        <td><code>onHold</code></td>
+                        <td>Triggered while key is held</td>
+                    </tr>
+                    <tr>
+                        <td><code>onRelease</code></td>
+                        <td>Triggered when key is released</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Properties</h3>
+            
+            <div class="property">
+                <span class="property-name">keys</span>
+                <span class="property-value">= typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">enabled</span>
+                <span class="property-value">= true</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onPress</span>
+                <span class="property-value">= null</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onHold</span>
+                <span class="property-value">= null</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onRelease</span>
+                <span class="property-value">= null</span>
+            </div>
+        </section>
+
+        <section id="trigger" class="section">
+            <h2>Trigger</h2>
+            
+            <h3>Creation Command</h3>
+            <div class="code-block">
+id = new Trigger(relatedTo, behaviors...)
+            </div>
+            
+            <ul>
+                <li><strong>id:</strong> <code>string</code></li>
+                <li><strong>relatedTo:</strong> <code>string</code> (optional) — The GraphObject that the trigger is "relatedTo" provides the "shape" of the trigger</li>
+                <li><strong>behaviors:</strong> <code>Dictionary&lt;Function&gt;</code> — The behavior functions can have zero, one or two arguments</li>
+            </ul>
+
+            <h3>Function Signatures</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Signature</th>
+                        <th>Parameter 1</th>
+                        <th>Parameter 2</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="3"><strong>With "relatedTo" parameter:</strong></td>
+                    </tr>
+                    <tr>
+                        <td><code>() =&gt; {}</code></td>
+                        <td>—</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td><code>(engine) =&gt; {}</code></td>
+                        <td>engine instance ref</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td><code>(engine, object) =&gt; {}</code></td>
+                        <td>engine instance ref</td>
+                        <td>reference to related object</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3"><strong>Without "relatedTo" parameter:</strong></td>
+                    </tr>
+                    <tr>
+                        <td><code>() =&gt; {}</code></td>
+                        <td>—</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td><code>(mouseRef) =&gt; {}</code></td>
+                        <td>mouse reference</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td><code>(mouseRef, _) =&gt; {}</code></td>
+                        <td colspan="2">⚠️ This syntax could lead to an engine error</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Triggerable Methods</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>onHold</code></td>
+                        <td>Triggered while mouse button is held</td>
+                    </tr>
+                    <tr>
+                        <td><code>onRelease</code></td>
+                        <td>Triggered when mouse button is released</td>
+                    </tr>
+                    <tr>
+                        <td><code>onEnter</code></td>
+                        <td>Triggered when mouse enters the trigger area</td>
+                    </tr>
+                    <tr>
+                        <td><code>onLeave</code></td>
+                        <td>Triggered when mouse leaves the trigger area</td>
+                    </tr>
+                    <tr>
+                        <td><code>onWheel</code></td>
+                        <td>Triggered on mouse wheel scroll</td>
+                    </tr>
+                    <tr>
+                        <td><code>onMouseMove</code></td>
+                        <td>Triggered on mouse movement</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Properties</h3>
+            
+            <div class="property">
+                <span class="property-name">enabled</span>
+                <span class="property-value">= true</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onHold</span>
+                <span class="property-value">= null</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onRelease</span>
+                <span class="property-value">= null</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onEnter</span>
+                <span class="property-value">= null</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onLeave</span>
+                <span class="property-value">= null</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onWheel</span>
+                <span class="property-value">= null</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onMouseMove</span>
+                <span class="property-value">= null</span>
+            </div>
+        </section>
+
+        <section id="texture" class="section">
+            <h2>TextureAnim</h2>
+            
+            <h3>Creation Command</h3>
+            <div class="code-block">
+id = new TextureAnim(textures..., properties...)
+            </div>
+            
+            <ul>
+                <li><strong>id:</strong> <code>string</code></li>
+                <li><strong>textures:</strong> <code>Array&lt;string&gt;</code> — list of base textures to create the animation (or sprite)</li>
+                <li><strong>properties:</strong> <code>Dictionary&lt;any&gt;</code></li>
+            </ul>
+
+            <h3>Properties</h3>
+            
+            <div class="property">
+                <span class="property-name">duration</span>
+                <span class="property-value">= 1000</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">timer</span>
+                <span class="property-value">= 0</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">speed</span>
+                <span class="property-value">= 1</span>
+            </div>
+        </section>
+
+        <section id="animation" class="section">
+            <h2>Animation</h2>
+            
+            <h3>Creation Command</h3>
+            <div class="code-block">
+id = new Animation(relatedTo, keyframes or changes, properties)
+            </div>
+            
+            <ul>
+                <li><strong>id:</strong> <code>string</code></li>
+                <li><strong>relatedTo:</strong> <code>string</code> — The GraphObject that the animation is "relatedTo"</li>
+                <li><strong>keyframes:</strong> <code>Dictionary&lt;number, Dictionary&lt;any&gt;&gt;</code> — Dictionary with timestamps as keys, changes as values</li>
+                <li><strong>changes:</strong> <code>Dictionary&lt;any&gt;</code> — List of parameters to be set with the animation</li>
+                <li><strong>properties:</strong> <code>Dictionary&lt;any&gt;</code></li>
+            </ul>
+
+            <div class="note">
+                <strong>Note:</strong> keyframes is a dictionary with timestamps as element key, and each element contains the changes to set at that timestamp
+            </div>
+
+            <div class="note">
+                <strong>Note:</strong> changes is the list of parameters to be set with the animation
+            </div>
+
+            <h3>Properties</h3>
+            
+            <div class="property">
+                <span class="property-name">ease</span>
+                <span class="property-value">= aInfo.ease ? ease[aInfo.ease] : ease["linear"]</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">loops</span>
+                <span class="property-value">= "loops" in aInfo ? aInfo.loops * (aInfo.loopback ? 2 : 1) : 1 <span class="comment">// by default 1 loop</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">reverse</span>
+                <span class="property-value">= 0 <span class="comment">// if the animation is played in reverse</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">infinite</span>
+                <span class="property-value">= false <span class="comment">// infinite looping</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">loopback</span>
+                <span class="property-value">= false <span class="comment">// repeat the animation in reverse after end</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">duration</span>
+                <span class="property-value">= 0 <span class="comment">// necessary if using "changes" instead of "keyframes"</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">enabled</span>
+                <span class="property-value">= false</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">delay</span>
+                <span class="property-value">= NaN <span class="comment">// time before start the animation</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">to</span>
+                <span class="property-value">= aInfo.to || {}</span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">onComplete</span>
+                <span class="property-value">= null <span class="comment">// function to run after animation finishes</span></span>
+            </div>
+
+            <div class="property">
+                <span class="property-name">keyframes</span>
+                <span class="property-value">= aInfo.keyframes || {}</span>
+            </div>
+        </section>
+
+        <section id="routine" class="section">
+            <h2>CodedRoutine</h2>
+            
+            <h3>Creation Command</h3>
+            <div class="code-block">
+new CodedRoutine(keyboardShortcut..., behaviors...)
+            </div>
+            
+            <ul>
+                <li><strong>keyboardShortcut:</strong> <code>Array&lt;string&gt;</code> or <code>string</code> — where string is the keyCode(s), array is for key code chains</li>
+                <li><strong>behaviors:</strong> <code>Dictionary&lt;Function&gt;</code></li>
+            </ul>
+
+            <h3>Edit Command</h3>
+            <div class="code-block">
+set elementType id properties...
+            </div>
+            
+            <ul>
+                <li><strong>elementType:</strong> <code>string</code> — Element type</li>
+                <li><strong>id:</strong> <code>string</code> — Element id</li>
+                <li><strong>properties:</strong> <code>Dictionary&lt;any&gt;</code> — Dictionary of properties to be changed</li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>
