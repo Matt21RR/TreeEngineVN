@@ -206,12 +206,12 @@ function generateObjectsDisplayDimentions(
           }
 
           for (let index = 0; index < texts.length; index++) {
-            texts[index].y += objectHeightMargin + (objectTop - objectHeight/2) ;  
+            texts[index].y += objectHeightMargin + (objectTop - objectHeight/2);  
           }
 
           dimentionsPack.corner.y = (objectTop - objectHeight/2);
           dimentionsPack.height = objectHeight;
-          console.log(texts);
+
           dimentionsPack.text!.value = texts;
         }
       }else{

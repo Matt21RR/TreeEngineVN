@@ -21,7 +21,7 @@ class Multimedia extends React.Component{
       const src = this.props.info.src;
       const mime = this.mime = src.split(".").at(-1) == "json" ? "text" : this.props.info.mime;
       if(mime == "text"){
-        fetch(src, {cache: "no-store"}).then(text=>{return text.text()}).then(res=>{
+        fetch(src, {cache: "no-store"}).then(text => text.text()).then(res=>{
           this.textContent = res;
           this.forceUpdate();
         });

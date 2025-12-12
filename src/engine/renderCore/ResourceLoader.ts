@@ -10,19 +10,21 @@ class ResourceLoader{
       if(indexPath.indexOf(".")==0){
         indexPath = indexPath.substring(1);
       }
-      fetch(indexPath)
+      fetch(indexPath, {cache: "no-store"})
         .then(res =>{return res.json()})
         .then(soundsList=>{
           if(Object.keys(soundsList).length > 0){
             Promise.all(Object.keys(soundsList).map(sndName=>
               new Promise(resolveFile=>{
-                fetch(window.projectRoute + "snd/" + soundsList[sndName].replace("./","")).then(res=>res.blob()).then( blob =>{
-                  var reader = new FileReader() ;
-                  reader.onload = function(){ 
-                    const ans = {Base64:this.result,ext:soundsList[sndName].split('.').at(-1),id:sndName};
-                    resolveFile(ans) 
-                  };
-                  reader.readAsDataURL(blob) ;
+                fetch(window.projectRoute + "snd/" + soundsList[sndName].replace("./",""), {cache: "no-store"})
+                  .then(res => res.blob())
+                  .then( blob => {
+                    var reader = new FileReader() ;
+                    reader.onload = function(){ 
+                      const ans = {Base64:this.result,ext:soundsList[sndName].split('.').at(-1),id:sndName};
+                      resolveFile(ans) 
+                    };
+                    reader.readAsDataURL(blob) ;
                 });
               })
             )).then((sounds) => {
@@ -65,8 +67,8 @@ class ResourceLoader{
       if(indexPath.indexOf(".")==0){
         indexPath = indexPath.substring(1);
       }
-      fetch(indexPath)
-        .then(res =>{return res.json()})
+      fetch(indexPath, {cache: "no-store"})
+        .then(res => res.json())
         .then(texturesData=>{
           Promise.all(Object.keys(texturesData).map(textureName=>{
             if(engineRegisteredTexturesList.includes(textureName)){

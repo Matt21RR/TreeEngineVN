@@ -74,7 +74,7 @@ class ChaosInterpreter {
   listScripts(): Promise<Dictionary>{
     const self = this;
     return new Promise((resolve)=>{
-      fetch(self.projectRoot + "scripts/scripts.json").then(res => {return res.json()}).then((scriptsData:Dictionary) =>{
+      fetch(self.projectRoot + "scripts/scripts.json", {cache: "no-store"}).then(res => res.json()).then((scriptsData:Dictionary) =>{
         Object.keys(scriptsData).forEach((scriptId)=>{
           scriptsData[scriptId] = self.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
         })
@@ -90,7 +90,7 @@ class ChaosInterpreter {
 
     console.log(`=> Trying to load ${scriptFileName}`)
     return new Promise(resolve=>{
-      fetch(jsonPath).then(          
+      fetch(jsonPath, {cache: "no-store"}).then(          
         scriptData => scriptData.text()).then((res)=>{
           self.kreator(res,false).then(
           (textScr)=>{
@@ -104,11 +104,11 @@ class ChaosInterpreter {
   }
   loadScripts(doNothing:boolean):Promise<null>{
     const self = this;
-    return new Promise((resolve,reject)=>{
+    return new Promise( resolve =>{
       if(doNothing){
         resolve(null);
       }else{ 
-        fetch(self.projectRoot + "scripts/scripts.json").then(res => res.json() ).then(scriptsData=>{
+        fetch(self.projectRoot + "scripts/scripts.json", {cache: "no-store"}).then(res => res.json() ).then(scriptsData=>{
           const h = Object.keys(scriptsData).map(scriptId => 
             ()=>{
               return new Promise(resolveInner=>{
@@ -178,7 +178,7 @@ class ChaosInterpreter {
       }
       console.warn("Un-understandable or unsupported instruction",instruction);
     }
-    // window.arc = (JSON.stringify(collection));
+
     if(ignoreSceneOrModuleDefinitionCheck){
       return collection.map(inst=>inst.result).join("\n");
     }else{

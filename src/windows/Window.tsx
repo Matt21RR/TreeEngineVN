@@ -190,7 +190,6 @@ class Window extends React.Component<WindowProps> {
   }
   private compensateOutCoords(){
     const coords = this.absoluteCoordsExtractor();
-    console.log(coords);
 
     this.unfullSizedData.left -= coords[0] < 0 ? coords[0] : 0;
     this.unfullSizedData.top -= coords[1] < 0 ? coords[1] : 0;
@@ -206,7 +205,7 @@ class Window extends React.Component<WindowProps> {
     gsap.to("#body"+this.id,{duration:.1,ease:"linear",
       left:this.unfullSizedData.left,
       top:this.unfullSizedData.top
-    }).then(()=>console.log(this.absoluteCoordsExtractor()));
+    });
   }
 
   renderResizeBorders(){

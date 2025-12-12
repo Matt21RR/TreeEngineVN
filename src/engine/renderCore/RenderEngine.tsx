@@ -174,8 +174,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.drawCollisionsMatrix = false;
     this.drawTriggers = false;
 
-    this.objectsToDebug = new Set();//id of the object
-
     this.lambdaConverter = lambdaConverter;
     this.getStr = getStr;
 
@@ -467,6 +465,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
     this.dimentionsPack = [];
     this.renderingOrderById = [];
+
+    this.objectsToDebug = new Set();//id of the object
  
     this.codedRoutines = new RenList();
     this.routines = new Array();
