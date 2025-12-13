@@ -9,12 +9,6 @@ The backend mode is intended for specific visual novel development (include some
 
 It uses vectors and icons by <a href="https://www.svgrepo.com" target="_blank">SVG Repo</a>
 
-## Why this project exists
+## Scripting
 
-This project aims to provide a base engine for it's use in visual novel video games, but not limited to that.
-
-Since it's written in javascript, you can see the results of changes in your game script in real time.
-
-## Aspect to improve
-
-The engine code is not very well documented (or commented, whatever). 
+For scripting info check the scriptingDoc.md file
