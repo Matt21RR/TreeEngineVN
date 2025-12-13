@@ -222,7 +222,7 @@ new CodedRoutine(keyboardShorcut..., behaviors...)
 
 # **Edition Command (for any element type)**
 
-```python
+```js
 set elementType id properties...
 ```
 
