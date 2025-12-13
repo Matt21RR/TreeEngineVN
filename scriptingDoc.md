@@ -147,7 +147,7 @@ onMouseMove = null;
 
 ## Creation Command
 
-```
+```js
 id = new TextureAnim(textures..., properties...)
 ```
 
@@ -170,7 +170,7 @@ speed = 1;
 
 ## Comando de creación
 
-``` python
+```python
 id = new Animation(relatedTo, keyframes or changes, properties)
 ```
 
