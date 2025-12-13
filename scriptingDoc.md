@@ -2,7 +2,7 @@
 
 ## Creation Command
 
-```
+```js
 id = new GraphObject(properties...)
 ```
 
@@ -60,7 +60,7 @@ ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this
 
 ## Creation Command
 
-```
+```js
 new KeyboardTrigger(keyboardShorcut..., behaviors...)
 ```
 
@@ -93,7 +93,7 @@ onRelease = null;
 # Trigger
 
 ## Creation Command
-```
+```js
 id = new Trigger(relatedTo, behaviors...)
 ```
 
@@ -171,7 +171,7 @@ speed = 1;
 ## Comando de creación
 
 ```python
-id = new Animation(relatedTo, keyframes or changes, properties)
+id = new Animation(relatedTo, keyframes... or changes..., properties...)
 ```
 
 - **id**: *`string`*
@@ -209,7 +209,7 @@ onComplete = null; // function to run after the animation finishes
 
 ## Comando de creación
 
-```
+```js
 new CodedRoutine(keyboardShorcut..., behaviors...)
 ```
 
@@ -222,7 +222,7 @@ new CodedRoutine(keyboardShorcut..., behaviors...)
 
 # **Edition Command (for any element type)**
 
-```
+```python
 set elementType id properties...
 ```
 
