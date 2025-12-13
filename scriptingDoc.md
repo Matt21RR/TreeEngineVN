@@ -1,18 +1,20 @@
 # GraphObject
 
-## Comando de creación
+## Creation Command
 
 ```
 id = new GraphObject(properties...)
 ```
 
-- **id**: *string*
-- **properties**: `Dictionary<any>`
+- **id**: *`string`*
+- **properties**: *`Dictionary<any>`*
 
-## Properties
+## Properties (and it's default values)
 
 ```javascript
 enabled = false;
+parent = "";
+
 text = null;
 fitContent = false;
 center = false;
@@ -23,7 +25,9 @@ fontSize = 18;
 boxColor = "transparent";
 horizontalMargin = 0;
 verticalMargin = 0;
+
 textureName = null;
+
 brightness = 1;
 contrast = 1;
 grayscale = 0;
@@ -33,35 +37,35 @@ invert = 0;
 saturate = 1;
 sepia = 0;
 opacity = 1;
-parent = "";
+
 x = 0;
 y = 0;
 z = 0;
-// multipliers of canvasResolution
+
 scale = 1;
-// imageRotation
+widthScale = 1;
+heightScale = 1;
+useEngineUnits = !("parent" in graphInfo); // for scale
 rotate = 0; // deg
 // ignoreParallax forces the object to ignore the camera parallax movement
 ignoreParallax = !("z" in graphInfo);
 ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this._ignoreParallax;
-// if one of these are defined(!=1), ignore the imageScale for the defined individual scale
-widthScale = 1;
-heightScale = 1;
-useEngineUnits = !("parent" in graphInfo); // for scale
 ```
+
+<br>
 
 ---
 
 # KeyboardTrigger
 
-## Comando de creación
+## Creation Command
 
 ```
 new KeyboardTrigger(keyboardShorcut..., behaviors...)
 ```
 
-- **keyboardShorcut**: `Array<string>` or string — where string is the keyCode(s), array is for key code chains.
-- **behaviors**: `Dictionary<Function>`
+- **keyboardShorcut**: *`Array<string>`* or *`string`* — where string is the keyCode(s), array is for key code chains.
+- **behaviors**: *`Dictionary<Function>`*
 
 **Note:** The *keyboardShorcut* is used also as KeyboardTrigger id
 
@@ -76,24 +80,26 @@ new KeyboardTrigger(keyboardShorcut..., behaviors...)
 ```javascript
 keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
 enabled = true;
+
 onPress = null;
 onHold = null;
 onRelease = null;
 ```
 
+<br>
+
 ---
 
 # Trigger
 
-## Comando de creación
-
+## Creation Command
 ```
 id = new Trigger(relatedTo, behaviors...)
 ```
 
-- **id**: string
-- **(not required) relatedTo**: string — The GraphObject that the trigger are "relatedTo" provides the "shape" of the trigger.
-- **behaviors**: `Dictionary<Function>` — The behavior functions can have zero, one or two arguments, in the next order.
+- **id**: *`string`*
+- **(not required) relatedTo**: *`string`* — The GraphObject that the trigger are "relatedTo" provides the "shape" of the trigger.
+- **behaviors**: *`Dictionary<Function>`* — The behavior functions can have zero, one or two arguments, in the next order.
 
 ### When you have the "relatedTo" parameter
 
@@ -124,6 +130,7 @@ id = new Trigger(relatedTo, behaviors...)
 
 ```javascript
 enabled = true;
+
 onHold = null;
 onRelease = null;
 onEnter = null;
@@ -132,19 +139,21 @@ onWheel = null;
 onMouseMove = null;
 ```
 
+<br>
+
 ---
 
 # TextureAnim
 
-## Comando de creación
+## Creation Command
 
 ```
 id = new TextureAnim(textures..., properties...)
 ```
 
-- **id**: string
-- **textures**: `Array<string>` — list of the base textures to create the animation (or sprite)
-- **properties**: `Dictionary<any>`
+- **id**: *`string`*
+- **textures**: *`Array<string>`* — list of the base textures to create the animation (or sprite)
+- **properties**: *`Dictionary<any>`*
 
 ## Properties
 
@@ -153,23 +162,25 @@ duration = 1000;
 speed = 1;
 ```
 
+<br>
+
 ---
 
 # Animation
 
 ## Comando de creación
 
-```
+``` python
 id = new Animation(relatedTo, keyframes or changes, properties)
 ```
 
-- **id**: *string*
-- **relatedTo**: string — The GraphObject that the animation are "relatedTo"
-- **keyframes**: `Dictionary<number, Dictionary<any>>`
+- **id**: *`string`*
+- **relatedTo**: *`string`* — The GraphObject that the animation are "relatedTo"
+- **keyframes**: *`Dictionary<number, Dictionary<any>>`*
 
 **Note:** keyframes is a dictionary with timestamps as element key, and each element are the changes to set in that timestamp
 
-- **changes**: `Dictionary<any>`
+- **changes**: *`Dictionary<any>`*
 
 **Note:** changes is the list of parameters to be set with the animation
 
@@ -183,13 +194,14 @@ loops = "loops" in aInfo ? aInfo.loops * (aInfo.loopback ? 2 : 1) : 1; // by def
 reverse = 0; // if the animation are played in reverse
 infinite = false; // infinite looping
 loopback = false; // repeat the animation in reverse after end
-duration = 0; // is necessary to set this if you use "changes" instead of "keyframes"
+duration = 0; // is required to set this if you use "changes" instead of "keyframes"
 enabled = false;
 delay = NaN; // time before start the animation
 to = aInfo.to || {};
 onComplete = null; // function to run after the animation finishes
-keyframes = aInfo.keyframes || {};
 ```
+
+<br>
 
 ---
 
@@ -201,15 +213,19 @@ keyframes = aInfo.keyframes || {};
 new CodedRoutine(keyboardShorcut..., behaviors...)
 ```
 
-- **keyboardShorcut**: `Array<string>` or string — where string is the keyCode(s), array is for key code chains.
-- **behaviors**: `Dictionary<Function>`
+- **keyboardShorcut**: *`Array<string>`* or string — where string is the keyCode(s), array is for key code chains.
+- **behaviors**: *`Dictionary<Function>`*
 
-## Comando de edición
+<br>
+
+---
+
+# **Edition Command (for any element type)**
 
 ```
 set elementType id properties...
 ```
 
-- **elementType**: string — Element type
-- **id**: string — Element id
-- **properties**: `Dictionary<any>` — Dictionary of properties of the element to be changed
+- **elementType**: *`string`* — Element type
+- **id**: *`string`* — Element id
+- **properties**: *`Dictionary<any>`* — Dictionary of properties of the element to be changed
