@@ -303,11 +303,16 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       h.kreator(scriptFile)
         .then(scriptData=>{
         try {
-          const commands = scriptData[destination].main;
-          this.nodes = scriptData[destination].nodes;
-          const commandsF = new Function ("engine","ExtendedObjects",commands);
-          console.log(commandsF); 
-          commandsF(self,ExtendedObjects);
+          console.warn(scriptData);
+          if(Object.keys(scriptData).length == 0){
+            console.error("Script is empty");
+          }else{
+            const commands = scriptData[destination].main;
+            this.nodes = scriptData[destination].nodes;
+            const commandsF = new Function ("engine","ExtendedObjects",commands);
+            console.log(commandsF); 
+            commandsF(self,ExtendedObjects);
+          }
           self.isReady = true;
           self.forceUpdate();
         } catch (error) {

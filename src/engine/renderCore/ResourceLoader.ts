@@ -10,13 +10,13 @@ class ResourceLoader{
       if(indexPath.indexOf(".")==0){
         indexPath = indexPath.substring(1);
       }
-      fetch(indexPath, {cache: "no-store"})
+      fetch(indexPath)
         .then(res =>{return res.json()})
         .then(soundsList=>{
           if(Object.keys(soundsList).length > 0){
             Promise.all(Object.keys(soundsList).map(sndName=>
               new Promise(resolveFile=>{
-                fetch(window.projectRoute + "snd/" + soundsList[sndName].replace("./",""), {cache: "no-store"})
+                fetch(window.projectRoute + "snd/" + soundsList[sndName].replace("./",""))
                   .then(res => res.blob())
                   .then( blob => {
                     var reader = new FileReader() ;

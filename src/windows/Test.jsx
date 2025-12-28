@@ -4,7 +4,7 @@ import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
 import { ObjectsE } from "../tools/SubTools";
 import EngineTools from "../tools/EngineTools";
 import { FileExplorer } from "../tools/FileExplorer";
-import { TexturesE } from "../tools/TexturesE.tsx";
+import TexturesE from "../tools/TexturesE.tsx";
 import { TriggersE } from "../tools/TriggersE.tsx";
 import ShorcutsE from "../tools/ShorcutsE.tsx";
 class Test extends React.Component{

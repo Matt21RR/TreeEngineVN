@@ -3,8 +3,8 @@ import $ from "jquery";
 import { Dictionary } from "../../../global.ts";
 
 interface InputTextAreaProps {
-  action:(string)=>void,
-  value:string,
+  action?:(string)=>void,
+  value?:string,
   id?:string
   defaultValue?:string,
   height?:string,

@@ -2,9 +2,9 @@ import React from 'react';
 import $ from "jquery";
 import { Button1, IconButton, MenuButton } from './components/Buttons.jsx';
 import Swal from 'sweetalert2';
-import { Loading } from './components/alerts.jsx';
+import Loading from './components/alerts.tsx';
 import byteSize from 'byte-size';
-import { Multimedia } from './Multimedia.jsx';
+import Multimedia from './Multimedia.tsx';
 import download from 'downloadjs';
 
 type DirData = {
@@ -22,7 +22,7 @@ type FileData = {
   size:number,
   route:string,
 }
-type SelectedFileProperties = {
+export type SelectedFileProperties = {
   index:number,
   name:string,
   route:string,
@@ -95,7 +95,7 @@ class FileExplorer extends React.Component{
    * @param {React.DragEvent} e
    * @returns 
    */
-  upload(e){
+  upload(e: DragEvent){
     if(this.actualRoute == "./"){
       Swal.fire("Don't upload on root","","error");
       return;
@@ -142,7 +142,7 @@ class FileExplorer extends React.Component{
       [...e.dataTransfer.items].forEach((item, i) => {
         //If dropped items aren't files, reject them
         if (item.webkitGetAsEntry().isFile) {
-          let file;
+          let file: File;
           var formData = new FormData();
 
           file = item.getAsFile();
@@ -374,7 +374,7 @@ class FileExplorer extends React.Component{
     if(this.selected.show){
       return(
         <Multimedia 
-          setSelected={(indexFiles)=>{
+          setSelected={(indexFiles:number)=>{
               this.selected.show = false;
               this.forceUpdate(()=>{
                 this.setSelected(this.fileIndexList[indexFiles]);

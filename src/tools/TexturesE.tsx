@@ -1,37 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { Button1, MenuButton } from "./components/Buttons.jsx";
 import { Dictionary } from '../global.ts';
 
-class TexturesE extends React.Component {
-  textures: Dictionary<string>;
-  configRoute:string;
-  mounted:boolean;
-  constructor(props) {
-    super(props);
-    this.textures = {};
-    this.configRoute = window.backendRoute + "/renderEngineBackend/game/img/textures.json";
-    this.mounted = false;
-  }
-  componentDidMount(){
-    if(!this.mounted){
-      this.mounted = true;
-      this.fetchData();
-    }
-  }
-  fetchData(){
-    fetch(this.configRoute).then(res => {return res.json()}).then(data=>{
-      this.textures = data;
-      this.forceUpdate();
+export default function TexturesE (){
+  const [textures, setTextures] = useState<Dictionary<string>>({});
+  const configRoute = window.backendRoute + "/renderEngineBackend/game/img/textures.json";
+  const texturesDir = window.backendRoute + "/renderEngineBackend/game/img/";
+
+  useEffect(()=>{
+      fetchData();
+  },[]);
+
+  const fetchData = ()=>{
+    fetch(configRoute).then(res => {return res.json()}).then(data=>{
+      setTextures(data);
     });
-  }
-  listB() {
+  };
+
+  const listB = () => {
     return (
-      Object.keys(this.textures).map((textureId) => (
+      Object.keys(textures).map((textureId) => (
         <div className={'border-4 flex flex-row w-[98%] relative my-1'}>
           <div className={'m-1 h-[7.75rem] w-56 '}
             style={{
-              backgroundImage: ("url('" + this.textures[textureId].replace("./",window.backendRoute + "/renderEngineBackend/game/img/") + "')"),
+              backgroundImage: ("url('" + textures[textureId].replace("./",texturesDir) + "')"),
               backgroundSize: "contain",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "center"
@@ -44,35 +37,34 @@ class TexturesE extends React.Component {
       )
     );
   }
-  upperControls(){
+
+  const upperControls = () => {
     return (
       <div className='flex flex-row'>
-        <Button1 text="Reload" action={()=>{this.fetchData()}}/>
+        <Button1 text="Reload" action={()=>{fetchData()}}/>
         <div className='mx-2 my-auto flex flex-row'>
           <div className='border-2 border-gray-200 my-auto text-sm text-white'>
-            Index file route: {this.configRoute}
+            Index file route: {configRoute}
           </div>
         </div>
       </div>
     );
   }
-  render() {
-    return (
-      <div className='relative w-full h-full pt-5 flex flex-col'>
-        {this.upperControls()}
-        <div className='relative h-full w-full text-white overflow-auto'>
-          <div className='relative h-full w-full px-8 text-white grid-flow-row auto-rows-min md:grid-cols-4 grid-cols-3  grid'>
-            {this.listB()}
-          </div>
-        </div>
-        <div className='bottom-0 h-8 w-full flex flex-col relative'>
-          <div className='relative w-fit my-auto mx-auto text-white text-sm'>
-            The textures need to be defined manually in the script file
-          </div>
-        </div>
-      </div>
 
-    );
-  }
+  return (
+    <div className='relative w-full h-full pt-5 flex flex-col'>
+      {upperControls()}
+      <div className='relative h-full w-full text-white overflow-auto'>
+        <div className='relative h-full w-full px-8 text-white grid-flow-row auto-rows-min md:grid-cols-4 grid-cols-3  grid'>
+          {listB()}
+        </div>
+      </div>
+      <div className='bottom-0 h-8 w-full flex flex-col relative'>
+        <div className='relative w-fit my-auto mx-auto text-white text-sm'>
+          The textures need to be defined manually in the script file
+        </div>
+      </div>
+    </div>
+
+  );
 }
-export {TexturesE}

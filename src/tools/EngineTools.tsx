@@ -15,7 +15,7 @@ export default class EngineTools extends React.Component<EngineToolsProps>{
   sceneName:string;
   selectedScript: number;
   mounted:boolean;
-  constructor(props){
+  constructor(props: EngineToolsProps){
     super(props);
     this.scripts = {};
     this.sceneName = "gameEntrypoint";
