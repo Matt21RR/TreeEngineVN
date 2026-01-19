@@ -362,7 +362,7 @@ class GraphObject extends GraphObjectDataType{
         this._filterStrings[FiltersName.Saturate] = "";
       }else{
         this._saturate = x;
-        this._filterStrings[FiltersName.Saturate] = `saturate(${x}px)`;
+        this._filterStrings[FiltersName.Saturate] = `saturate(${x})`;
       }  
     }
   }
