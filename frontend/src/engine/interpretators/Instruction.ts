@@ -7,7 +7,7 @@ class Instruction extends Array<Token | Instruction>{
   get index():number{
     if(this.length != 0){
       const lastElementInList:Token|Instruction = (this.at(-1) as Token|Instruction);
-      if(lastElementInList.constructor.name == "Instruction"){
+      if(lastElementInList.constructor === Instruction){
         return (lastElementInList as Instruction).index;
       }else{
         return (lastElementInList as Token).index;

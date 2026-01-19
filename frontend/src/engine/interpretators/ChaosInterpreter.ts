@@ -24,6 +24,7 @@ import { RequestFile } from "../../../wailsjs/go/main/App.js";
 import MoveActorInstruction from "./builders/MoveActorInstruction.ts";
 import EmotionChangeInstruction from "./builders/EmotionChangeInstruction.ts";
 import ArriveInstruction from "./builders/ArriveInstruction.ts";
+import SoundInstruction from "./builders/SoundInstruction.ts";
 
 
 class ChaosInterpreter {
@@ -57,11 +58,12 @@ class ChaosInterpreter {
     new WaitInstruction(),
     new MoveActorInstruction(),
     new EmotionChangeInstruction(),
-    new ArriveInstruction()
+    new ArriveInstruction(),
+    new SoundInstruction()
   ];
 
   invokeSupportedInstruction(instructionType: string){
-    return this.supportedInstructions.find(inst => inst.constructor.name == instructionType);
+    return this.supportedInstructions.find(inst => inst.constructor.name == instructionType); //TODO: check this
   }
 
   private getSound(){
@@ -156,17 +158,17 @@ class ChaosInterpreter {
 
   tokenization(script:string){
     script += "\n"; //To avoid the last line to be ignored
-    var tokenList = this.lexer(script).filter(tk=>{return (tk.constructor.name == "Array")||((tk as Token).type != "space")});
-    var abs = this.preParser(tokenList);
+    let tokenList = this.lexer(script).filter(tk=>{return (tk.constructor === Array)||((tk as Token).type != "space")});
+    let abs = this.preParser(tokenList);
     return abs;
   }
 
   private instructionsDesintegrator(script:string, ignoreSceneOrModuleDefinitionCheck = false, recursiveMode=false){
     script += "\n"; //To avoid the last line to be ignored
-    var tokenList = this.lexer(script);
-    var abs = this.preParser(tokenList);
+    let tokenList = this.lexer(script);
+    let abs = this.preParser(tokenList);
     
-    var collection:Array<Interpretation> = [];
+    let collection:Array<Interpretation> = [];
 
     for (let index = 0; index < abs.length; index++) {
       const instruction = abs[index] as Instruction|Token;
@@ -241,11 +243,11 @@ class ChaosInterpreter {
   }
 
   private preParser(tokenList:Array<Token>, bracketsChain:Array<Token> = []):[Instruction,number]|Instruction{
-    var abs:Instruction = new Instruction();
-    var acum:Instruction = bracketsChain.map(a=>a) as Instruction;
-    var isJsCode = false;
-    var loops = 0;
-    var bracketCounter = bracketsChain.length;
+    let abs:Instruction = new Instruction();
+    let acum:Instruction = bracketsChain.map(a=>a) as Instruction;
+    let isJsCode = false;
+    let loops = 0;
+    let bracketCounter = bracketsChain.length;
     for (let idx = 0; idx < tokenList.length; idx++) {
       loops++;
       const token = tokenList[idx];
@@ -309,14 +311,15 @@ class ChaosInterpreter {
         //*en caso de que sea verdad, se debe de convertir inmediatamente ese contenido de instruccion del motor
         //*a codigo de js: new Token(...,js,plausibleInstruction[0].index)
 
-        var plausibleInstruction = new Instruction();
+        let plausibleInstruction = new Instruction();
 
         if(token.type == "lineBreak"){
-          var prevLineBreakFound = false;
+          let prevLineBreakFound = false;
           
           for(let idxB = acum.length-2; idxB > 0; idxB--){
             const tokB = acum[idxB];
-            if(tokB.constructor.name == "Token" && (tokB as Token).type == "lineBreak"){
+
+            if(tokB.constructor === Token && (tokB as Token).type == "lineBreak"){
               prevLineBreakFound = true;
               break;
             }
@@ -349,15 +352,15 @@ class ChaosInterpreter {
     return abs;
   }
 
-  private interpretateInstruction(_instruction:Instruction,recursiveMode = false): Interpretation{
-    var itWasAScriptInstruction = false;
+  private interpretateInstruction(_instruction:Instruction,recursiveMode: boolean): Interpretation{
+    let itWasAScriptInstruction = false;
     let result:Dictionary<any>|string|Instruction = _instruction;
-    let matchName = "";
+    let matchName = ""; //TODO: change this, to handle the class or null reference
     let isAgrupable = false;
     if(_instruction.length == 0){
       return {itWasAScriptInstruction,result,matchName,isAgrupable};
     }
-    const instruction = _instruction.filter(tk=>{return (tk.constructor.name == "Array")||((tk as Token).type != "space")});
+    const instruction = _instruction.filter(tk=>{return (tk.constructor === Array)||((tk as Token).type != "space")});
 
     for (const supportedInstruction of this.supportedInstructions) {
       //@ts-ignore
@@ -365,7 +368,7 @@ class ChaosInterpreter {
       if(res.match){
         itWasAScriptInstruction = true;
         result = res.result as Interpretation;
-        matchName = supportedInstruction.constructor.name;
+        matchName = supportedInstruction.constructor.name; //TODO: check this
         isAgrupable = supportedInstruction.isAgrupable();
         break;
       }
@@ -374,21 +377,21 @@ class ChaosInterpreter {
   }
 
   private haveSceneOrModuleDefinition(interpretedInstructions:Array<Interpretation>){
-    var scenes: Dictionary<{main:string,nodes:Dictionary<string>}> = {};
-    var actualStructureDefinition = {define:ScriptStructure.Scene,id:"gameEntrypoint"};
+    let scenes: Dictionary<{main:string,nodes:Dictionary<string>}> = {};
+    let actualStructureDefinition = {define:ScriptStructure.Scene,id:"gameEntrypoint"};
     scenes[actualStructureDefinition.id] = {main:"",nodes:{}};
 
-    var tag = actualStructureDefinition.id;
-    var nodeTag = "";
+    let tag = actualStructureDefinition.id;
+    let nodeTag = "";
 
     for (const interpretation of interpretedInstructions) {
       if(interpretation.itWasAScriptInstruction){
-        if(interpretation.result.constructor.name == "Object"){
+        if(interpretation.result.constructor === Object){
           const result = interpretation.result as Object;
           if("define" in result && "id" in result){
             const define = ScriptStructure.enumify(result.define as string);
             actualStructureDefinition = {define,id:result.id as string};
-            if([ScriptStructure.Scene,ScriptStructure.Module].includes(define)){
+            if([ScriptStructure.Scene, ScriptStructure.Module].includes(define)){
               tag = actualStructureDefinition.id;
               scenes[tag] = {main:"",nodes:{}};
             }else if(define == ScriptStructure.Node){
@@ -400,7 +403,7 @@ class ChaosInterpreter {
             const end = ScriptStructure.enumify(result.end as string);
             if(end == ScriptStructure.Node){
               nodeTag = "";
-            }else if([ScriptStructure.Scene,ScriptStructure.Module].includes(end)){
+            }else if([ScriptStructure.Scene, ScriptStructure.Module].includes(end)){
               nodeTag = "";
               tag = "";
             }

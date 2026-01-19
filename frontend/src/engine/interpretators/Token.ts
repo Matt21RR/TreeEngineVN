@@ -1,6 +1,6 @@
 export type TokenType = "lineBreak" | "text" | "operator" | "number" | "openBracket" | "closeBracket" | "separator" | "space" | "word" | "jsCode"
 
-export default class Token{
+class Token{
   _value:any
   _type:TokenType
   _index:number
@@ -17,3 +17,5 @@ export default class Token{
   get index(){return this._index;}
   set index(index){this._index = index;}
 }
+
+export default Token
