@@ -313,7 +313,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     RequestFile(scriptRoute)
       .then(res => atob(res))
       .then((scriptFile:string)=>{
-        console.log(scriptFile);
+        // console.log(scriptFile);
         h.kreator(scriptFile)
           .then(scriptData=>{
             try {
@@ -579,9 +579,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           }else{
               //*part one: global alpha
               canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
-
-              //*part two: filtering
-              const filterString = gObject.filterString;
 
               let texts: Array<TextLine> = [];
               if(renderingData.text){
