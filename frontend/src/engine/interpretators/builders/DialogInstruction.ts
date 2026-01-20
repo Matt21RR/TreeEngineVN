@@ -8,7 +8,7 @@ class DialogInstruction extends AgrupableInstructionInterface{
   private specialInstructionReductor(instruction){
     var dec:Array<string> = [];
     for (const token of instruction) {
-      if(token.constructor.name == "Array"){
+      if(token.constructor === Array){
         const configDict = this.getStrParamsFromTokenList(token);
         dec.push(`{type:"config",value:${configDict}}`);
         continue;
@@ -40,7 +40,7 @@ class DialogInstruction extends AgrupableInstructionInterface{
         var emotion = "";
         if(getToken(0).type == "operator" && getToken(0).value == "-"){
           instruction.shift();
-          if(getToken(0).constructor.name == "Array" && getToken(0).length == 3){//Check for dialog with emotion
+          if(getToken(0).constructor === Array && getToken(0).length == 3){//Check for dialog with emotion
             emotion = getToken(0)[1].value as string;
             instruction.shift();
           }

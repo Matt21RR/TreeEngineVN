@@ -12,7 +12,7 @@ class CreateInstruction extends InstructionInterface{
         if(getToken(1).type == "operator" && getToken(1).value == "="){
           if(getToken(2).type == "word" && getToken(2).value == "new"){
             if(getToken(3).type == "word" && creatableObjects.includes(getToken(3).value)){
-              if(getToken(4).constructor.name == "Array"){
+              if(getToken(4).constructor === Array){
                 return {
                   match:true, 
                   branch: getToken(3).value, 
@@ -26,7 +26,7 @@ class CreateInstruction extends InstructionInterface{
       //*OR
       if(getToken(0).type == "word" && getToken(0).value == "new"){
         if(getToken(1).type == "word" && getToken(1).value == "KeyboardTrigger"){
-          if(getToken(2).constructor.name == "Array"){
+          if(getToken(2).constructor === Array){
             return {
               match: true, 
               branch: getToken(1).value, 
