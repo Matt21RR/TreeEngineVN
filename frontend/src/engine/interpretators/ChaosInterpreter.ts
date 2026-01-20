@@ -4,7 +4,6 @@ import DialogInstruction from "./builders/DialogInstruction.ts";
 import LoadInstruction from "./builders/LoadInstruction.ts";
 import ModuleDefinitionInstruction from "./builders/ModuleDefinitionInstruction.ts";
 import NarrationInstruction from "./builders/NarrationInstruction.ts";
-import PlayInstruction from "./builders/PlayInstruction.ts";
 import ResumeInstruction from "./builders/ResumeInstruction.ts";
 import RunInstruction from "./builders/RunInstruction.ts";
 import SceneDefinitionInstruction from "./builders/SceneDefinitionInstruction.ts";
@@ -49,7 +48,6 @@ class ChaosInterpreter {
     new SetSpeakerInstruction(),
     new StructureEndInstruction(),
     new NarrationInstruction(),
-    new PlayInstruction(), 
     new ResumeInstruction(),
     new RunInstruction(),
     new SceneDefinitionInstruction(),
