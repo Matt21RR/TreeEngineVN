@@ -8,7 +8,10 @@ class SetInstruction extends InstructionInterface{
     if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "set"){
       if(getToken(1).type == "word" && creatableObjects.includes(getToken(1).value)){
         if(getToken(2).type == "word" || getToken(2).type == "text"){
-          return {match: true, branch:getToken(1).value, id:getToken(2).type == "word" ? "'"+getToken(2).value+"'" : getToken(2).value};
+          return {
+                  match: true, 
+                  branch: getToken(1).value, 
+                  id: getToken(2).type == "word" ? "'"+getToken(2).value+"'" : getToken(2).value};
         }
       }
     }
