@@ -46,9 +46,6 @@ export default function AudioPlayer(props:AudioPlayerProps){
           setLoop(false);
           sound.loop(false);
           setPlaying(false);
-        },
-        onerror:(err)=>{
-          console.warn(err)
         }
       })
     );
