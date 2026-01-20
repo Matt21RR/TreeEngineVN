@@ -149,20 +149,20 @@ class GraphObject extends GraphObjectDataType{
 
     this._textureName =     graphInfo.texture ?? null;
     //Properties of the graph
-    this._brightness =      graphInfo.brightness ?? 1;
-    this._contrast =        graphInfo.contrast ?? 1;
-    this._grayscale =       graphInfo.grayscale ?? 0;
-    this._hueRotate =       "hueRotate" in graphInfo ? parseFloat(graphInfo.hueRotate): 0;//deg
+    this.brightness =      graphInfo.brightness ?? 1;
+    this.contrast =        graphInfo.contrast ?? 1;
+    this.grayscale =       graphInfo.grayscale ?? 0;
+    this.hueRotate =       "hueRotate" in graphInfo ? parseFloat(graphInfo.hueRotate): 0;//deg
     //***SHADERS
-    this._blur =            "blur" in graphInfo ? parseFloat(graphInfo.blur): 0;//px
+    this.blur =            "blur" in graphInfo ? parseFloat(graphInfo.blur): 0;//px
     //static or shaky
     // _dither:graphInfo.dither != undefined ? graphInfo.dither : 1,
     //***END SHADERS
-    this._invert =          graphInfo.invert ?? 0;
-    this._saturate =        graphInfo.saturate ?? 1;
-    this._sepia =           graphInfo.sepia ?? 0;
+    this.invert =          graphInfo.invert ?? 0;
+    this.saturate =        graphInfo.saturate ?? 1;
+    this.sepia =           graphInfo.sepia ?? 0;
 
-    this._opacity =         graphInfo.opacity ?? 1;
+    this.opacity =         graphInfo.opacity ?? 1;
 
     this._parent =          graphInfo.parent ?? "";
 
@@ -312,7 +312,7 @@ class GraphObject extends GraphObjectDataType{
   }
 
   get hueRotate() {return this._hueRotate+"deg";}
-  set hueRotate(x) {
+  set hueRotate(x:number|string) {
     if(typeof x == "string"){
       this._hueRotate = parseFloat(x) % 360 || 0;
     }else if(typeof x == "number"){
