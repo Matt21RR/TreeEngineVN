@@ -1,102 +1,9 @@
 import React from "react";
 
-import arrow from "./icons/arrow.svg";
-import trash from "./icons/trash.svg";
-import show from "./icons/eye.svg";
-import file from "./icons/file.svg";
-import folder from "./icons/folder.svg";
-import hide from "./icons/eye-closed.svg";
-import cross from "./icons/cross.svg";
-import save from "./icons/save.svg";
-import squares from "./icons/squares.svg";
-import square from "./icons/square.svg";
-import squareFull from "./icons/squareFull.svg";
-import minus from "./icons/minus.svg";
-import plus from "./icons/plus.svg";
-import play from "./icons/play.svg";
-import pause from "./icons/pause.svg";
-import repeat from "./icons/repeat.svg"; 
-
 import gsap from "gsap";
 import $ from "jquery";
 import './highlight-within-textarea/jquery.highlight-within-textarea.js';
 import './highlight-within-textarea/jquery.highlight-within-textarea.css';
-
-const icons ={
-  arrow:arrow,
-  trash:trash,
-  show:show,
-  file:file,
-  folder:folder,
-  hide:hide,
-  cross:cross,
-  save:save,
-  squares:squares,
-  square:square,
-  squareFull:squareFull,
-  minus:minus,
-  plus:plus,
-  play:play,
-  pause:pause,
-  repeat:repeat
-}
-
-class BaseButton extends React.Component{
-  render(){
-    return(
-      <div 
-        className={(this.props.style ?? "") + ((this.props.hide) ? " hidden":"")} 
-        onClick={()=>{this.props.action()}}
-        onMouseEnter={()=>{this.props.enter?.();}}
-        onMouseLeave={()=>{this.props.leave?.();}}>
-        {this.props.text}
-      </div>
-    );
-  }
-}
-class Button1 extends React.Component{
-  render(){
-    return(
-      <div 
-        className={" cursor-pointer p-1 rounded-md "+(this.props.color || "bg-teal-500")+" text-white w-fit h-fit text-[12px] " + (this.props.style ?? "m-1") + ((this.props.hide) ? " hidden":"")} 
-        onClick={()=>{this.props.action()}}
-        onMouseEnter={()=>{this.props.enter?.();}}
-        onMouseLeave={()=>{this.props.leave?.();}}>
-        {this.props.text}
-      </div>
-    );
-  }
-}
-class IconButton extends React.Component{
-  constructor(props){
-    super(props);
-  }
-  render(){
-    return(
-      <div className={`cursor-pointer flex ${this.props.style ?? "h-6 w-6 m-1"} ${(this.props.hide) ? " hidden":""}`} onClick={()=>{this.props.action()}}>
-        <div className={`bg-cover bg-no-repeat ${this.props.iconStyle ?? "w-full h-full"}`}
-          style={{backgroundImage:`url("${icons[this.props.icon]}")`}} />
-      </div>
-    );
-  }
-}
-
-class MenuButton extends React.Component{
-  constructor(props){
-    super(props);
-  }
-  render(){
-    this.textSize = (this.props.textSize ?? 18)+"px";
-    return(
-      <div 
-        className={" cursor-pointer m-1 text-white w-fit h-fit hover:text-slate-400 "  + (this.props.style ?? "") + (this.props.hide ? " hidden":"")} 
-        onClick={"action" in this.props ? ()=>{this.props.action()} : ()=>{throw new Error("Accion para el botón con texto '"+this.props.text+"' no definida")}} 
-        style={{fontSize:this.textSize, fontFamily:"Harry Thin", letterSpacing:"0.15em", transform:"scaleY(0.9)",  filter: "invert(0%)"}}>
-        {this.props.text}
-      </div>
-    );
-  }
-}
 
 class InputList extends React.Component {
   constructor(props) {
@@ -105,9 +12,9 @@ class InputList extends React.Component {
       animate: false,
       showAnimationDone: false,
       activateHideAnimation: false,
-      zIndex: (10),
-      error: ((typeof this.props.action) == "undefined") || (typeof this.props.value == "undefined") || (typeof this.props.options == "undefined"),
-      heightPerOption: (typeof this.props.height == 'string' ? this.props.height : 16),
+      zIndex: 10,
+      error: !this.props.action || !this.props.value || !this.props.options,
+      heightPerOption: parseFloat(this.props.height) ?? 16,
     }
     this.selected = this.props.selected ?? 0;
     this.readOnly = "readOnly" in this.props;
@@ -289,4 +196,4 @@ class InputList extends React.Component {
   }
 }
 
-export {Button1, BaseButton, MenuButton, IconButton, InputList}
+export {InputList}
