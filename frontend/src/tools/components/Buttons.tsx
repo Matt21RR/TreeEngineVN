@@ -81,7 +81,7 @@ export function MenuButton (props: MenuButtonProps){
         letterSpacing:"0.15em", 
         transform:"scaleY(0.9)",  
         filter: "invert(0%)"}}>
-      {this.props.text}
+      {props.text}
     </div>
   );
 }
