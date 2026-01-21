@@ -1,7 +1,7 @@
 import React from "react";
-import { BaseButton } from "../tools/components/Buttons.jsx";
 import Window from "./Window.tsx";
 import { ConnectedComponent, Dictionary } from "../global.ts";
+import { BaseButton } from "../tools/components/Buttons.tsx";
 
 
 type WindowContent = {
