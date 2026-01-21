@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import $ from "jquery";
 import InputTextArea from "./components/inputs/InputTextArea.tsx";
 import AudioPlayer from './AudioPlayer.tsx';
-import { Button1, IconButton } from './components/Buttons.jsx';
+IconButton
 import Swal from 'sweetalert2';
 
 import {SelectedFileProperties} from './FileExplorer.tsx';
 import { Request, RequestFile, RequestFileWithMime } from '../../wailsjs/go/main/App.js';
+import { Button1, IconButton } from './components/Buttons.tsx';
 
 type MultimediaProps = {
   setSelected: (indexFiles: number) => void;
@@ -62,7 +63,6 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
           id={editorId}
           onControl={{Enter:(e)=>{
             e.preventDefault(); 
-            // runScript();
           }}}
         />
         <Button1 
@@ -90,7 +90,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
   
   const audio = (src:string) => {
     return(
-      <div className='mx-auto my-auto w-[30rem]'>
+      <div className='mx-auto my-auto w-120'>
         <AudioPlayer src={src} ext={info.name.split(".").at(-1)} />
       </div>
     );

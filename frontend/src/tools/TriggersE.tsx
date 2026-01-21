@@ -1,9 +1,9 @@
 import React from 'react';
 
-import { MenuButton, Button1 } from "./components/Buttons.jsx";
 import { RenderEngine } from '../engine/renderCore/RenderEngine.tsx';
 import { ObjectsE } from './SubTools.tsx';
 import ListCheckedBox from './components/inputs/ListCheckedBox.tsx';
+import { Button1, MenuButton } from './components/Buttons.tsx';
 
 interface TriggersEProps {
   engine:RenderEngine,

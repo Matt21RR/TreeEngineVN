@@ -1,11 +1,11 @@
 import React from 'react';
 
-import { MenuButton, Button1 } from "./components/Buttons.jsx";
 import GraphObject from "../engine/engineComponents/GraphObject.ts";
 import Swal from 'sweetalert2';
 import { RenderEngine } from '../engine/renderCore/RenderEngine.tsx';
 import InputCheck from './components/inputs/InputCheck.tsx';
 import InputText from './components/inputs/InputText.tsx';
+import { Button1, MenuButton } from './components/Buttons.tsx';
 
 interface PropertyProps {
   object:GraphObject,

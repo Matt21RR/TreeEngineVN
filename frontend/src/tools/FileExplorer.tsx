@@ -1,12 +1,12 @@
 import React from 'react';
 import $ from "jquery";
-import { Button1, IconButton, MenuButton } from './components/Buttons.jsx';
 import Swal from 'sweetalert2';
 import Loading from './components/alerts.tsx';
 import byteSize from 'byte-size';
 import Multimedia from './Multimedia.tsx';
 import download from 'downloadjs';
 import { Request } from '../../wailsjs/go/main/App.js';
+import { Button1, IconButton, MenuButton } from './components/Buttons.tsx';
 
 type DirData = {
   index:number,
@@ -375,6 +375,7 @@ class FileExplorer extends React.Component{
         onDragOver={(e)=>{e.preventDefault();}}
         onDrop={(e)=>{
           e.preventDefault();
+          //@ts-ignore
           this.upload(e);
           }}>
         {this.upperControls()}

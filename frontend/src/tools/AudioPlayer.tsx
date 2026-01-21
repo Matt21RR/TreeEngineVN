@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {Howl} from 'howler';
 import $ from "jquery";
-import { IconButton } from './components/Buttons.jsx';
+import { IconButton } from './components/Buttons.tsx';
 
 interface AudioPlayerProps{
   src:string;
@@ -12,7 +12,6 @@ export default function AudioPlayer(props:AudioPlayerProps){
   const [id, setId] = useState("");
   const [loop, setLoop] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [info, setInfo] = useState<Array<string>>([]);
 
   const [soundReady, setSoundReady] = useState(false);
   const [src, setSrc] = useState("");

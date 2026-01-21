@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 
-import { Button1, MenuButton } from "./components/Buttons.jsx";
+
 import { Dictionary } from '../global.ts';
 import { RequestFile } from '../../wailsjs/go/main/App.js';
+import { Button1, MenuButton } from './components/Buttons.tsx';
 
 export default function TexturesE (){
   const [textures, setTextures] = useState<Dictionary<string>>({});
