@@ -323,7 +323,7 @@ Sound id action
 ---
 # Wait, Stop and Resume
 
-> [!NOTE]
+> [!IMPORTANT]
 >Because commands are stacked and executed asynchronously, one after another, the engine must be notified when to wait, stop, or resume executing the commands in the queue.
 
 ## Wait Command
@@ -344,5 +344,5 @@ Wait
 ```ts
 Resume
 ```
-> [!INFO] 
+> [!NOTE] 
 > You may have already suspected this, but just to clarify... yes, “continue” is a reserved word in JavaScript. Therefore, to avoid unexpected problems, “resume” is used instead.
