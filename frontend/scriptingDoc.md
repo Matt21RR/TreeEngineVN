@@ -100,16 +100,6 @@ new KeyboardTrigger(keyboardShorcut..., behaviors...)
 - `onRelease`
 - `onRelease`
 
-### Properties
-
-```javascript
-keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
-enabled = true;
-
-onPress = null;
-onHold = null;
-onRelease = null;
-```
 
 <br>
 
@@ -151,18 +141,6 @@ id = new Trigger(relatedTo, behaviors...)
 - `onWheel`
 - `onMouseMove`
 
-### Properties
-
-```javascript
-enabled = true;
-
-onHold = null;
-onRelease = null;
-onEnter = null;
-onLeave = null;
-onWheel = null;
-onMouseMove = null;
-```
 
 <br>
 
