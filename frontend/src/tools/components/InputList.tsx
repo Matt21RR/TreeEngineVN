@@ -2,23 +2,46 @@ import React from "react";
 
 import gsap from "gsap";
 import $ from "jquery";
-import './highlight-within-textarea/jquery.highlight-within-textarea.js';
-import './highlight-within-textarea/jquery.highlight-within-textarea.css';
 
-class InputList extends React.Component {
-  constructor(props) {
+
+interface InputListProps {
+  action: (number)=>void,
+  value: number,
+  options: Array<any>,
+  height?: number,
+  selected?: number,
+  optionsBoxHeight?:number,
+  placeholder?: string
+}
+
+interface InputListState {
+  animate: boolean,
+  showAnimationDone: boolean,
+  activateHideAnimation: boolean,
+  zIndex: number,
+  error: boolean,
+  heightPerOption: number,
+}
+
+
+class InputList extends React.Component<InputListProps, InputListState> {
+  selected: number
+  optionsBoxId: string
+  inputRef: React.RefObject<HTMLDivElement>
+  optionsBoxRef: React.RefObject<HTMLDivElement>
+
+  constructor(props: InputListProps) {
     super(props);
     this.state = {
       animate: false,
       showAnimationDone: false,
       activateHideAnimation: false,
       zIndex: 10,
-      error: !this.props.action || !this.props.value || !this.props.options,
-      heightPerOption: parseFloat(this.props.height) ?? 16,
+      error: !props.action || !props.value || !props.options,
+      heightPerOption: props.height ?? 16,
     }
-    this.selected = this.props.selected ?? 0;
-    this.readOnly = "readOnly" in this.props;
-    this.boxOptionsId = "boxOptions" + String(window.performance.now()).replaceAll(".","");
+    this.selected = props.selected ?? 0;
+    this.optionsBoxId = "boxOptions" + String(window.performance.now()).replaceAll(".","");
     this.inputRef = React.createRef();
     this.optionsBoxRef = React.createRef();
     this.handleClickOutside = this.handleClickOutside.bind(this);
@@ -27,8 +50,8 @@ class InputList extends React.Component {
   calculateHeight() {
     let boxHeight;
 
-    const optionsBox = this.optionsBoxRef.current.childNodes[1];
-    const customMaxHeight = (this.props.optionsBoxHeight ? this.props.optionsBoxHeight : 0);
+    const optionsBox = this.optionsBoxRef.current.childNodes[1] as HTMLDivElement;
+    const customMaxHeight = (this.props.optionsBoxHeight ?? 0);
 
     if (customMaxHeight > 0 && customMaxHeight < optionsBox.scrollHeight) {
       boxHeight = customMaxHeight;
@@ -38,7 +61,7 @@ class InputList extends React.Component {
 
     }
     //Calcuulate Max
-    var offset = $("#"+this.boxOptionsId).offset();
+    var offset = $("#"+this.optionsBoxId).offset();
     const max = (window.innerHeight -(offset.top-window.scrollY));
     if(boxHeight>max){boxHeight=max;}
     return boxHeight
@@ -56,8 +79,7 @@ class InputList extends React.Component {
         {
           animate: false,
           showAnimationDone: false,
-          activateHideAnimation: false,
-          optionsBoxHeight: 0
+          activateHideAnimation: false
         },
         () => {
           this.animateUnHover();
@@ -71,19 +93,17 @@ class InputList extends React.Component {
     }
   }
   animateHover() {
-    if(this.readOnly){return;}
     const optionsBox = this.optionsBoxRef.current.childNodes[1];
-    gsap.to(optionsBox, 0.4, { height: this.calculateHeight() });
+    gsap.to(optionsBox, { height: this.calculateHeight(), duration: 0.4 });
 
     const inputRef = this.inputRef.current;
-    gsap.to(inputRef, { borderColor: 'rgb(0, 115, 170)',zIndex:50 });
+    gsap.to(inputRef, { borderColor: 'rgb(0, 115, 170)', zIndex:50 });
   }
   animateUnHover() {
-    if(this.readOnly){return;}
     const optionsBox = this.optionsBoxRef.current.childNodes[1];
-    gsap.to(optionsBox, 0.4, { height: '0' });
+    gsap.to(optionsBox, { height: '0', duration: 0.4 });
     let inputRef = this.inputRef.current;
-    gsap.to(inputRef, { borderColor: '#000',zIndex:0 });
+    gsap.to(inputRef, { borderColor: '#000', zIndex:0 });
   }
   hover() {
     this.animateHover();
@@ -108,7 +128,7 @@ class InputList extends React.Component {
   calcScrollAutoDisplace(){
     let heightPerOption = this.state.heightPerOption;
     let optionsBoxHeight = this.calculateHeight();
-    let optionsBox = this.optionsBoxRef.current.childNodes[1];
+    let optionsBox = this.optionsBoxRef.current.childNodes[1] as HTMLDivElement;
     let actualOptionInYAxis = (this.selected+1)*heightPerOption;
 
     if(actualOptionInYAxis > (optionsBox.scrollTop+optionsBoxHeight)){
@@ -127,10 +147,9 @@ class InputList extends React.Component {
           options.map(
             (option, index) => (
               <div
-                className={(selected == index ? "text-white " : "") + (index == 0 ? "" : "") + " py-[2px] text-[13px] px-2 cursor-pointer flex min-" + (customHeight.replace(/ /g, ""))}
+                className={(selected == index ? "text-white " : "") + (index == 0 ? "" : "") + " py-0.5 text-[13px] px-2 cursor-pointer flex min-" + (customHeight.replace(/ /g, ""))}
                 style={{ backgroundColor: (selected == index ? "rgb(10, 67, 145)" : "") }}
                 key={index}
-                value={index}
                 onClick={() => { this.action(index, option) }}>
                 <div className="my-auto w-fit h-fit">
                   {option}
@@ -149,17 +168,17 @@ class InputList extends React.Component {
     }
   }
   render() {
-    let placeholder = (typeof this.props.placeholder == 'string' ? this.props.placeholder : 'Seleccionar');
+    let placeholder = (this.props.placeholder ?? 'Seleccionar');
     let textValue = this.selected != null ? this.props.options[this.selected] : placeholder;
     if(this.selected == -1){
       textValue = "";
     }
     let height = "h-[28px] ";
-    let contStyle = this.props.contStyle ?? " w-[217px]";
-    let fatherStyle = typeof this.props.fatherStyle == 'string' ? ' ' + this.props.fatherStyle + ' ' : '';
-    let eStyle = this.props.eStyle ?? " fixed "
+    let contStyle = " w-[217px]";
+    let fatherStyle = '';
+    let eStyle = " fixed ";
     return (
-      <div className={contStyle + " h-[28px] flex m-1 relative"}>
+      <div className={contStyle + " h-7 flex m-1 relative"}>
         <div className={"  "+ eStyle}>
           <div
             style={{ zIndex: this.state.zIndex }}
@@ -180,7 +199,7 @@ class InputList extends React.Component {
             </div>
             <div
               className=" w-full h-fit relative"
-              id={this.boxOptionsId}
+              id={this.optionsBoxId}
               ref={this.optionsBoxRef}>
               <div className="absolute top-0 w-full h-0"/>
               <div

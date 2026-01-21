@@ -2,6 +2,10 @@ import React from "react";
 import $ from "jquery";
 import { Dictionary } from "../../../global.ts";
 
+import '../highlight-within-textarea/jquery.highlight-within-textarea.js';
+//@ts-ignore
+import '../highlight-within-textarea/jquery.highlight-within-textarea.css';
+
 interface InputTextAreaProps {
   action?:(string)=>void,
   value?:string,
