@@ -1,11 +1,12 @@
 import React from "react";
-import { Button1, IconButton, InputList} from "./components/Buttons.jsx";
+import { InputList} from "./components/Buttons.jsx";
 import { Chaos } from "../engine/interpretators/ChaosInterpreter.ts";
 import { Dictionary } from "../global.ts";
 import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
 import InputText from "./components/inputs/InputText.tsx";
 import InputCheck from "./components/inputs/InputCheck.tsx";
 import { ToggleFullscreen } from "../../wailsjs/go/main/App.js";
+import { Button1, IconButton } from "./components/Buttons.tsx";
 
 interface EngineToolsProps {
   engine: RenderEngine
@@ -120,43 +121,55 @@ export default class EngineTools extends React.Component<EngineToolsProps>{
       );
     }
   }
-  render(){
+
+  buttons(){
     const engine = this.props.engine;
     const canvasObject = engine.canvasRef.object;
-    return(<>
-      <Button1 text={`Perspective: ${engine.camera.usePerspective}`} action={()=>{
-        engine.camera.usePerspective = !engine.camera.usePerspective;
-        this.forceUpdate();
-      }}/>
-      <Button1 text={"Restart canvas"} action={()=>{
-        canvasObject.resetEngine();
-        this.forceUpdate();
-      }}/>
-      <Button1 text={"Draw triggers: "+engine.drawTriggers} action={()=>{
-        engine.drawTriggers = !engine.drawTriggers;
-        engine.forceUpdate();
-        this.forceUpdate();
-      }}/>
-      <Button1 text={"Draw collisions matrix: "+engine.drawCollisionsMatrix} action={()=>{
-        engine.drawCollisionsMatrix = !engine.drawCollisionsMatrix;
-        engine.forceUpdate();
-        this.forceUpdate();
-      }}/>
-      <Button1 text={"Show fps: "+engine.showFps} action={()=>{
-        engine.showFps = !engine.showFps;
-        canvasObject.showFps = !canvasObject.showFps;
-        this.forceUpdate();
-        canvasObject.forceUpdate();
-      }}/>
+    return <div className="flex gap-6">
+      <div>
+        <Button1 text={`Perspective: ${engine.camera.usePerspective}`} action={()=>{
+          engine.camera.usePerspective = !engine.camera.usePerspective;
+          this.forceUpdate();
+        }}/>
+        <Button1 text={"Restart canvas"} action={()=>{
+          canvasObject.resetEngine();
+          this.forceUpdate();
+        }}/>
+        <Button1 text={"Draw triggers: "+engine.drawTriggers} action={()=>{
+          engine.drawTriggers = !engine.drawTriggers;
+          engine.forceUpdate();
+          this.forceUpdate();
+        }}/>
+      </div>
+      <div>
+        <Button1 text={"Draw collisions matrix: "+engine.drawCollisionsMatrix} action={()=>{
+          engine.drawCollisionsMatrix = !engine.drawCollisionsMatrix;
+          engine.forceUpdate();
+          this.forceUpdate();
+        }}/>
+        <Button1 text={"Show fps: "+engine.showFps} action={()=>{
+          engine.showFps = !engine.showFps;
+          canvasObject.showFps = !canvasObject.showFps;
+          this.forceUpdate();
+          canvasObject.forceUpdate();
+        }}/>
 
-      <Button1 text="Toggle fullscreen"
-        action={()=>{ToggleFullscreen()}}
-      />
+        <Button1 text="Toggle fullscreen"
+          action={()=>{ToggleFullscreen()}}
+        />
+      </div>
+        
+      </div>
+  }
+
+  render(){
+    return(<div>
+      {this.buttons()}
 
       {this.scriptSelector()}
       {this.speedControls()}
       {this.cameraControls()}
       {this.fpsControls()}
-    </>)
+    </div>)
   }
 }
