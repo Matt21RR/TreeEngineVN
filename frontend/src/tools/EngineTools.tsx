@@ -1,5 +1,5 @@
 import React from "react";
-import { InputList} from "./components/Buttons.jsx";
+import { InputList} from "./components/InputList.tsx";
 import { Chaos } from "../engine/interpretators/ChaosInterpreter.ts";
 import { Dictionary } from "../global.ts";
 import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
