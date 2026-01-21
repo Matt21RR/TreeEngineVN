@@ -9,7 +9,7 @@ id = new GraphObject(properties...)
 - **id**: *`string`*
 - **properties**: *`Dictionary<any>`*
 
-## Properties (and it's default values)
+### Properties (and it's default values)
 
 ```javascript
 enabled = false;
@@ -98,9 +98,9 @@ new KeyboardTrigger(keyboardShorcut..., behaviors...)
 
 - `onHold`
 - `onRelease`
-- `oRelease`
+- `onRelease`
 
-## Properties
+### Properties
 
 ```javascript
 keys = typeof tInfo.keys == "string" ? [tInfo.keys] : tInfo.keys;
@@ -151,7 +151,7 @@ id = new Trigger(relatedTo, behaviors...)
 - `onWheel`
 - `onMouseMove`
 
-## Properties
+### Properties
 
 ```javascript
 enabled = true;
@@ -180,7 +180,7 @@ id = new TextureAnim(textures..., properties...)
 - **textures**: *`Array<string>`* — list of the base textures to create the animation (or sprite)
 - **properties**: *`Dictionary<any>`*
 
-## Properties
+### Properties
 
 ```javascript
 duration = 1000;
@@ -193,7 +193,7 @@ speed = 1;
 
 # Animation
 
-## Comando de creación
+## Creation Command
 
 ```python
 id = new Animation(relatedTo, keyframes... or changes..., properties...)
@@ -213,7 +213,7 @@ id = new Animation(relatedTo, keyframes... or changes..., properties...)
 
 - **properties**: *`Dictionary<any>`*
 
-## Properties
+### Properties
 
 ```javascript
 ease = aInfo.ease ? ease[aInfo.ease] : ease["linear"];
@@ -234,7 +234,7 @@ onComplete = null; // function to run after the animation finishes
 
 # CodedRoutine
 
-## Comando de creación
+## Creation Command
 
 ```js
 new CodedRoutine(keyboardShorcut..., behaviors...)
@@ -249,18 +249,27 @@ new CodedRoutine(keyboardShorcut..., behaviors...)
 
 # StageMark
 
-## Comando de creación
+## Creation Command
 
 ```ts
-id = new StageMark({x:number, y:number})
+id = new StageMark(properties...)
 ```
 - **id**: *`string`*
+- **properties**: *`Dictionary<number>`*
+
+### Properties (and it's default values)
+
+```ts
+  x: number = null
+  y: number = null
+  z: number = null
+```
 
 <br>
 
 ---
 # Actor
-## Comando de creación
+## Creation Command
 
 ```ts
 id = new Actor(properties...)
@@ -268,7 +277,7 @@ id = new Actor(properties...)
 - **id**: *`string`*
 - **properties**: *`Dictionary<any>`*
 
-## Properties (and it's default values)
+### Properties (and it's default values)
 
 ```ts
   active: boolean = false
@@ -278,7 +287,7 @@ id = new Actor(properties...)
 ```
 
 > [!NOTE]
-> Cuando el script es interpretado, algunas de las propiedades del actor construido difieren en su tipo con respecto a los parametros pasados:
+> When the script is interpreted, some of the properties of the constructed actor differ in type from the parameters passed:
 > ```ts 
 > body: GraphArray
 > emotions: Dictionary<GraphArray>
@@ -289,7 +298,7 @@ id = new Actor(properties...)
 
 ---
 
-# **Edition Command (for any element type)**
+# **Edition Command (for any element type except Sound)**
 
 ```python
 set elementType id properties...
@@ -298,3 +307,35 @@ set elementType id properties...
 - **elementType**: *`string`* — Element type
 - **id**: *`string`* — Element id
 - **properties**: *`Dictionary<any>`* — Dictionary of properties of the element to be changed
+
+<br>
+
+---
+# Sound
+## Edition Command
+
+```ts
+Sound id properties...
+```
+- **id**: *`string`*
+- **properties**: *`Dictionary<any>`*
+
+### Properties (and it's default values)
+
+```ts
+  loop: boolean = false
+```
+
+## Action Command
+
+```ts
+Sound id action
+```
+- **id**: *`string`*
+- **action**: *`string`*
+
+### Available actions
+
+- `play`
+- `pause`
+- `stop`
