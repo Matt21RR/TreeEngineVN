@@ -176,8 +176,7 @@ class GraphObject extends GraphObjectDataType{
     this._rotate =          "rotate" in graphInfo ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0;
 
     //ignoreParallax forces the object to ignore the camera parallax movement
-    this._ignoreParallax = !("z" in graphInfo);
-    this._ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this._ignoreParallax;
+    this._ignoreParallax = !!graphInfo.ignoreParallax;
     //if one of these are defined(!=1), ignore the imageScale for the defined individual scale
     //Todo: force the engine to use this when it's a text object.
     this._widthScale =     graphInfo.widthScale ?? 1;
