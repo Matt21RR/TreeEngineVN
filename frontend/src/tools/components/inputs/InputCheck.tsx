@@ -5,7 +5,6 @@ interface InputCheckProps{
   checked?:boolean
   label?: string
   action?: (checked?: boolean)=>void
-  selfSet?: (self: InputCheck)=>void
 }
 
 export default function InputCheck (props: InputCheckProps){
@@ -18,8 +17,7 @@ export default function InputCheck (props: InputCheckProps){
    return(
     <div 
       onClick={()=>{
-        setChecked(!checked);
-        props.action?.(checked);
+        props.action?.(!checked);
       }}
       className="flex mx-3">
       <div className={"border mr-1 h-[0.8rem] w-[0.8rem] my-auto border-white "+(checked ? "bg-green-700": "")}/>

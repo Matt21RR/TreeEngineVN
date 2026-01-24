@@ -217,7 +217,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
       this.displayObserver = new ResizeObserver(() => {
         if(!("avoidResizeBlackout" in this.props)){
-          gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 0 });
+          gsap.to(document.getElementById("engineDisplay"+this.id), { opacity: 0, duration: 0 });
         }
         clearTimeout(this.resizeTimeout);
         this.resizeTimeout = window.setTimeout(
@@ -229,7 +229,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
             }
 
             if(!("avoidResizeBlackout" in this.props)){
-              gsap.to(document.getElementById("engineDisplay"+this.id), 0, { opacity: 1 });
+              gsap.to(document.getElementById("engineDisplay"+this.id), { opacity: 1, duration: 0 });
             }
           }, 800);
       });
@@ -372,8 +372,9 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
     this.engineDisplayRes = RenderMisc.displayResolutionCalc(aspectRatio,w);
 
-    gsap.to(engDisplay, 0, 
+    gsap.to(engDisplay, 
       { 
+        duration: 0,
         width : this.engineDisplayRes.width + "px", 
         height : this.engineDisplayRes.height + "px"
       } 

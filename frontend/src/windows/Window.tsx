@@ -110,7 +110,10 @@ class Window extends React.Component<WindowProps> {
       top: parseFloat(w.style.top) || 0
     }
     
-    gsap.to("#body"+this.id,{duration:.15,width:window.innerWidth,ease:"linear",
+    gsap.to("#body"+this.id, {
+      duration:.15,
+      ease:"linear",
+      width:window.innerWidth, 
       height:window.innerHeight,
       left:-coords[0],
       top:-coords[1],
@@ -121,7 +124,9 @@ class Window extends React.Component<WindowProps> {
     this.fullSized = false;
     this.forceUpdate();
 
-    gsap.to("#body"+this.id,{duration:.1,ease:"linear",
+    gsap.to("#body"+this.id, {
+      duration:.1, 
+      ease:"linear",
       width:this.unfullSizedData.width,
       height:this.unfullSizedData.height,
       left:this.unfullSizedData.left,
@@ -202,7 +207,9 @@ class Window extends React.Component<WindowProps> {
       this.unfullSizedData.top += window.innerHeight - coords[1]-35;
     }
 
-    gsap.to("#body"+this.id,{duration:.1,ease:"linear",
+    gsap.to("#body"+this.id,{
+      duration:.1,
+      ease:"linear",
       left:this.unfullSizedData.left,
       top:this.unfullSizedData.top
     });

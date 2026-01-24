@@ -41,8 +41,8 @@ class UI extends React.Component{
   private closeDecide(finalDecision: Decision){
     const decideRef = this.decideRef.current;
     this.base.current.style.pointerEvents = "none";
-    gsap.to(decideRef,{duration:0.15,height:0,opacity:0}).then(()=>{
-      gsap.to(decideRef,{height:"fit-content"});
+    gsap.to(decideRef, {duration:0.15, height:0, opacity:0}).then(()=>{
+      gsap.to(decideRef, {height:"fit-content"});
       RenderEngine.getInstance().callThisShitWhenDecisionEnds(RenderEngine.getInstance(),finalDecision);
     });
   }
@@ -50,9 +50,9 @@ class UI extends React.Component{
     const decideRef = this.decideRef.current;
     const h = decideRef.clientHeight;
     this.base.current.style.pointerEvents = "auto";
-    gsap.to(decideRef,{height:0,overflowY:"hidden"}).then(()=>{
-      gsap.to(decideRef,{opacity:1});
-      gsap.to(decideRef,{duration:0.15,height:h});
+    gsap.to(decideRef, {height:0, overflowY:"hidden"}).then(()=>{
+      gsap.to(decideRef, {opacity:1});
+      gsap.to(decideRef, {duration:0.15, height:h});
     });
   }
   private decideOptions(){

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useReducer, useRef, useState } from 'react';
 
 import GraphObject from "../engine/engineComponents/GraphObject.ts";
 import Swal from 'sweetalert2';
@@ -14,76 +14,98 @@ interface PropertyProps {
   keyd:string
 }
 
-class Property extends React.Component<PropertyProps>{
-  checkNullRef:InputCheck;
-  inputRef: HTMLInputElement;
-  isNull:boolean;
-  constructor(props){
-    super(props);
-    this.inputRef = null;
-    this.checkNullRef = null;
+function Property (props: PropertyProps) {
+  const [isNull, setIsNull] = useState(props.defaultValue == null);
+  const [isFunction, setIsFunction] = useState(typeof props.defaultValue == "function");
+  const [_, forceUpdate] = useReducer(x => x + 1, 0);
+  const defaultValue = useRef(isFunction ? props.defaultValue.toString() : props.defaultValue );
 
-    this.isNull = this.props.defaultValue==null;
+  const setDefaultValue = (e)=>{
+    // throw new Error ("");
+    console.log(props.type);
+    defaultValue.current = e;
+    forceUpdate();
+    // setDefaultValuer(e);
   }
-  render(){
-    const object = this.props.object;
-    const type = this.props.type;
-    const key = this.props.keyd;
-    const defaultValue = this.props.defaultValue;
-    
-    const change = (e)=>{
-      if(type.includes("number")){
-        if(isNaN(e)){
-          return;
-        }
-        e *= 1;
-      }
-      object[key] = e;
-      this.forceUpdate();
+
+  useEffect(()=>{
+    try {
+      console.log(props.defaultValue);
+      setDefaultValue(props.defaultValue); 
+    } catch (error) {
+      setDefaultValue("err")
     }
-    
-    return(
-        <div className='flex'>
-          <div className='w-48'>{key}</div>
-          {type == "boolean"?
-            <InputCheck
-              checked={defaultValue}
-              action={(e)=>{
-                change(e);
-              }}
-              label={defaultValue}
-            />
-            :
-            <InputText 
-            type={type=="number"? "number" : "text"}
-            defaultValue={defaultValue}
-            action={(e)=>{
-              change(e);
-              this.isNull = false;
-              if(this.checkNullRef != null){
-                this.checkNullRef.checked = false;
-                this.checkNullRef.forceUpdate();
-              }
-            }}
-            selfSet={(e)=>{this.inputRef = e}}
-            />
-          }
-          {type.includes("null") ? 
-            <InputCheck 
-              label="isNull" 
-              checked={defaultValue==null}
-              selfSet={(e)=>{this.checkNullRef = e}}
-              action={(e)=>{
-                if(e){
-                  this.isNull = true;
-                  this.inputRef.value = "";
-                  change(null);
-                }
-              }}/>
-          : <></>}
-        </div>
-    );
+  },[]);
+
+  const object = props.object;
+  const type = props.type;
+  const key = props.keyd;
+
+  const change = (e)=>{
+    console.warn("changing");
+    if(type.includes("number")){
+      if(isNaN(e)){
+        return;
+      }
+      e *= 1;
+    }
+    if(isFunction){
+      try {
+        object[key] = (new Function ("","return " + e))();  
+      } catch (error) {
+        console.error("Invalid function");
+        object[key] = null;
+      }
+    }else{
+      object[key] = e;
+    }
+    setDefaultValue(e);
   }
+    
+  return(
+    <div className='flex'>
+      <div className='w-48'>{key}</div>
+      {type == "boolean"?
+        <InputCheck
+          checked={defaultValue.current}
+          action={(e)=>{
+            console.log(e);
+            change(e);
+          }}
+          label={defaultValue.current}
+        />
+        :
+        <InputText 
+          type={type=="number"? "number" : "text"}
+          defaultValue={defaultValue.current}
+          action={(e)=>{
+            change(e);
+            setIsNull(false);
+          }}
+        />
+      }
+      {type.includes("null") ? 
+        <InputCheck 
+          label="isNull" 
+          checked={defaultValue.current==null}
+          action={(e)=>{
+            if(e){
+              setIsNull(true);
+              change(null);
+            }
+          }}/>
+      : <></>}
+
+      {type.includes("function") ? 
+        <InputCheck 
+          label="isFunction" 
+          checked={isFunction}
+          action={(e)=>{
+            setIsFunction(e)
+          }}/>
+      : <></>}
+    </div>
+  );
 }
 
 interface ObjectsEProps {
@@ -167,14 +189,15 @@ class ObjectsE extends React.Component<ObjectsEProps> {
 
       return(
         Object.keys(objInfo).map(key=>(
-            <Property
-              object={obj}
-              key={Math.random()+window.performance.now()}
-              keyd={key}
-              type={types[key]}
-              defaultValue={objInfo[key]}
-            />
-          ))
+          <Property
+            object={obj}
+            key={Math.random()+window.performance.now()}
+            keyd={key}
+            type={types[key]}
+            // defaultValue={""}
+            defaultValue={objInfo[key]}
+          />
+        ))
       );
     }
   }
