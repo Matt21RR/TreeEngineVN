@@ -21,16 +21,12 @@ function Property (props: PropertyProps) {
   const defaultValue = useRef(isFunction ? props.defaultValue.toString() : props.defaultValue );
 
   const setDefaultValue = (e)=>{
-    // throw new Error ("");
-    console.log(props.type);
     defaultValue.current = e;
     forceUpdate();
-    // setDefaultValuer(e);
   }
 
   useEffect(()=>{
     try {
-      console.log(props.defaultValue);
       setDefaultValue(props.defaultValue); 
     } catch (error) {
       setDefaultValue("err")
@@ -42,7 +38,6 @@ function Property (props: PropertyProps) {
   const key = props.keyd;
 
   const change = (e)=>{
-    console.warn("changing");
     if(type.includes("number")){
       if(isNaN(e)){
         return;
@@ -53,7 +48,6 @@ function Property (props: PropertyProps) {
       try {
         object[key] = (new Function ("","return " + e))();  
       } catch (error) {
-        console.error("Invalid function");
         object[key] = null;
       }
     }else{
@@ -69,7 +63,6 @@ function Property (props: PropertyProps) {
         <InputCheck
           checked={defaultValue.current}
           action={(e)=>{
-            console.log(e);
             change(e);
           }}
           label={defaultValue.current}
@@ -194,7 +187,6 @@ class ObjectsE extends React.Component<ObjectsEProps> {
             key={Math.random()+window.performance.now()}
             keyd={key}
             type={types[key]}
-            // defaultValue={""}
             defaultValue={objInfo[key]}
           />
         ))
@@ -334,27 +326,30 @@ class ObjectsE extends React.Component<ObjectsEProps> {
   render(){
     const eng = this.props.engine;
       return(
-        <div className='text-white flex flex-row h-full'>
-          <div className="flex flex-col max-h-full p-2">
+        <div className='text-white grid grid-cols-[180px_auto_1fr] h-full w-full'>
+          <div className="grid grid-rows-[auto_auto_auto_1fr] h-full overflow-hidden p-2">
             <div>
               Objects List
             </div>
             {this.creationButton()}
             {this.cloneButton()}
-            <MenuButton text="Unselect" action={()=>{eng.objectsToDebug.clear();this.selectedObject=""; this.forceUpdate();}}/>
+            <MenuButton text="Unselect / Refresh" action={()=>{eng.objectsToDebug.clear();this.selectedObject=""; this.forceUpdate();}}/>
             <div className="relative w-full overflow-auto">
               {this.objectsList()}
             </div>
           </div>
-          <div className="flex flex-col h-full w-full p-2">
+          <div className="text-gray-200 w-0.5 h-full"/>
+          <div className="h-full w-full max-w-full p-2 overflow-hidden">
             <div>
               Edit
             </div>
-
-            <div className="relative h-full w-full overflow-hidden text-sm px-2 flex flex-col">
-              <div className='grow overflow-auto'>
+            <div className="h-full overflow-hidden text-sm flex flex-col">
+              <div className='flex flex-row px-2'>
                 {this.selectedObject == "" ? null : this.cloneSelectedButton()}
                 {this.selectedObject == "" ? null : this.deleteSelectedButton()}
+              </div>
+              <hr className="text-gray-200 my-1"/>
+              <div className='overflow-auto w-auto px-2'>
                 {this.listProperties()}
               </div>
             </div>
