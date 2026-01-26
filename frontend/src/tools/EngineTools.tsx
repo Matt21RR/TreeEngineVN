@@ -49,6 +49,7 @@ export default function EngineTools(props:EngineToolsProps){
       </div>
     );
   }
+
   const speedControls = () => {
     const engine = props.engine;
     return (
@@ -63,9 +64,9 @@ export default function EngineTools(props:EngineToolsProps){
       </div>
     );
   }
+
   const cameraControls = () => {
-    const engine = props.engine;
-    const camera = engine.camera;
+    const camera = props.engine.camera;
 
     return (
       <div className="flex flex-col text-white">
@@ -129,7 +130,7 @@ export default function EngineTools(props:EngineToolsProps){
         />
       </div>
         
-      </div>
+    </div>
   }
 
 

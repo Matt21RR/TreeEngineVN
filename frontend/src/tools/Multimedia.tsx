@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import $ from "jquery";
 import InputTextArea from "./components/inputs/InputTextArea.tsx";
 import AudioPlayer from './AudioPlayer.tsx';
-IconButton
 import Swal from 'sweetalert2';
 
 import {SelectedFileProperties} from './FileExplorer.tsx';

@@ -5,7 +5,7 @@ import { ObjectsE } from "../tools/SubTools";
 import EngineTools from "../tools/EngineTools";
 import { FileExplorer } from "../tools/FileExplorer";
 import TexturesE from "../tools/TexturesE.tsx";
-import { TriggersE } from "../tools/TriggersE.tsx";
+import TriggersE from "../tools/TriggersE.tsx";
 
 class Test extends React.Component{
   constructor(props){

@@ -5,7 +5,7 @@ import $ from "jquery";
 
 
 interface InputListProps {
-  action: (number)=>void,
+  action: (value: number)=>void,
   value: number,
   options: Array<any>,
   height?: number,

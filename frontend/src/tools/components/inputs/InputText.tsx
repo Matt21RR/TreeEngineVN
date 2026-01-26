@@ -1,5 +1,5 @@
 import React from "react";
-import $ from "jquery"
+import $ from "jquery";
 
 interface InputTextProps {
   id?:string,
@@ -14,7 +14,7 @@ interface InputTextProps {
 export default class InputText extends React.Component<InputTextProps>{
   id:string;
   mounted:boolean;
-  constructor(props){
+  constructor(props: InputTextProps){
     super(props);
     this.id = this.props.id || ("inputTextArea" + String(window.performance.now()).replaceAll(".",""));
     this.mounted = false

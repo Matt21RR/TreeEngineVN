@@ -49,8 +49,32 @@ export default class InputTextArea extends React.Component<InputTextAreaProps, I
       $('#'+this.id).highlightWithinTextarea({
         highlight: [
             {
-              highlight: [/^(move)\s+(\w+)\s+(to)\s+(\w+)\s*\n/gm, /^(move)\s+(\w+)\s+(to)\s+(\w+)\s+(in)\s+(\d+)\s*\n/gm],
+              highlight: /node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm,
+              secondPassRegex: /((?<!\n)^node)( |\t)+:( |\t)+\w+( |\t)*\n/g,
+              className: 'border-t-3 border-l-1 text-rose-400 m-l-[-1px]'
+            },
+            {
+              highlight: /node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm,
+              secondPassRegex: /(( *)node( |\t)+ends( |\t)*(?!\n)$)/gm,
+              className: 'border-b-3 border-r-3 text-rose-400'
+            },
+            {
+              highlight: /node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm,
+              className: 'bg-neutral-900'
+            },
+            {
+              highlight: [/^(move)( |\t)+(\w+)( |\t)+(to)( |\t)+(\w+)( |\t)*$/gm, /^( |\t)*(move)( |\t)+(\w+)( |\t)+(to)( |\t)+(\w+)( |\t)+(in)( |\t)+(\d+)( |\t)*$/gm],
               secondPassRegex:/\b(move|to|in)\b/g,
+              className: 'text-amber-700'
+            },
+            {
+              highlight: [/^( |\t)*(\w+)( |\t)+(arrives)( |\t)+(to)( |\t)+(\w+)( |\t)*$/gm, /^( |\t)*(\w+)( |\t)+(arrives)( |\t)+(to)( |\t)+(\w+)( |\t)+(in)( |\t)+(\d+)( |\t)*$/gm],
+              secondPassRegex:/\b(arrives|to|in)\b/g,
+              className: 'text-amber-700'
+            },
+            {
+              highlight: /^( |\t)*(\w+)( |\t)+(gets)( |\t)+(\w+)( |\t)*$/gm,
+              secondPassRegex:/\b(gets)\b/g,
               className: 'text-amber-700'
             },
             {
@@ -61,6 +85,10 @@ export default class InputTextArea extends React.Component<InputTextAreaProps, I
             {
               highlight: /\/\/\*\s*.*/g,
               className: 'text-[#98C379]'
+            },
+            {
+              highlight: /^( |\t)*\w+( |\t)+=( |\t)+new( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark)( |\t)*\(/gm,
+              className: 'border-t-3 border-l-1 border-blue-400 m-l-[-1px] bg-gray-900'
             },
             {
               highlight: ['GraphObject','TextureAnim','Trigger','KeyboardTrigger','Animation','CodedRoutine','Actor','StageMark','(',')','{','}'],
@@ -79,7 +107,7 @@ export default class InputTextArea extends React.Component<InputTextAreaProps, I
               className: 'text-[#86DBFD]'
             },
             {
-              highlight:[ /={1}/g , /\+{1}/g , /-{1}/g , /\*{1}/g , /\/{1}/g , /\<{1}/g , /\>{1}/g , /\+={1}/g , /=={1}/g, 'new'],
+              highlight:[ /={1}/g , /\+{1}/g , /-{1}/g , /\*{1}/g , /\/{1}/g , /\<{1}/g , /\>{1}/g , /\+={1}/g , /=={1}/g, /&&{1}/g, /\|\|{1}/g, 'new'],
               className: 'text-[#E53935]'
             },
             {
@@ -87,9 +115,20 @@ export default class InputTextArea extends React.Component<InputTextAreaProps, I
               className: 'text-[#A18649]'
             },
             {
-              highlight: [/^\s*(set){1}(\W)/gm,/^\s*(run){1}(\W)/gm,/^\s*(play){1}(\W)/gm,/^\s*(wait){1}(\W)/gm,/^\s*(resume){1}(\W)/gm,/^\s*(show){1}(\W)/gm,/^\s*(load){1}(\W)/gm,/^\s*(speak){1}(\W)/gm,/^\s*(narration){1}(\W)/gm],
+              highlight: [/^\s*(run){1}(\W)/gm,/^\s*(play){1}(\W)/gm,/^\s*(wait){1}(\W)/gm,/^\s*(resume){1}(\W)/gm,/^\s*(show){1}(\W)/gm,/^\s*(load){1}(\W)/gm],
               className: 'text-green-600'
-            }
+            },
+            //SET command
+            {
+              highlight: [/^( |\t)*(set)( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark)/gm],
+              secondPassRegex:/(set)/gm,
+              className: 'text-teal-500'
+            },
+            {
+              highlight: [/^( |\t)*(set)( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark)( |\t)+\w+/gm],
+              secondPassRegex:/(set)( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark)( |\t)+\w+/gm,
+              className: 'border-t-3 border-l-1 border-teal-500 m-l-[-1px] bg-slate-950'
+            },
         ]
       });
       this.inputRef.current.value = this.props.defaultValue ?? "";
