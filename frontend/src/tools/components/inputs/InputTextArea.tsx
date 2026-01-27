@@ -48,6 +48,7 @@ export default class InputTextArea extends React.Component<InputTextAreaProps, I
       //@ts-ignore
       $('#'+this.id).highlightWithinTextarea({
         highlight: [
+            //NODE delimitation command
             {
               highlight: /node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm,
               secondPassRegex: /((?<!\n)^node)( |\t)+:( |\t)+\w+( |\t)*\n/g,
@@ -62,6 +63,7 @@ export default class InputTextArea extends React.Component<InputTextAreaProps, I
               highlight: /node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm,
               className: 'bg-neutral-900'
             },
+            //ACTOR commands
             {
               highlight: [/^(move)( |\t)+(\w+)( |\t)+(to)( |\t)+(\w+)( |\t)*$/gm, /^( |\t)*(move)( |\t)+(\w+)( |\t)+(to)( |\t)+(\w+)( |\t)+(in)( |\t)+(\d+)( |\t)*$/gm],
               secondPassRegex:/\b(move|to|in)\b/g,
@@ -86,6 +88,7 @@ export default class InputTextArea extends React.Component<InputTextAreaProps, I
               highlight: /\/\/\*\s*.*/g,
               className: 'text-[#98C379]'
             },
+            //CREATION command
             {
               highlight: /^( |\t)*\w+( |\t)+=( |\t)+new( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark)( |\t)*\(/gm,
               className: 'border-t-3 border-l-1 border-blue-400 m-l-[-1px] bg-gray-900'
