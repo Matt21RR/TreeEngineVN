@@ -279,7 +279,7 @@ id = new Actor(properties...)
 # **Edition Command (for any element type except Sound)**
 
 ```python
-set elementType id properties...
+Set elementType id properties...
 ```
 
 - **elementType**: *`string`* — Element type
@@ -356,10 +356,37 @@ For cases such as these, where you must wait for one action to finish before mov
 Suppose you need to play a sound for a certain amount of time and then stop it.
 
 ```ts
-  Sound introduction play
+  Sound "introduction" play
   Wait 2500
-  Sound introduction stop
+  Sound "introduction" stop
 ```
 The first command starts playing a sound, in this case ‘introduction’. The second command tells the engine to pause the sequential execution of commands for 2500ms. After 2500ms, the engine will resume sequential command execution and execute the third command, which stops playing the ‘introduction’ sound.
+
+### A use case (example) for the Stop and Resume commands
+
+It is not always possible to know exactly how long it will take before the sequential execution of commands can or should continue.
+This can occur with chained animations, events activated by triggers, among others.
+
+```ts
+acceptDealTrigger = new Trigger ({
+  relatedTo: "acceptDealButton",
+  onRelease:()=>{
+    Resume
+  }
+})
+Wait
+
+//when the command excecution will be resumed, will continue here
+Delete Trigger "acceptDealTrigger" 
+Delete GraphObject "acceptDealButton"
+Sound "dealWasAccepted" play
+```
+According to the previous command, the engine will do:
+
+1. Creates a trigger named "acceptDealTrigger" that's linked to a button called "acceptDealButton". When the button is released, it executes the Resume command, resuming the sequential excecution of commands with the command delete (#3).
+2. Wait command pauses sequential execution of commands until the trigger fires (when the user releases the button).
+3. Delete the trigger "acceptDealTrigger"
+4. Delete the button, removing the "acceptDealButton" GraphObject from the scene
+5. Play the sound "dealWasAccepted"
 
 
