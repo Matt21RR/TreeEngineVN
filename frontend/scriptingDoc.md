@@ -333,16 +333,33 @@ Wait time
 ```
 - **time**: *`number`* - Time in ms until resume the commands excecution
 
-## Stop Command
+## Stop and Resume Commands
 
 ```ts
 Wait
 ```
-
-## Resume Command
 
 ```ts
 Resume
 ```
 > [!NOTE] 
 > You may have already suspected this, but just to clarify... yes, “continue” is a reserved word in JavaScript. Therefore, to avoid unexpected problems, “resume” is used instead.
+
+## How to use Wait, Stop and Resume commands in an script
+
+Each command written in a script will be stacked and executed in FIFO (first in, first out) order asynchronously, meaning that the engine will not wait for the command actions to be executed before moving on to the next command. This can be inconvenient when working with animations or when you want, for example, to play a sound for x seconds and, after those x seconds, display something on the screen.
+
+For cases such as these, where you must wait for one action to finish before moving on to the next, the *`Wait`* or *`Stop`* and *`Resume`* commands are used.
+
+### A use case (example) for the Wait command
+
+Suppose you need to play a sound for a certain amount of time and then stop it.
+
+```ts
+  Sound introduction play
+  Wait 2500
+  Sound introduction stop
+```
+The first command starts playing a sound, in this case ‘introduction’. The second command tells the engine to pause the sequential execution of commands for 2500ms. After 2500ms, the engine will resume sequential command execution and execute the third command, which stops playing the ‘introduction’ sound.
+
+
