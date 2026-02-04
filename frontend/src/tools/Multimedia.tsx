@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import $ from "jquery";
-import InputTextArea from "./components/inputs/InputTextArea.tsx";
+import InputScript from "./components/inputs/InputScript.tsx";
 import AudioPlayer from './AudioPlayer.tsx';
 import Swal from 'sweetalert2';
 
@@ -55,7 +55,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
     const name = info.name;
     return(
       <>
-        <InputTextArea 
+        <InputScript
           height={"h-full"} 
           fatherStyle={"bg-black bg-opacity-70"}
           defaultValue={content}

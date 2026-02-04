@@ -123,6 +123,8 @@ class FileExplorer extends React.Component{
               this.uploadProgress.inStack = filesToUpload;
               if(filesList.length != 0){
                 uploader(filesList[0], processed+1);
+              }else{
+                this.getHierarchy();
               }
             });
         });

@@ -307,7 +307,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   }
   loadScript(scriptRoute:string,destination = "gameEntrypoint"){
     this.dataCleaner();
-    const h = new Chaos();         
+    const h = new Chaos(); 
+    window.h = h  
     var self = this;
     
     RequestFile(scriptRoute)
@@ -360,6 +361,14 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       self.isReady = true;
       self.forceUpdate();
     })
+  }
+  directInterpretation(script:string){
+    const chaos = new Chaos();   
+    console.log(script)
+    const interpretation = chaos.directKreator(script);
+    const interpretationF = new Function ("engine","ExtendedObjects",interpretation);
+    console.warn(interpretationF);
+    interpretationF(this,ExtendedObjects);
   }
   loadNode(nodeId: string){
     var commands = this.nodes[nodeId];

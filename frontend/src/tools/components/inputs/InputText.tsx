@@ -16,7 +16,7 @@ export default class InputText extends React.Component<InputTextProps>{
   mounted:boolean;
   constructor(props: InputTextProps){
     super(props);
-    this.id = this.props.id || ("inputTextArea" + String(window.performance.now()).replaceAll(".",""));
+    this.id = this.props.id || ("inputText" + String(window.performance.now()).replaceAll(".",""));
     this.mounted = false
   }
   componentDidMount(){
@@ -32,7 +32,7 @@ export default class InputText extends React.Component<InputTextProps>{
         type={this.props.type ?? "text"}
         step={0.1}
         
-        className={"bg-black my-0.5 px-1 rounded-md text-[12px] " + (this.props.style ?? "") + ((this.props.hide) ? " hidden":"")} 
+        className={"bg-black my-0.5 px-1 h-4 min-h-4 w-36 min-w-36 rounded-md text-[12px] " + (this.props.style ?? "") + ((this.props.hide) ? " hidden":"")} 
         defaultValue={this.props.defaultValue ?? ""}
         onChange={(e)=>{this.props.action?.(e.target.value)}}
       />

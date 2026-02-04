@@ -134,7 +134,7 @@ function getStr(text:Function|string):string{
   } catch (error) {
     console.warn("UNREADABLE STUFF DETECTED!!!!");
     console.log(text);
-    console.error(error);
+    // console.error(error);
     return "UNREADABLE STUFF";
   }
 }

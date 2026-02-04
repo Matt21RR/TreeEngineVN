@@ -6,6 +6,8 @@ import { RenderEngine } from '../engine/renderCore/RenderEngine.tsx';
 import InputCheck from './components/inputs/InputCheck.tsx';
 import InputText from './components/inputs/InputText.tsx';
 import { Button1, MenuButton } from './components/Buttons.tsx';
+import { Trigger } from '../engine/engineComponents/Trigger.ts';
+import InputTextArea from './components/inputs/InputTextArea.tsx';
 
 interface PropertyProps {
   object:GraphObject,
@@ -18,7 +20,7 @@ function Property (props: PropertyProps) {
   const [isNull, setIsNull] = useState(props.defaultValue == null);
   const [isFunction, setIsFunction] = useState(typeof props.defaultValue == "function");
   const [_, forceUpdate] = useReducer(x => x + 1, 0);
-  const defaultValue = useRef(isFunction ? props.defaultValue.toString() : props.defaultValue );
+  const defaultValue = useRef(isFunction ? props.defaultValue?.toString() : props.defaultValue );
 
   const setDefaultValue = (e)=>{
     defaultValue.current = e;
@@ -55,28 +57,51 @@ function Property (props: PropertyProps) {
     }
     setDefaultValue(e);
   }
+
+  const booleanTypeInput = ()=>{
+    return <InputCheck
+      checked={defaultValue.current}
+      action={(e)=>{
+        change(e);
+      }}
+      label={defaultValue.current}
+    />
+  }
+
+  const numberTypeInput = ()=>{
+    return <InputText 
+      type={"number"}
+      defaultValue={defaultValue.current}
+      action={(e)=>{
+        change(e);
+        setIsNull(false);
+      }}
+    />
+  }
+
+  const anyTypeInput = ()=>{
+    return <InputTextArea
+      defaultValue={defaultValue.current}
+      action={(e)=>{
+          change(e);
+          setIsNull(false);
+      }}/>
+  }
+
+  const valueInput = ()=>{
+    if(type == "boolean"){
+      return booleanTypeInput();
+    }
+    if(type == "number"){
+      return numberTypeInput();
+    }
+    return anyTypeInput();
+  }
     
   return(
     <div className='flex'>
       <div className='w-48'>{key}</div>
-      {type == "boolean"?
-        <InputCheck
-          checked={defaultValue.current}
-          action={(e)=>{
-            change(e);
-          }}
-          label={defaultValue.current}
-        />
-        :
-        <InputText 
-          type={type=="number"? "number" : "text"}
-          defaultValue={defaultValue.current}
-          action={(e)=>{
-            change(e);
-            setIsNull(false);
-          }}
-        />
-      }
+      {valueInput()}
       {type.includes("null") ? 
         <InputCheck 
           label="isNull" 
@@ -114,7 +139,8 @@ class ObjectsE extends React.Component<ObjectsEProps> {
   hide: boolean
   showStates: boolean
   keys: number
-  value:string
+  value: string
+  blockMouseTriggerButton: boolean
   constructor(props){
     super(props);
     this.object = new GraphObject();
@@ -125,6 +151,8 @@ class ObjectsE extends React.Component<ObjectsEProps> {
     this.showStates = false;
     this.keys = 0;
     this.value = "";
+
+    this.blockMouseTriggerButton = false;
   }
   componentDidMount(){
     if(!this.mounted){
@@ -193,8 +221,49 @@ class ObjectsE extends React.Component<ObjectsEProps> {
       );
     }
   }
+  selectWithMouseButton(){
+    const eng = this.props.engine;
+    return <Button1
+      text="Select with mouse"
+      hide={this.blockMouseTriggerButton}
+      action={()=>{
+        this.blockMouseTriggerButton = true;
+        this.forceUpdate();
+        const triggerName = "dspTrg" + (performance.now()*Math.random()).toFixed(8).replaceAll(".","")
+        const trigger = new Trigger({
+          onMouseMove:(_,mouse)=>{
+            let resolution = eng.canvasRef.resolution;
+            const collisions = eng.collisionLayer.checkMouse(mouse.mX,mouse.mY,resolution);
+            const top = collisions.at(-1);
+            eng.objectsToDebug.clear();
+            eng.objectsToDebug.add(this.selectedObject);
+            eng.objectsToDebug.add(top);
+          },
+          onRelease:(_,mouse)=>{
+            this.blockMouseTriggerButton = false;
+            this.forceUpdate();
+
+            let resolution = eng.canvasRef.resolution;
+            const collisions = eng.collisionLayer.checkMouse(mouse.mX,mouse.mY,resolution);
+            const top = collisions.at(-1);
+            if(top){
+              eng.objectsToDebug.clear();
+              eng.objectsToDebug.add(top);
+              this.selectedObject = top;
+              this.forceUpdate();
+            }
+            eng.triggers.remove(triggerName);
+          },
+          id: triggerName
+        }); 
+        eng.triggers.push(
+          trigger
+        )
+      }}
+    />
+  }
   creationButton(){
-        const eng = this.props.engine;
+    const eng = this.props.engine;
     return <Button1 
               text="create"
               action={()=>{
@@ -327,12 +396,13 @@ class ObjectsE extends React.Component<ObjectsEProps> {
     const eng = this.props.engine;
       return(
         <div className='text-white grid grid-cols-[180px_auto_1fr] h-full w-full'>
-          <div className="grid grid-rows-[auto_auto_auto_1fr] h-full overflow-hidden p-2">
+          <div className="grid grid-rows-[auto_auto_auto_auto_1fr] h-full overflow-hidden p-2">
             <div>
               Objects List
             </div>
             {this.creationButton()}
             {this.cloneButton()}
+            {this.selectWithMouseButton()}
             <MenuButton text="Unselect / Refresh" action={()=>{eng.objectsToDebug.clear();this.selectedObject=""; this.forceUpdate();}}/>
             <div className="relative w-full overflow-auto">
               {this.objectsList()}

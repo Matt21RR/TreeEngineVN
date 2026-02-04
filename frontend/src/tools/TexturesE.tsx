@@ -16,8 +16,11 @@ export default function TexturesE (){
 
   const fetchData = ()=>{
     RequestFile(configRoute)
-      .then(res => JSON.parse(res))
+      .then(res => {
+        return atob(res)})
+      .then(res=>JSON.parse(res))
       .then(data=>{
+        console.log(data)
         setTextures(data);
     });
   };

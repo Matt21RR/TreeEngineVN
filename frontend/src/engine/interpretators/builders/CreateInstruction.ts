@@ -47,7 +47,7 @@ class CreateInstruction extends InstructionInterface{
 
     let res:Array<string> = [];
 
-    var dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
+    const dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
 
     if(isInRoutineMode){
       res.push(
@@ -77,13 +77,24 @@ class CreateInstruction extends InstructionInterface{
         break;
       case "Trigger":
         res.push(
-          `var data${dynaVarName} = {
-             id:${id},
-             relatedTo:${dynaVarName}[0],
-          };
-          Object.assign(data${dynaVarName},${dynaVarName}[1]);
+          `
+          let data${dynaVarName};
+          if(${dynaVarName}.constructor.name == "Array"){
+            data${dynaVarName} = {
+              id:${id},
+              relatedTo:${dynaVarName}[0],
+            };
+            Object.assign(data${dynaVarName},${dynaVarName}[1]);
 
-          engine.triggers.push(new engine.constructors.trigger(data${dynaVarName}));`
+          }else{
+            data${dynaVarName} = {
+              id:${id},
+            };
+            Object.assign(data${dynaVarName},${dynaVarName});
+          }
+
+          engine.triggers.push(new engine.constructors.trigger(data${dynaVarName}));
+          `
         );
         break;
       case "KeyboardTrigger":

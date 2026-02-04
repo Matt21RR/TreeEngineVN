@@ -46,20 +46,26 @@ class PointerCalculation extends React.Component{
     //!Bottleneck
     const collisionedTriggers = collisionLayer.checkMouse(mX,mY,resolution).filter(e=>{return e in objectsWithTriggersList});
     
-    this.triggersMouseCollisionManagement(collisionedTriggers,objectsWithTriggersList,reversedRenderOrderList,triggersRef,action);
+    this.triggersMouseCollisionManagement(
+      collisionedTriggers,
+      objectsWithTriggersList,
+      reversedRenderOrderList,
+      triggersRef,
+      action,
+      mouseVirtualPosition);
 
     //*Check the triggers that wasn't assigned to a GraphObject
     for (const triggerId of triggersRef.relatedToNullList()){
-      triggersRef.get(triggerId).check(mouseEvent,action);
+      triggersRef.get(triggerId).check(RenderEngine.getInstance(),action,mouseVirtualPosition);
     }
 
     if(action == "onMouseMove"){
       //onLeave part, activar el onLeave en todos aquellos triggers que no se activaron previamente
-      this.onLeaveTriggerCheck(collisionedTriggers,triggersIdList,triggersRef);
+      this.onLeaveTriggerCheck(collisionedTriggers,triggersIdList,triggersRef, mouseVirtualPosition);
     }
   }
 
-  private calcMouseVirtualPosition(mouse:React.MouseEvent|React.TouchEvent,offset,action:string){
+  private calcMouseVirtualPosition(mouse:React.MouseEvent|React.TouchEvent,offset:{left:number,top:number},action:string = ""){
 
     let mX:number, mY:number, clientX:number, clientY:number;
     if(window.TouchEvent && mouse instanceof TouchEvent){
@@ -92,20 +98,21 @@ class PointerCalculation extends React.Component{
     objectsWithTriggersList: Dictionary<Array<string>>,
     reversedRenderOrderList:Array<string>,
     triggers:RenList<Trigger>,
-    action:string){
+    action:string,
+    mouseVirtualPosition: ReturnType<typeof this.calcMouseVirtualPosition>){
     
     for(const collisionedObjectId of sortByReference(collisionedTriggers,reversedRenderOrderList)){
       if(collisionedObjectId in objectsWithTriggersList){
         objectsWithTriggersList[collisionedObjectId].forEach(triggerId => {
 
           if(!this.enteredTriggers.includes(triggerId)){
-            triggers.get(triggerId).check(RenderEngine.getInstance(),"onEnter");
+            triggers.get(triggerId).check(RenderEngine.getInstance(),"onEnter",mouseVirtualPosition);
             this.enteredTriggers.push(triggerId);
             document.body.style.cursor = "pointer";
           }
 
           try {
-            triggers.get(triggerId).check(RenderEngine.getInstance(),action);
+            triggers.get(triggerId).check(RenderEngine.getInstance(),action, mouseVirtualPosition);
           } catch (error) {
             console.log("Error on trigger execution:",error,triggers.get(triggerId))
           }
@@ -118,7 +125,8 @@ class PointerCalculation extends React.Component{
   private onLeaveTriggerCheck(
     collisionedTriggers:Array<string>,
     triggersIdList:Array<string>,
-    triggers:RenList<Trigger>
+    triggers:RenList<Trigger>,
+    mouseVirtualPosition: ReturnType<typeof this.calcMouseVirtualPosition>
   ){
     //onLeave part, activar el onLeave en todos aquellos triggers que no se activaron previamente
     triggersIdList.forEach(triggerId => {
@@ -126,7 +134,7 @@ class PointerCalculation extends React.Component{
       if(this.enteredTriggers.includes(triggerId) && !collisionedTriggers.includes(trigger.relatedTo as string)){
         const trigger = triggers.get(triggerId);
         if(trigger.relatedTo != null){
-          trigger.check(RenderEngine.getInstance(),"onLeave");
+          trigger.check(RenderEngine.getInstance(),"onLeave", mouseVirtualPosition);
         }
         this.enteredTriggers.splice(this.enteredTriggers.indexOf(triggerId));
         //TODO: check if the mouse are not inside any graph asociated trigger

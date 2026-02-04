@@ -37,7 +37,8 @@ class InputList extends React.Component<InputListProps, InputListState> {
       showAnimationDone: false,
       activateHideAnimation: false,
       zIndex: 10,
-      error: !props.action || !props.value || !props.options,
+      // error: !props.action || !props.value || !props.options,
+      error:false,
       heightPerOption: props.height ?? 16,
     }
     this.selected = props.selected ?? 0;

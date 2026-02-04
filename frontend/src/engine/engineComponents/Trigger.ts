@@ -13,12 +13,13 @@ class Trigger extends EnabledObject{
   private _onMouseMove:Function|null
 
   constructor(tInfo){
+    console.log(tInfo);
     super();
     if(!("id" in tInfo))
       throw new Error("Trying to create a Trigger without id");
     if(!tInfo.relatedToBypass){
       if(!("relatedTo" in tInfo))
-        throw new Error("Trying to create a Trigger without the graphObject id that will be related to");
+        console.warn("Trying to create a Trigger without the graphObject id that will be related to");
     }
 
     this._id = tInfo.id;
@@ -57,7 +58,8 @@ class Trigger extends EnabledObject{
   get onMouseMove() {return this._onMouseMove;}
   set onMouseMove(x) {this._onMouseMove = x;}
 
-  check(engineOrMouseRef:RenderEngine|React.MouseEvent|React.TouchEvent, action:string){
+  check(engineRef:RenderEngine, action:string, mouseRef: {mX:number, mY:number}){
+    //TODO: elaborate the case when mouseRef is null
     if(action == "mouseMove")//check onEnter
       action = "onEnter";
     if(!this[action]|| !this.enabled){
@@ -67,11 +69,13 @@ class Trigger extends EnabledObject{
     if(numberOfArguments == 0){
       this[action]();
     }else if(numberOfArguments == 1){
-      this[action](engineOrMouseRef);
-    }else if (numberOfArguments == 2 && this.relatedTo != null){
+      this[action](engineRef);
+    }else if (numberOfArguments == 2 ){
+      this[action](engineRef,mouseRef);
+    }else if (numberOfArguments == 3 && this.relatedTo != null){
       //@ts-ignore
-      const graphObjectRef:GraphObject = engineOrMouseRef.graphArray.get(this.relatedTo);
-      this[action](engineOrMouseRef,graphObjectRef);
+      const graphObjectRef:GraphObject = engineRef.graphArray.get(this.relatedTo);
+      this[action](engineRef,mouseRef,graphObjectRef);
     }else{
       throw new Error(`Too much arguments (${numberOfArguments}) for the function defined to the action ${action}, for the trigger "${this.id}`)
     }

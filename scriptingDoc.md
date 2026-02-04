@@ -118,8 +118,8 @@ id = new Trigger(relatedTo, behaviors...)
 
 ### When you have the "relatedTo" parameter
 
-| Signature | Parameter 1 | Parameter 2 |
-|-----------|-------------|-------------|
+| Signature | Parameter 1 | Parameter 2 | Parameter 3 |
+|-----------|-------------|-------------|-------------|
 | `()=>{}` | | |
 | `(engine)=>{}` | "engine" is an engine instance ref | |
 | `(engine, object)=>{}` | "engine" is an engine instance ref | "object" is a reference to the object related to the trigger |

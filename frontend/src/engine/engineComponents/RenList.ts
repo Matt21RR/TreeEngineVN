@@ -111,6 +111,15 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
       //*Nothing to remove
     }else{
       const numId = this.#_ids.indexOf(objectId);
+      let unRelatedId = this.#_unRelatedToIds.indexOf(objectId);
+      if(unRelatedId != -1){
+        this.#_unRelatedToIds.splice( unRelatedId,1 );
+      }
+      let enabledId = this.#_enabledIds.indexOf(objectId);
+      if(enabledId != -1){
+        this.#_enabledIds.splice( enabledId,1 );
+      }
+
       this.objects.splice(numId,1);
       this.#_ids.splice(numId,1);
       delete this.#_elementsDict[objectId];
