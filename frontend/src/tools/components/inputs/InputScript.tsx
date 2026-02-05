@@ -125,13 +125,13 @@ export default class InputScript extends React.Component<InputScriptProps, Input
             },
             //SET command
             {
-              highlight: [/^( |\t)*(set)( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark)/gm],
+              highlight: [/^( |\t)*(set)( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark|Engine)/gm],
               secondPassRegex:/(set)/gm,
               className: 'text-teal-500'
             },
             {
-              highlight: [/^( |\t)*(set)( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark)( |\t)+\w+/gm],
-              secondPassRegex:/(set)( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark)( |\t)+\w+/gm,
+              highlight: [/^( |\t)*(set)( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark|Engine)( |\t)+\w+/gm],
+              secondPassRegex:/(set)( |\t)+(GraphObject|TextureAnim|Trigger|KeyboardTrigger|Animation|CodedRoutine|Actor|StageMark|Engine)( |\t)+\w+/gm,
               className: 'border-t-3 border-l-1 border-teal-500 m-l-[-1px] bg-slate-950'
             },
         ]
