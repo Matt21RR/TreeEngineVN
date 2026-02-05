@@ -9,8 +9,10 @@ No se me ocurre que poner aquí, asi que de momento agrego unos tags. HHEHEHEHE
 *Scripting
 *DevelopmentTools
 *Golang
+*Wails
 *Typescript
 *CanvasAPI
+*React
 
 
 ## Live Development
