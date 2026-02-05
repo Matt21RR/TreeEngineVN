@@ -66,7 +66,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
         />
         <Button1 
           text="Save changes" 
-          style="absolute bottom-2 right-2"
+          style="absolute bottom-0 right-5"
           action={()=>{
             Swal.fire({
               text: 'Are you sure want to save the changes done to "'+name+'"?',
@@ -102,7 +102,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
   }
   const image = (src: string) => {
     return(
-      <div className='absolute top-0 left-0 h-full w-full' 
+      <div className='absolute top-0 left-0 h-full w-full ' 
         style={{
           backgroundImage: `url(' ${src} ')`,
           backgroundRepeat: "no-repeat",
@@ -120,11 +120,11 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
   const closeBtn = (index: number, limit: number) => {
     return(
       <>
-        <IconButton icon="cross" style="absolute top-0 right-0 h-7 w-7 m-1 p-1 backdrop-invert" action={ close }/>
+        <IconButton icon="cross" style="absolute top-0 right-3 h-6 w-6 m-1 p-1 backdrop-contrast-[.75] backdrop-blur-sm" action={ close }/>
         <IconButton 
           icon="arrow" 
           hide={index<1} 
-          style="absolute top-1/2 left-0 h-7 w-7 m-1 p-1 backdrop-invert" 
+          style="absolute top-1/2 left-0 h-6 w-6 my-1 p-0.5 backdrop-contrast-[.75] backdrop-blur-sm" 
           action={()=>{
             setActivateSwitch(false);
             setSelected(index-1);
@@ -133,7 +133,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
         <IconButton 
           icon="arrow" 
           hide={index>=(limit)}
-          style="absolute top-1/2 right-0 h-7 w-7 m-1 p-1 backdrop-invert rotate-180" 
+          style="absolute top-1/2 right-3 h-6 w-6 m-1 p-0.5 backdrop-contrast-[.75] backdrop-blur-sm rotate-180" 
           action={()=>{
             setActivateSwitch(false);
             setSelected(index+1);
@@ -146,7 +146,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
   return (
     <div className={"absolute bg-black bg-opacity-40 top-0 left-0 h-full w-full backdrop-blur-md flex" + ((!show) ? " hidden":"")}>
       {switcher(content)}
-      <div className='absolute top-0 px-2 text-xs py-1 backdrop-contrast-[.55] backdrop-blur-md -translate-x-1/2 left-1/2'>
+      <div className='absolute top-0 px-2 text-xs py-1 backdrop-contrast-[.75] backdrop-blur-sm -translate-x-1/2 left-1/2'>
         {info.name}
       </div>
       {closeBtn(info.index, info.actualContentLength-1)}
