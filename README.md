@@ -1,11 +1,17 @@
-# README
+# TreeEngineVN
 
 ## About
 
-This is the official Wails React-TS template.
+No se me ocurre que poner aquí, asi que de momento agrego unos tags. HHEHEHEHE
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+*GameEngine
+*VisualNovel
+*Scripting
+*DevelopmentTools
+*Golang
+*Typescript
+*CanvasAPI
+
 
 ## Live Development
 
