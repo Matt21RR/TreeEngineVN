@@ -13,3 +13,21 @@ export default function secuencedPromise(promisesArray: Array<()=>Promise<any>>)
     });
   });
 }
+
+export function sequencedPromiseWithResult<T>(promisesArray: Array<()=>Promise<T>>):Promise<Array<T>>{
+  return new Promise<Array<T>>(finalResolve=>{
+    const results:Array<T> = [];
+    const promise = promisesArray.shift();
+    promise().then((res:T)=>{
+      results.push(res);
+      if(promisesArray.length > 0){
+        sequencedPromiseWithResult(promisesArray).then((resArray:Array<T>)=>{
+          results.push(...resArray);
+          finalResolve(results);
+        });
+      }else{
+        finalResolve(results);
+      }
+    });
+  });
+}

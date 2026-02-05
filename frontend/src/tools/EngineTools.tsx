@@ -5,42 +5,73 @@ import { Dictionary } from "../global.ts";
 import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
 import InputText from "./components/inputs/InputText.tsx";
 import InputCheck from "./components/inputs/InputCheck.tsx";
-import { ToggleFullscreen } from "../../wailsjs/go/main/App.js";
+import { FileExists, ScanFiles, ToggleFullscreen } from "../../wailsjs/go/main/App.js";
 import { Button1, IconButton } from "./components/Buttons.tsx";
+import { sequencedPromiseWithResult } from "../engine/interpretators/new.ts";
 
 interface EngineToolsProps {
   engine: RenderEngine
 }
 
+interface KeyFileInfo {
+  exist:boolean,
+  scanable:boolean,
+  scanType:"script"|"texture"|"sound"|null
+}
 
 export default function EngineTools(props:EngineToolsProps){
   const [scripts, setScripts] = useState<Dictionary<string>>({});
   const [sceneName, setSceneName] = useState("gameEntrypoint");
   const [selectedScript, setSelectedScript] = useState(0);
+  const [filesExist, setFilesExist] = useState<Map<string,KeyFileInfo>>( new Map ( [
+    ["./game/main.txt", {exist:false, scanable:false, scanType:null}],
+    ["./game/scripts/scripts.json", {exist:false, scanable:true, scanType:"script"}],
+    ["./game/img/textures.json", {exist:false, scanable:true, scanType:"texture"}],
+    ["./game/snd/sounds.json", {exist:false, scanable:true, scanType:"sound"}]
+  ] ) );
 
   const [_, forceUpdate] = useReducer(x => x + 1, 0);
 
   useEffect(()=>{
     checkAvailableScripts();
+    
   },[]);
+  
+  const checkIfKeyFilesExists = ()=>{
+    sequencedPromiseWithResult(
+      Array.from(filesExist.keys()).map(key=>()=>FileExists(key))
+    ).then((results:boolean[])=>{
+      const newMap = new Map(filesExist);
+      results.forEach((exist,index)=>{
+        const key = Array.from(filesExist.keys())[index];
+        const value = filesExist.get(key);
+        if(value){
+          newMap.set(key,{...value, exist});
+        }
+      });
+      setFilesExist(newMap);
+    });
+  }
 
   const checkAvailableScripts = ()=>{
     const chaos = new Chaos();
     chaos.listScripts().then(scriptsId=>{
       setScripts(scriptsId);
     });
+
+    checkIfKeyFilesExists();
   }
 
   const scriptSelector = () => {
     const engine = props.engine;
     return (
-      <div className="flex">
+      <div className="flex align-middle">
         <InputList 
           options={Object.keys(scripts)}
           action={(e)=>{setSelectedScript(e);}}
           value={0}
         />
-        <InputText style="bg-white text-black" defaultValue={"gameEntrypoint"} action={(value)=>{
+        <InputText style="bg-white text-black h-7" defaultValue={"gameEntrypoint"} action={(value)=>{
             setSceneName(value != "" ? value : "gameEntrypoint");
           }}/>
         <Button1 text={"Run!!"} action={()=>{
@@ -96,11 +127,31 @@ export default function EngineTools(props:EngineToolsProps){
       </div>
     );
   }
+  const existCheckIcons = ()=>{
+    return <div className="text-white">
+      {Array.from(filesExist).map(([key,value])=>{
+        return <div className="flex">
+           <InputCheck key={key} label={key} checked={value.exist} uncheckedColor="bg-red-700"/>
+           {
+            value.scanable && <Button1 
+              text={`Scan ${value.scanType}s`} 
+              action={()=>{
+                const route = key.split("/");
+                const basePath = route.slice(0,route.length -1).join("/");
+
+                ScanFiles(basePath, value.scanType).then(e=>console.log(e));
+              }}
+            />
+          }    
+        </div>
+      })}
+    </div>
+  }
 
   const buttons = () => {
     const engine = props.engine;
     const canvasObject = engine.canvasRef.object;
-    return <div className="flex gap-6">
+    return <div className="flex gap-2">
       <div>
         <Button1 text={`Perspective: ${engine.camera.usePerspective}`} action={()=>{
           engine.camera.usePerspective = !engine.camera.usePerspective;
@@ -129,7 +180,12 @@ export default function EngineTools(props:EngineToolsProps){
           action={()=>{ToggleFullscreen()}}
         />
       </div>
-        
+      <div className="flex border-l border-white">
+        <Button1 text="Check files exists" action={()=>{
+          checkIfKeyFilesExists();
+        }}/>
+        {existCheckIcons()}
+      </div>
     </div>
   }
 
