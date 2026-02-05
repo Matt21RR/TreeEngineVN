@@ -372,7 +372,7 @@ class FileExplorer extends React.Component{
   render(){
     return(
       <div 
-        className='text-white m-2 h-full flex flex-col relative overflow-hidden' 
+        className='text-white m-1 h-full flex flex-col relative overflow-hidden' 
         id={this.id}
         onDragOver={(e)=>{e.preventDefault();}}
         onDrop={(e)=>{
