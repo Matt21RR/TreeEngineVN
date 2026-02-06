@@ -64,6 +64,8 @@ func ScanFiles(rootPath string, typeFile string) (map[string]string, error) {
 			
 			// Usar la ruta completa, relativa al rootPath sin extensión como clave
 			keyWithoutExt := strings.TrimSuffix(relativePath, filepath.Ext(relativePath))
+			// Cambiando las barras diagonales por raya al piso para la clave
+			keyWithoutExt = strings.ReplaceAll(keyWithoutExt, "/", "_")
 			
 			audioMap[keyWithoutExt] = rootPath + "/" + relativePath
 		}
