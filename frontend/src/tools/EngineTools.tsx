@@ -8,35 +8,20 @@ import InputCheck from "./components/inputs/InputCheck.tsx";
 import { FileExists, ScanFiles, ToggleFullscreen } from "../../wailsjs/go/main/App.js";
 import { Button1, IconButton } from "./components/Buttons.tsx";
 import { sequencedPromiseWithResult } from "../engine/interpretators/new.ts";
+import Swal from "sweetalert2";
 
-interface EngineToolsProps {
-  engine: RenderEngine
-}
-
-interface KeyFileInfo {
-  exist:boolean,
-  scanable:boolean,
-  scanType:"script"|"texture"|"sound"|null
-}
-
-export default function EngineTools(props:EngineToolsProps){
-  const [scripts, setScripts] = useState<Dictionary<string>>({});
-  const [sceneName, setSceneName] = useState("gameEntrypoint");
-  const [selectedScript, setSelectedScript] = useState(0);
-  const [filesExist, setFilesExist] = useState<Map<string,KeyFileInfo>>( new Map ( [
+function KeyFilesControls(){
+    const [filesExist, setFilesExist] = useState<Map<string,KeyFileInfo>>( new Map ( [
     ["./game/main.txt", {exist:false, scanable:false, scanType:null}],
     ["./game/scripts/scripts.json", {exist:false, scanable:true, scanType:"script"}],
     ["./game/img/textures.json", {exist:false, scanable:true, scanType:"texture"}],
     ["./game/snd/sounds.json", {exist:false, scanable:true, scanType:"sound"}]
   ] ) );
 
-  const [_, forceUpdate] = useReducer(x => x + 1, 0);
-
   useEffect(()=>{
-    checkAvailableScripts();
-    
+    checkIfKeyFilesExists();
   },[]);
-  
+
   const checkIfKeyFilesExists = ()=>{
     sequencedPromiseWithResult(
       Array.from(filesExist.keys()).map(key=>()=>FileExists(key))
@@ -52,14 +37,76 @@ export default function EngineTools(props:EngineToolsProps){
       setFilesExist(newMap);
     });
   }
+  const existCheckIcons = ()=>{
+    return <div className="text-white">
+      {Array.from(filesExist).map(([key,value])=>{
+        return <div className="flex">
+           <InputCheck key={key} label={key} checked={value.exist} uncheckedColor="bg-red-700"/>
+           {
+            value.scanable && <Button1 
+              text={`Scan ${value.scanType}s`} 
+              action={()=>{
+                const route = key.split("/");
+                const basePath = route.slice(0,route.length -1).join("/");
+
+                ScanFiles(basePath, value.scanType).then(e=>{
+                  Swal.fire({
+                    title: `Scan result for ${value.scanType}s`,
+                    html: `
+                          <textarea spellcheck="false" class="h-96 w-full border rounded-md overflow-y-auto resize-none bg-stone-50">
+                            ${JSON.stringify(e, null, "\t")}
+                          </textarea>
+                          <span class="text-[16px] leading-4 text-gray-800">
+                            You can edit the json result from the textarea above.
+                            Then copy and paste it to the corresponding file in your project to update the engine data.
+                            The keys of the json are the tag or alias of the resources, so you can use them in your scripts to reference the resources.
+                          </span>
+                          `,
+                    width: "800px"
+                  });
+                });
+              }}
+            />
+          }    
+        </div>
+      })}
+    </div>
+  }
+
+  return <>
+    <Button1 text="Check files exists" action={()=>{
+      checkIfKeyFilesExists();
+    }}/>
+    {existCheckIcons()}
+  </>
+}
+
+interface EngineToolsProps {
+  engine: RenderEngine
+}
+
+interface KeyFileInfo {
+  exist:boolean,
+  scanable:boolean,
+  scanType:"script"|"texture"|"sound"|null
+}
+
+export default function EngineTools(props:EngineToolsProps){
+  const [scripts, setScripts] = useState<Dictionary<string>>({});
+  const [sceneName, setSceneName] = useState("gameEntrypoint");
+  const [selectedScript, setSelectedScript] = useState(0);
+
+  const [_, forceUpdate] = useReducer(x => x + 1, 0);
+
+  useEffect(()=>{
+    checkAvailableScripts();
+  },[]);
 
   const checkAvailableScripts = ()=>{
     const chaos = new Chaos();
     chaos.listScripts().then(scriptsId=>{
       setScripts(scriptsId);
     });
-
-    checkIfKeyFilesExists();
   }
 
   const scriptSelector = () => {
@@ -127,26 +174,6 @@ export default function EngineTools(props:EngineToolsProps){
       </div>
     );
   }
-  const existCheckIcons = ()=>{
-    return <div className="text-white">
-      {Array.from(filesExist).map(([key,value])=>{
-        return <div className="flex">
-           <InputCheck key={key} label={key} checked={value.exist} uncheckedColor="bg-red-700"/>
-           {
-            value.scanable && <Button1 
-              text={`Scan ${value.scanType}s`} 
-              action={()=>{
-                const route = key.split("/");
-                const basePath = route.slice(0,route.length -1).join("/");
-
-                ScanFiles(basePath, value.scanType).then(e=>console.log(e));
-              }}
-            />
-          }    
-        </div>
-      })}
-    </div>
-  }
 
   const buttons = () => {
     const engine = props.engine;
@@ -181,10 +208,7 @@ export default function EngineTools(props:EngineToolsProps){
         />
       </div>
       <div className="flex border-l border-white">
-        <Button1 text="Check files exists" action={()=>{
-          checkIfKeyFilesExists();
-        }}/>
-        {existCheckIcons()}
+        {KeyFilesControls()}
       </div>
     </div>
   }
