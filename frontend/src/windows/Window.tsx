@@ -47,7 +47,7 @@ class Window extends React.Component<WindowProps> {
     const props = this.props;
     return(
       <div className='relative top-0 h-8 w-full flex flex-col'>
-        <div className='relative h-full bg-gray-900 text-white flex flex-row-reverse border-b-[1px] border-gray-700'>
+        <div className='relative h-full bg-gray-900 text-white flex flex-row-reverse border-b border-gray-700'>
           <IconButton 
             icon="cross" 
             style={" hover:bg-red-600 w-11 h-8 min-w-[3rem]"} 
@@ -315,7 +315,7 @@ class Window extends React.Component<WindowProps> {
           id={"body"+this.id}
           ref={this.nodeRef}>
           <div className='flex flex-row w-full h-full'>
-            <div className='relative w-full h-full min-w-full max-h-full border-[1px] border-gray-700 flex flex-col'>
+            <div className='relative w-full h-full min-w-full max-h-full border border-gray-700 flex flex-col'>
               {this.renderWindowTop()}
               <div className='relative w-full h-full bg-[rgba(0,0,0,0.80)] flex flex-col overflow-y-auto text-base'>
                 {this.props.content ?? <div className='text-white'>Content</div>}

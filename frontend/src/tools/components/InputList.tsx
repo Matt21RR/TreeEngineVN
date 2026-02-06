@@ -183,7 +183,7 @@ class InputList extends React.Component<InputListProps, InputListState> {
         <div className={"  "+ eStyle}>
           <div
             style={{ zIndex: this.state.zIndex }}
-            className={"select-none relative z-[" + this.state.zIndex + "] focus:outline-none text-black h-fit w-full border-[#0b2140] border-[1px] rounded-md bg-white overflow-x-hidden " + fatherStyle}
+            className={"select-none relative z-[" + this.state.zIndex + "] focus:outline-none text-black h-fit w-full border-[#0b2140] border rounded-md bg-white overflow-x-hidden " + fatherStyle}
             ref={this.inputRef}
             tabIndex={0}
             onFocus={() => { this.hover() }}

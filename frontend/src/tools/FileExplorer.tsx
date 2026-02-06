@@ -196,7 +196,7 @@ class FileExplorer extends React.Component{
       const nDirs = this.actualContent.filter(e => {return e.type == "dir"}).length;
       const nFiles = this.actualContent.length - nDirs;
       return (
-        <div className='w-64 h-full border-l-[1px] pl-3 ml-3'>
+        <div className='w-64 h-full border-l pl-3 ml-3'>
           {this.actualRoute.split("/").at(-1)}
           <div className='text-xs'>
             Content: {nDirs} folders, {nFiles} files
@@ -260,7 +260,7 @@ class FileExplorer extends React.Component{
       return(
         <div className='h-full w-full absolute' onClick={()=>{this.contextMenuData.show = false; this.forceUpdate();}}>
           <div 
-            className='absolute bg-black bg-opacity-75 border-[1px] p-1' 
+            className='absolute bg-black bg-opacity-75 border p-1' 
             style={{height:"auto",width:"250px",left:this.contextMenuData.x+"px",top:this.contextMenuData.y+"px"}}>
             <MenuButton 
               text={"Rename"} 
@@ -381,7 +381,7 @@ class FileExplorer extends React.Component{
           this.upload(e);
           }}>
         {this.upperControls()}
-        <div className='w-full h-1 border-t-[1px] pt-1 mt-1'/>
+        <div className='w-full h-1 border-t pt-1 mt-1'/>
         <div className='relative w-full overflow-hidden h-full'>
           <div className='flex flex-row grow h-full'>
             <div className='grow h-full overflow-y-auto ml-3'>
