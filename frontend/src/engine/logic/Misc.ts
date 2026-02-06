@@ -132,8 +132,8 @@ function getStr(text:Function|string):string{
     }
     return text; 
   } catch (error) {
-    console.warn("UNREADABLE STUFF DETECTED!!!!");
-    console.log(text);
+    // console.warn("UNREADABLE STUFF DETECTED!!!!");
+    // console.log(text);
     // console.error(error);
     return "UNREADABLE STUFF";
   }
