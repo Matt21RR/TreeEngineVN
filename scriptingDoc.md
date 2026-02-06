@@ -122,15 +122,16 @@ id = new Trigger(relatedTo, behaviors...)
 |-----------|-------------|-------------|-------------|
 | `()=>{}` | | |
 | `(engine)=>{}` | "engine" is an engine instance ref | |
-| `(engine, object)=>{}` | "engine" is an engine instance ref | "object" is a reference to the object related to the trigger |
+| `(engine, mouseCoord)=>{}` |   | "mouseCoord" is the coord of the mouse in the game canvas | |
+| `(engine, mouseCoord, object)=>{}` |  |  | "object" is a reference to the object related to the trigger |
 
 ### When you don't have the "relatedTo" parameter
 
 | Signature | Parameter 1 | Parameter 2 |
 |-----------|-------------|-------------|
 | `()=>{}` | | |
-| `(mouseRef)=>{}` | "mouseRef" is an engine instance ref | |
-| `(mouseRef, _)=>{}` | This syntax could lead in an engine error | |
+| `(engine)=>{}` | "engine" is an engine instance ref | |
+| `(engine, mouseCoord)=>{}` |   | "mouseCoord" is the coord of the mouse in the game canvas |
 
 ### Mouse triggeable methods (or plausible keys for the dictionary behaviors)
 
