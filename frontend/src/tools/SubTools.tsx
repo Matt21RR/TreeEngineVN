@@ -126,11 +126,168 @@ function Property (props: PropertyProps) {
   );
 }
 
+interface ObjectEditorProps {
+  engine: RenderEngine,
+  selectedObject:string,
+  setSelectedObject: (objId:string)=>void
+}
+
+class ObjectEditor  extends React.Component<ObjectEditorProps> {
+  constructor(props){
+    super(props);
+  }
+  cloneSelectedButton(){
+    const eng = this.props.engine;
+    return <Button1 
+          text="clone"
+          action={()=>{
+            Swal.fire({
+              text: "GraphObject id for the clone: ",
+              showDenyButton: false,
+              showConfirmButton: true,
+              confirmButtonColor:"green",
+              showCancelButton: true,
+              confirmButtonText: "Clonar",
+              cancelButtonText: "Cancelar",
+              input:"text"
+            }).then((cloneId) => {
+              if (cloneId.isConfirmed && cloneId.value != "") {
+                if(eng.graphArray.exist(cloneId.value)){
+                  Swal.fire({
+                    title: 'Error!',
+                    text: 'Ya existe un GraphObject con tal id',
+                    icon: 'error',
+                    confirmButtonText: 'Cool'
+                  })
+                }else{
+                  eng.graphArray.push(eng.graphArray.get(this.props.selectedObject).clone(cloneId.value));
+                }
+              }
+            }
+          );
+        }
+      }
+    />
+  }
+  deleteSelectedButton(){
+    const eng = this.props.engine;
+    return <Button1 
+      text="delete"
+      action={()=>{
+        Swal.fire({
+          text: "DELETE?: ",
+          showDenyButton: false,
+          showConfirmButton: true,
+          confirmButtonColor:"red",
+          showCancelButton: true,
+          confirmButtonText: "Yes",
+          cancelButtonText: "No"
+        }).then((confir) => {
+          if (confir.isConfirmed) {
+            eng.graphArray.remove(this.props.selectedObject);
+            this.props.setSelectedObject("");
+          }
+        });
+      }}
+    />
+  }
+
+  listProperties(){
+    if(this.props.selectedObject != ""){
+      const engine = this.props.engine;
+      let types;
+      try {
+        types = engine.graphArray.get(this.props.selectedObject).dataType;  
+      } catch (error) {
+        this.props.setSelectedObject("");
+        return;
+      }
+      const obj = engine.graphArray.get(this.props.selectedObject);
+      const objInfo = obj.dump();
+
+      return(
+        Object.keys(objInfo).map(key=>(
+          <Property
+            object={obj}
+            key={Math.random()+window.performance.now()}
+            keyd={key}
+            type={types[key]}
+            defaultValue={objInfo[key]}
+          />
+        ))
+      );
+    }
+  }
+
+  generateCreationScriptFromProperties(){
+    const engine = this.props.engine;
+
+    const defaultObjectValues =  new GraphObject().dump();
+    const obj = engine.graphArray.get(this.props.selectedObject);
+    const objInfo = obj.dump();
+    let script = `${obj.id} = new GraphObject({\n`;
+    Object.keys(objInfo).forEach(key=>{
+      if(key != "id" && JSON.stringify(objInfo[key]) != JSON.stringify(defaultObjectValues[key])){ // Only include properties that are different from the default values
+        let value = objInfo[key];
+        if(typeof value == "string"){
+          value = `"${value}"`;
+        }else if(typeof value == "function"){
+          value = value.toString();
+        }
+        script += `\t ${key} : ${value},\n`
+      }
+    });
+    script += "});";
+    return script;
+  }
+
+  GenerateCreationScriptButton(){
+    return <Button1
+              text="Generate creation script"
+              action={()=>{
+                Swal.fire({
+                  title: `Creation Script for ${this.props.selectedObject}`,
+                  html: `
+                        <textarea spellcheck="false" class="h-96 w-full border rounded-md overflow-y-auto resize-none bg-stone-50">
+                          ${this.generateCreationScriptFromProperties()}
+                        </textarea>
+                        <span class="text-[16px] leading-4 text-gray-800">
+                          This is the creation script for the selected GraphObject with its current properties values.
+                          You can copy and paste this script in your project to create the GraphObject with the same properties values as the current one.
+                        </span>
+                        `,
+                  width: "800px"
+                });
+              }}
+            />
+  }
+  
+  render(){
+    return <div className="h-full w-full max-w-full p-2 overflow-hidden">
+            <div>
+              Edit
+            </div>
+            <div className="h-full overflow-hidden text-sm flex flex-col">
+              <div className='flex flex-row px-2'>
+                {this.props.selectedObject == "" ? null : this.cloneSelectedButton()}
+                {this.props.selectedObject == "" ? null : this.deleteSelectedButton()}
+                {this.props.selectedObject == "" ? null : this.GenerateCreationScriptButton()}
+              </div>
+              <hr className="text-gray-200 my-1"/>
+              <div className='overflow-auto w-auto px-2'>
+                {this.listProperties()}
+              </div>
+            </div>
+          </div>
+  }
+}
+
 interface ObjectsEProps {
   engine:RenderEngine,
   selfRef:(el:ObjectsE)=>void,
   reRender:()=>void
 }
+
 class ObjectsE extends React.Component<ObjectsEProps> {
   object: GraphObject
   selectedObject: string
@@ -409,21 +566,10 @@ class ObjectsE extends React.Component<ObjectsEProps> {
             </div>
           </div>
           <div className="text-gray-200 w-0.5 h-full"/>
-          <div className="h-full w-full max-w-full p-2 overflow-hidden">
-            <div>
-              Edit
-            </div>
-            <div className="h-full overflow-hidden text-sm flex flex-col">
-              <div className='flex flex-row px-2'>
-                {this.selectedObject == "" ? null : this.cloneSelectedButton()}
-                {this.selectedObject == "" ? null : this.deleteSelectedButton()}
-              </div>
-              <hr className="text-gray-200 my-1"/>
-              <div className='overflow-auto w-auto px-2'>
-                {this.listProperties()}
-              </div>
-            </div>
-          </div>
+          <ObjectEditor engine={eng} selectedObject={this.selectedObject} setSelectedObject={(objId)=>{
+            this.selectedObject = objId;
+            this.forceUpdate();
+          }}/>
         </div>
       )
   }
