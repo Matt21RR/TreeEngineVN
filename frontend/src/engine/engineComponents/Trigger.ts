@@ -58,7 +58,7 @@ class Trigger extends EnabledObject{
   get onMouseMove() {return this._onMouseMove;}
   set onMouseMove(x) {this._onMouseMove = x;}
 
-  check(engineRef:RenderEngine, action:string, mouseRef: {mX:number, mY:number}){
+  check(engineRef:RenderEngine, action:string, mouseCoords: {mX:number, mY:number}){
     //TODO: elaborate the case when mouseRef is null
     if(action == "mouseMove")//check onEnter
       action = "onEnter";
@@ -71,11 +71,11 @@ class Trigger extends EnabledObject{
     }else if(numberOfArguments == 1){
       this[action](engineRef);
     }else if (numberOfArguments == 2 ){
-      this[action](engineRef,mouseRef);
+      this[action](engineRef,mouseCoords);
     }else if (numberOfArguments == 3 && this.relatedTo != null){
       //@ts-ignore
       const graphObjectRef:GraphObject = engineRef.graphArray.get(this.relatedTo);
-      this[action](engineRef,mouseRef,graphObjectRef);
+      this[action](engineRef,mouseCoords,graphObjectRef);
     }else{
       throw new Error(`Too much arguments (${numberOfArguments}) for the function defined to the action ${action}, for the trigger "${this.id}`)
     }
