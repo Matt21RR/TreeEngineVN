@@ -56,7 +56,7 @@ function KeyFilesControls(){
                           <textarea spellcheck="false" class="h-96 w-full border rounded-md overflow-y-auto resize-none bg-stone-50">
                             ${JSON.stringify(e, null, "\t")}
                           </textarea>
-                          <span class="text-[16px] leading-4 text-gray-800">
+                          <span class="text-[16px] leading-3 text-gray-800">
                             You can edit the json result from the textarea above.
                             Then copy and paste it to the corresponding file in your project to update the engine data.
                             The keys of the json are the tag or alias of the resources, so you can use them in your scripts to reference the resources.

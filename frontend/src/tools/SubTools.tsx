@@ -251,7 +251,7 @@ class ObjectEditor  extends React.Component<ObjectEditorProps> {
                         <textarea spellcheck="false" class="h-96 w-full border rounded-md overflow-y-auto resize-none bg-stone-50">
                           ${this.generateCreationScriptFromProperties()}
                         </textarea>
-                        <span class="text-[16px] leading-4 text-gray-800">
+                        <span class="text-[16px] leading-3 text-gray-800">
                           This is the creation script for the selected GraphObject with its current properties values.
                           You can copy and paste this script in your project to create the GraphObject with the same properties values as the current one.
                         </span>
