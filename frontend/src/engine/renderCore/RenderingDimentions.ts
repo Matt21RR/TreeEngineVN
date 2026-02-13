@@ -30,15 +30,11 @@ export class SharedDisplayCalcs{
 function generateObjectsDisplayDimentions(
   canvas: CanvasData, 
   graphArray: RenList<GraphObject>, 
-  // dimentionsPack: Record<string,ObjectRenderingData>, 
-  calculationOrder: CalculationOrder,
+  calculationOrder: Array<string>,
   camera: CameraData): [Set<string>, Array<string>]{
     const engine = RenderEngine.getInstance();
 
     let nDicoSet: Set<string> = new Set();
-
-    // i suspect this is a computation waste, because we already have the order of the objects in calculationOrder
-    const arrayisedTree = arrayiseTree(calculationOrder);
 
     let finalArrayisedTree: Array<string> = [];
 
@@ -88,7 +84,7 @@ function generateObjectsDisplayDimentions(
 
 
     for (let index = 0; index < graphArray.length; index++) {
-      gObject = graphArray.fastGet(arrayisedTree[index]);
+      gObject = graphArray.fastGet(calculationOrder[index]);
       if(!gObject.pendingRenderingRecalculation){
         nDicoSet.add(gObject.id);
         finalArrayisedTree.push(gObject.id);

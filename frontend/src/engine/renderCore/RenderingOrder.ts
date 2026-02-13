@@ -1,3 +1,4 @@
+import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import GraphObject from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
 import { CalculationOrder } from "./RenderEngine.d.tsx";
@@ -7,8 +8,6 @@ function _deepRootSearch(
     generalOrder: CalculationOrder, 
     generalOrderMap: Map<string, number>, 
     visited: CalculationOrder = []): [number, number, CalculationOrder] {
-
-  //TODO: Accelerate this function by using a cache to store previously calculated paths to root for each id, so we don't have to recalculate the same paths multiple times
   //if the parent is not in the generalOrderMap, we need to go up the tree until we find a parent that is in the generalOrderMap or we reach a root element (no parent)
   const isInGeneralOrder = generalOrderMap.has(graphObject.parentRef?.id || "");
 
@@ -36,21 +35,20 @@ function _deepRootSearch(
 }
 
 function generateCalculationOrder(graphArray: RenList<GraphObject>) {
+  let final: Array<string> = [];
   const order: CalculationOrder = [];
-  const processed = new Set<string>();
+  let processedCount = 0;
   const orderMap = new Map<string, number>(); // id -> index in order array
   
   // Get all IDs once
-  const allIds = graphArray.ids();
+  const allIds = graphArray.enabledIds;
   const totalItems = allIds.length;
   
   // Queue for items ready to process
   let unprocessedIds = new Set(allIds);
-
-  const iterator = unprocessedIds.values();
   
-  while (processed.size < totalItems) {
-    const graphObject = graphArray.get(iterator.next().value);
+  while (processedCount < totalItems) {
+    const graphObject = graphArray.get(unprocessedIds.values().next().value);
     if (!graphObject) continue;
 
     const parentRef = graphObject.parentRef;
@@ -61,8 +59,9 @@ function generateCalculationOrder(graphArray: RenList<GraphObject>) {
       branchToParentRoot.forEach(element => {
         const currentIndex = order.length;
         order.push(element);
+        final.push(element.id);
         orderMap.set(element.id, currentIndex);
-        processed.add(element.id);
+        processedCount++;
         unprocessedIds.delete(element.id);
 
         //Note: The accomulatedZ of each element is calculated in the _deepRootSearch function,
@@ -72,15 +71,16 @@ function generateCalculationOrder(graphArray: RenList<GraphObject>) {
     }else{
       const currentIndex = order.length;
       order.push({id: graphObject.id, weight: 0, z: graphObject.z});
+      final.push(graphObject.id);
       orderMap.set(graphObject.id, currentIndex);
-      processed.add(graphObject.id);
+      processedCount++;
       unprocessedIds.delete(graphObject.id);
 
       graphObject.accomulatedZ = graphObject.z;
     }
   }
 
-  return order;
+  return final;
 }
 
 /**
@@ -106,7 +106,32 @@ function arrayiseTree(calculationOrder: CalculationOrder) {
   return sorted.map(element => element.id);
 }
 
-function generateRenderingOrder(graphArray: RenList<GraphObject>) {
+function generateRenderingOrder(dimentionsPack: Record<string, ObjectRenderingData>) {
+  const ids = Object.keys(dimentionsPack);
+  
+  if (ids.length === 0) return [];
+  
+  // Group by z-index using Map (preserves numeric keys)
+  const zGroups = new Map<number, string[]>();
+  
+  for (const id of ids) {
+    const z = dimentionsPack[id].z;
+    const group = zGroups.get(z);
+    
+    if (group) {
+      group.push(id);
+    } else {
+      zGroups.set(z, [id]);
+    }
+  }
+  
+  // Sort z-indices descending and flatten
+  return Array.from(zGroups.entries())
+    .sort((a, b) => b[0] - a[0]) // Sort by z-index descending
+    .flatMap(([_, ids]) => ids);  // Extract all IDs in order
+}
+
+function generateRenderingOrder_(graphArray: RenList<GraphObject>) {
   if (graphArray.enabledIds.length === 0) return [];
   
   // Group by z-index using Map (preserves numeric keys)

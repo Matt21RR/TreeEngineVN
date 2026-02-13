@@ -106,7 +106,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   developmentDeviceHeight: number;
   engineDisplayRes: { width: number; height: number };
   camera: CameraData;
-  calculationOrder: CalculationOrder;
+  calculationOrder: Array<string>;
   // dimentionsPack: Record<string, ObjectRenderingData>;
   dimentionsPack: Set<string>;
   renderingOrderById: Array<string>;
@@ -546,7 +546,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         });
 
         // this.renderingOrderById = requireRepaint;
-        this.renderingOrderById = generateRenderingOrder(this.graphArray);
+        this.renderingOrderById = generateRenderingOrder(dimentionsObject);
 
 
         const renderingOrdTime = performance.now()-renderingOrdA;
