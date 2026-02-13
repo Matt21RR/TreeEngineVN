@@ -2,7 +2,9 @@
 
 ## About
 
-This is a video game engine based on web technologies and geared towards the creation of 2D visual novel-type games.
+TreeEngineVN is a 2d video game engine based on web technologies and geared towards the creation of 2D visual novel-type games.
+
+This project is driven by the classic slogan ‘the real question is not why, but why not?’.😅
 
 A semi-custom scripting language has been designed for building code that is interpreted and executed by the engine and is also interoperable with JavaScript code.
 
