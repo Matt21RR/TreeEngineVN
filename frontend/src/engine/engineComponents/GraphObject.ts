@@ -107,6 +107,8 @@ class GraphObject extends GraphObjectDataType{
   _useEngineUnits:boolean;
 
   _parent:string = "";
+  _parentRef:GraphObject|null = null;
+  _childsRefs:Map<string,GraphObject> = new Map();
   
   _accomulatedZ:number; //Engine related var, dont changeit through a gamescript
 
@@ -164,7 +166,7 @@ class GraphObject extends GraphObjectDataType{
 
     this.opacity =         graphInfo.opacity ?? 1;
 
-    this._parent =          graphInfo.parent ?? "";
+    this.parent =          graphInfo.parent ?? "";
 
     this._x =               graphInfo.x ?? 0;
     this._y =               graphInfo.y ?? 0;
@@ -192,6 +194,18 @@ class GraphObject extends GraphObjectDataType{
         }
       }
     ])
+  }
+
+  //destructor for the graphObject, removes the reference to itself from the parent and childs
+  destroy(){
+    if(this._parentRef){
+      this._parentRef.childsRefs.delete(this.id);
+    }
+    this._childsRefs.forEach((childRef)=>{
+      childRef._parentRef = null;
+    }
+    );
+    this._childsRefs.clear();
   }
 
   set updateEnabled(x:(id:string,enabled:boolean)=>void){
@@ -271,10 +285,14 @@ class GraphObject extends GraphObjectDataType{
   get brightness() {return this._brightness;}
   set brightness(x) {
     if(!isNaN(x)){
-      if(x <= 0){
+      if(x <= 0){//min
         this._brightness = 0;
+        this._filterStrings[FiltersName.Brightness] = "brightness(0)";
+      } else if(x==1){//default
+        this._brightness = 1;
         this._filterStrings[FiltersName.Brightness] = "";
-      }else{
+      }
+      else{
         this._brightness = x;
         this._filterStrings[FiltersName.Brightness] = `brightness(${x})`;
       }
@@ -284,8 +302,11 @@ class GraphObject extends GraphObjectDataType{
   get contrast() {return this._contrast;}
   set contrast(x) {
     if(!isNaN(x)){
-      if(x < 0){
+      if(x <= 0){//min
         this._contrast = 0;
+        this._filterStrings[FiltersName.Contrast] = "contrast(0)";
+      } else if(x==1){//default
+        this._contrast = 1;
         this._filterStrings[FiltersName.Contrast] = "";
       }else{
         this._contrast = x;
@@ -297,7 +318,7 @@ class GraphObject extends GraphObjectDataType{
   get grayscale() {return this._grayscale;}
   set grayscale(x) {
     if(!isNaN(x)){
-      if(x<0){
+      if(x<=0){//default
         this._grayscale = 0;
         this._filterStrings[FiltersName.Grayscale] = "";
       }else if(x>1){
@@ -310,27 +331,25 @@ class GraphObject extends GraphObjectDataType{
     }
   }
 
-  get hueRotate() {return this._hueRotate+"deg";}
+  get hueRotate() {return this._hueRotate;}//? string with unit for css filter, checkit
   set hueRotate(x:number|string) {
     if(typeof x == "string"){
       this._hueRotate = parseFloat(x) % 360 || 0;
     }else if(typeof x == "number"){
       this._hueRotate = x;
     }
-    if(this._hueRotate == 0){
+    if(this._hueRotate % 360 == 0){//default
       this._filterStrings[FiltersName.HueRotate] = "";
     }else{
-      this._filterStrings[FiltersName.HueRotate] = `hue-rotate(${x})`;
+      this._filterStrings[FiltersName.HueRotate] = `hue-rotate(${x}deg)`;
     }
   }
-
-  get hueRotateNumeric() {return this._hueRotate;}
 
   get blur() {return this._blur;}
   get blurPX() {return this._blur + "px";}
   set blur(x:any) {
     this._blur = parseFloat(x) || 0;
-    if(this._blur == 0){
+    if(this._blur <= 0){//default and min
       this._filterStrings[FiltersName.Blur] = "";
     }else{
       this._filterStrings[FiltersName.Blur] = `blur(${x}px)`;
@@ -340,10 +359,10 @@ class GraphObject extends GraphObjectDataType{
   get invert() {return this._invert;}
   set invert(x) {
     if(!isNaN(x)){
-      if(x<0){
+      if(x<=0){//default and min
         this._invert = 0;
         this._filterStrings[FiltersName.Invert] = "";
-      }else if(x>1){
+      }else if(x>=1){//max
         this._invert = 1;
         this._filterStrings[FiltersName.Invert] = "invert(1)";
       }else{
@@ -356,8 +375,11 @@ class GraphObject extends GraphObjectDataType{
   get saturate() {return this._saturate;}
   set saturate(x) {
     if(!isNaN(x)){
-      if(x<0){
+      if(x<=0){ //min
         this._saturate = 0;
+        this._filterStrings[FiltersName.Saturate] = "saturate(0)";
+      }else if(x==1){ //default
+        this._saturate = 1;
         this._filterStrings[FiltersName.Saturate] = "";
       }else{
         this._saturate = x;
@@ -369,10 +391,10 @@ class GraphObject extends GraphObjectDataType{
   get sepia() {return this._sepia;}
   set sepia(x) {
     if(!isNaN(x)){
-      if(x<0){
+      if(x<=0){ //default and min
         this._sepia = 0;
         this._filterStrings[FiltersName.Sepia] = "";
-      }else if(x>1){
+      }else if(x>=1){ //max
         this._sepia = 1;
         this._filterStrings[FiltersName.Sepia] = "sepia(1)";
       }else{
@@ -448,7 +470,26 @@ class GraphObject extends GraphObjectDataType{
   set pendingRenderingRecalculation(x) {this._pendingRenderingRecalculation = x;}
 
   get parent() {return this._parent;}
-  set parent(x) {this._parent = x;}
+  set parent(x) {
+    const engine = RenderEngine.getInstance();
+    if(engine.graphArray.exist(x)){
+      const newParent = engine.graphArray.fastGet(x);
+      if(this._parentRef){
+        this._parentRef.childsRefs.delete(this.id);
+      }
+      this._parentRef = newParent;
+      this._parentRef.childsRefs.set(this.id, this);
+    } else {
+      // If the new parent doesn't exist, we set the parent reference to null and remove this object from the old parent's child references
+      if(this._parentRef){
+        this._parentRef.childsRefs.delete(this.id);
+      }
+    }
+    this._parent = x;
+  }
+
+  get parentRef() {return this._parentRef;}
+  get childsRefs() {return this._childsRefs;}
 
   get accomulatedZ() {return this._accomulatedZ;}
   set accomulatedZ(x) {this._accomulatedZ = x;}
