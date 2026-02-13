@@ -30,14 +30,6 @@ export type ObjectRenderingData = {
 
 type EngineRenderingData = Dictionary<ObjectRenderingData>;
 
-function engineRenderingDataCloner(engineRenderingData:EngineRenderingData){
-  var newData:EngineRenderingData = engineRenderingData;
-  // for(const id in engineRenderingData){
-  //   newData[id] = engineRenderingData[id];
-  // }
-  return newData;
-}
-
 class CollisionLayer {
   collisionMatrix:Array<Array<Set<string>>>;
   refTable: Map<string,Array<[number,number]>>;
@@ -241,4 +233,3 @@ class CollisionLayer {
   }
 }
 export default CollisionLayer;
-export {engineRenderingDataCloner}
