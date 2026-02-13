@@ -1,6 +1,7 @@
 import { Dictionary } from "../../global.ts";
 import { getAttribs } from "../logic/Misc.ts";
 import Proxificator from "./EventProxy.ts";
+import GraphObject from "./GraphObject.ts";
 
 type RenElement = {
   enabled:boolean,
@@ -120,6 +121,10 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
         this.#_enabledIds.splice( enabledId,1 );
       }
 
+      if(element instanceof GraphObject){
+        element.destroy();
+      }
+
       this.objects.splice(numId,1);
       this.#_ids.splice(numId,1);
       delete this.#_elementsDict[objectId];
@@ -146,13 +151,13 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     }else{
       return this.#_enabledIds;
     }
-    
   }
   relatedToList(){
     return this.#_relatedToIds;
   }
+  get enabledIds(){ return this.#_enabledIds; }
   enabledList(){
-    return this.#_enabledIds.map(id => this.get(id))
+    return this.#_enabledIds.map(id => this.fastGet(id))
   }
 
   relatedToReversedList(this: RenList<T>): Dictionary<Array<string>>{
