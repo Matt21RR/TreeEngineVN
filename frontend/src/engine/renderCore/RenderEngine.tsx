@@ -391,9 +391,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
     this.forceUpdate();  
   }
-  getObject(id:string){
-    return this.graphArray.fastGet(id);
-  }
 
   getTexture(id: string):Shader{
     if(this.textureAnims.exist(id)){
@@ -548,7 +545,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           dimentionsObject[key] = this.graphArray.fastGet(key).dimentionsPack;
         });
 
-        this.renderingOrderById = generateRenderingOrder(dimentionsObject);
+        // this.renderingOrderById = requireRepaint;
+        this.renderingOrderById = generateRenderingOrder(this.graphArray);
+
+
         const renderingOrdTime = performance.now()-renderingOrdA;
 
         this.canvasRef = canvas;
@@ -570,7 +570,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
         for (let index = 0; index < objectsToRender; index++) {
           let infoAdjudicationPre = performance.now();
-          const gObject = this.getObject(availableIdsToRender[index]); //!Non-confirmed bottleneck
+          const gObject = this.graphArray.fastGet(availableIdsToRender[index]); //!Non-confirmed bottleneck
           
           const renderingData = gObject.dimentionsPack;
 

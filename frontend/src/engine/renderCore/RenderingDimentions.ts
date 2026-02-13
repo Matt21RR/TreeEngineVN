@@ -32,12 +32,15 @@ function generateObjectsDisplayDimentions(
   graphArray: RenList<GraphObject>, 
   // dimentionsPack: Record<string,ObjectRenderingData>, 
   calculationOrder: CalculationOrder,
-  camera: CameraData){
+  camera: CameraData): [Set<string>, Array<string>]{
     const engine = RenderEngine.getInstance();
 
     let nDicoSet: Set<string> = new Set();
 
+    // i suspect this is a computation waste, because we already have the order of the objects in calculationOrder
     const arrayisedTree = arrayiseTree(calculationOrder);
+
+    let finalArrayisedTree: Array<string> = [];
 
     const camCenter = {
       x: -camera.position.x + 0.5,
@@ -88,6 +91,7 @@ function generateObjectsDisplayDimentions(
       gObject = graphArray.fastGet(arrayisedTree[index]);
       if(!gObject.pendingRenderingRecalculation){
         nDicoSet.add(gObject.id);
+        finalArrayisedTree.push(gObject.id);
         //TODO: if text value is not null, jump to text attribs recalculation
         continue;
       }
@@ -241,11 +245,12 @@ function generateObjectsDisplayDimentions(
         dimentionsPack.text = null;
       }
       nDicoSet.add(gObject.id);
+      finalArrayisedTree.push(gObject.id);
 
       gObject.pendingRenderingRecalculation = false;
 
     }
-    return [nDicoSet, requireRepaint];
+    return [nDicoSet, finalArrayisedTree];
   }
 
 export {generateObjectsDisplayDimentions}
