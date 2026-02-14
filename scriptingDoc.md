@@ -390,4 +390,49 @@ According to the previous command, the engine will do:
 4. Delete the button, removing the "acceptDealButton" GraphObject from the scene
 5. Play the sound "dealWasAccepted"
 
+<br>
 
+---
+# Javascript Interoperation
+
+This allows to mix the game engine script commands with javascript code. The possibility of making this combination has its advantages.
+
+## Javascript outside a script command
+
+Simply type “>” as the first character of the line, followed by a space, and then type the JavaScript code you want to execute.
+
+```ts
+> console.log( Math.random() );
+```
+
+If the JavaScript code you want to add to your script takes up more than one line, you can write the code as a variable or constant that stores a lambda function with the code inside, and then execute that lambda function by using the “>” symbol again on the next line to call that function.
+
+```ts
+//Create a lambda function with the code inside
+> const ourInterestingFunction = () => {
+    console.log("This is a interesting function.");
+    const num = 2.7;
+    const floorInteger = Math.floor(num);
+    console.log(`This is the previous integer to the number ${num}: ${floorInteger}`)
+}
+
+//excecuting that lambda function
+> ourInterestingFunction();
+```
+
+You can also insert engine script commands within JavaScript code. This can be useful when you want to automate a specific task, such as executing the command to create graphic objects multiple times.
+
+
+```ts
+> const indexes = [...new Array(10)].map( (_,index)=>index );
+> for (let index of indexes) {
+    //GraphObject creation instruction
+    `tree${index}` = new GraphObject({
+      enabled:true,
+      texture:"treeTexture",
+      x:(index/10),
+      y:(0.5),
+      scale:0.15
+    })
+}
+```
