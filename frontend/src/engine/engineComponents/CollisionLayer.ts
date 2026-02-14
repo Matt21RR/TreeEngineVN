@@ -205,8 +205,6 @@ class CollisionLayer {
 
     cells?.forEach(cellCoord=>{
       objectsInSameCells.union( this.collisionMatrix[ cellCoord[0] ][ cellCoord[1] ] );
-      // this.collisionMatrix[ cellCoord[0] ][ cellCoord[1] ]
-      //   .forEach(id => objectsInSameCells.add(id));
     });
 
     return objectsInSameCells;
