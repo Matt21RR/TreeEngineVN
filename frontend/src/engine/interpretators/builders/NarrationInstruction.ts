@@ -4,17 +4,11 @@ import { Interpretation } from "../ChaosInterpreter.ts";
 
 class NarrationInstruction extends AgrupableInstructionInterface{
   isOfThisType(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-
-    try {
-      if(instruction.length == 1){ //Check for Narration
-        if(getToken(0).type == "text")
-        return {match:true, narration: getToken(0).value};
-      }
-      return {match:false};
-    } catch (error) {
-      return {match:false}; 
-    }
+    return this.conditionsChecker(instruction, {
+      0: {type:"text", instructionLength:1, result:(tokens)=>{
+        return {narration: tokens[0].value}
+      }}
+    });
   }
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const narration:string = extractedData.narration;

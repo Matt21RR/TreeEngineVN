@@ -4,24 +4,21 @@ import InstructionInterface from "../InstructionInterface.ts";
 
 class StructureEndInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-
-    try {
-      if(instruction.length == 2){
-        if(getToken(0).type == "word" && 
-          Object.keys(ScriptStructure)
-          .filter(key=>isNaN(key as any))
-          .map(key=>key.toLowerCase())
-          .includes(getToken(0).value.toLowerCase())){
-          if(getToken(1).type == "word" && getToken(1).value.toLowerCase() == "ends"){
-            return {match:true,end:getToken(0).value.toLowerCase()}
-          }
-        }
-      }
-      return {match:false}; 
-    } catch (error) {
-      return {match:false};
+    const structTypeCheck = (value:string)=>{
+      return Object.keys(ScriptStructure)
+      .filter(key=>isNaN(key as any))
+      .map(key=>key.toLowerCase())
+      .includes(value.toLowerCase());
     }
+
+    return this.conditionsChecker(instruction, {
+      0: {type:"word", condition:(token)=>{
+        return structTypeCheck(token.value.toLowerCase());
+      }},
+      1: {type:"word", wordMatch:"ends", result: (tokens)=>{
+        return {end:tokens[0].value.toLowerCase()};
+      }}
+    });
   }
   protected interpretate(isInRoutineMode: boolean, extractedData:Dictionary): Object {
     return {end:extractedData.end};

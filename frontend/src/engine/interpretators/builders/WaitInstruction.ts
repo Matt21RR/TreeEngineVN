@@ -3,16 +3,19 @@ import InstructionInterface from "../InstructionInterface.ts";
 
 class WaitInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "wait"){
-      if(getToken(1).type == "number"){
-        return {match:true, waitTime: getToken(1).value};
-      }else{
-        return {match:true, waitTime: null};
+    return this.conditionsChecker(instruction, [
+      {
+        0:{type:"word", wordMatch:"wait"},
+        1:{type:"number", result:(tokens)=>{
+          return {waitTime: tokens[1].value};
+        }}
+      },
+      {
+        0:{type:"word", wordMatch:"wait", result:()=>{
+          return {waitTime: null};
+        }}
       }
-    }
-    return {match:false}
+    ]);
   }
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const waitTime:string|null = extractedData.waitTime;

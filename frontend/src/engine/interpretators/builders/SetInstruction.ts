@@ -4,18 +4,15 @@ import InstructionInterface from "../InstructionInterface.ts";
 class SetInstruction extends InstructionInterface{
   isOfThisType(instruction){
     const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger","Engine"];
-    const getToken = (idx)=>{return instruction[idx];}
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "set"){
-      if(getToken(1).type == "word" && creatableObjects.includes(getToken(1).value)){
-        if(getToken(2).type == "word" || getToken(2).type == "text"){
-          return {
-                  match: true, 
-                  branch: getToken(1).value, 
-                  id: getToken(2).type == "word" ? "'"+getToken(2).value+"'" : getToken(2).value};
-        }
-      }
-    }
-    return {match: false};
+    return this.conditionsChecker(instruction,{
+      0: {type:"word", wordMatch:"set"},
+      1: {type:"word", condition:(token)=>{return creatableObjects.includes(token.value)}},
+      2: {type:["word","text"], result: (tokens)=>{
+        return {
+          branch: tokens[1].value, 
+          id: tokens[2].type == "word" ? "'"+tokens[2].value+"'" : tokens[2].value};
+      }}
+    });
   }
   interpretate(isInRoutineMode:boolean, extractedData: Dictionary) {
     const branch:string = extractedData.branch;

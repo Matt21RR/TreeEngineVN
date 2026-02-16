@@ -3,43 +3,40 @@ import InstructionInterface from "../InstructionInterface.ts";
 
 
 class CreateInstruction extends InstructionInterface{
-  isOfThisType(instruction){
+  isOfThisType(instruction): Dictionary {
     const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger", "Actor", "StageMark"];
-    const getToken = (idx)=>{return instruction[idx];}
+    let result = this.conditionsChecker(instruction, {
+      0: {type: ["word", "text"]},
+      1: {type: "operator", wordMatch: "="},
+      2: {type: "word", wordMatch: "new"},
+      3: {type: "word", condition: (token)=>{return creatableObjects.includes(token.value)}},
+      4: {isArray: true, result: (tokens)=>{
+        return {
+          match:true, 
+          branch: tokens[3].value, 
+          id: tokens[0].type == "word" ? '"'+tokens[0].value+'"' : tokens[0].value
+        };
+      }}
+      
+    });
 
-    try {
-      if(getToken(0).type == "word" || getToken(0).type == "text"){
-        if(getToken(1).type == "operator" && getToken(1).value == "="){
-          if(getToken(2).type == "word" && getToken(2).value == "new"){
-            if(getToken(3).type == "word" && creatableObjects.includes(getToken(3).value)){
-              if(getToken(4).constructor === Array){
-                return {
-                  match:true, 
-                  branch: getToken(3).value, 
-                  id: getToken(0).type == "word" ? '"'+getToken(0).value+'"' : getToken(0).value
-                };
-              }
-            }
-          }
-        }
-      }
-      //*OR
-      if(getToken(0).type == "word" && getToken(0).value == "new"){
-        if(getToken(1).type == "word" && getToken(1).value == "KeyboardTrigger"){
-          if(getToken(2).constructor === Array){
-            return {
-              match: true, 
-              branch: getToken(1).value, 
-              id: null
-            };
-          }
-        }
-      }
-      return {match:false}; 
-    } catch (error) {
-      return {match:false};
+    if(!result.match){
+      result = this.conditionsChecker(instruction, {
+        0: {type: "word", wordMatch: "new"},
+        1: {type: "word", wordMatch: "KeyboardTrigger"},
+        2: {isArray: true, result: (tokens)=>{
+          return {
+            match: true, 
+            branch: tokens[1].value, 
+            id: null};
+        }}
+      });
     }
+    
+    return result;
   }
+
+
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary): string{
     const value:string = extractedData.value;
     const branch:string = extractedData.branch;

@@ -4,15 +4,12 @@ import Token from "../Token.ts";
 
 class ModuleDefinitionInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-    //@ts-ignore
-    if(getToken(0) instanceof Token && getToken(0).type == "word" && getToken(0).value == "module"){
-      //@ts-ignore
-      if(getToken(1) instanceof Token && getToken(1).type == "word"){
-        return {match:true, moduleId:getToken(1).value};
-      }
-    }
-    return {match:false};
+    return this.conditionsChecker(instruction, {
+      0: {type:"word", wordMatch:"module"},
+      1: {type:"word", result:(tokens)=>{
+        return {moduleId: tokens[1].value}
+      }}
+    });
   }
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary): Object {
     const moduleId: string = extractedData.moduleId;

@@ -5,16 +5,17 @@ import InstructionInterface from "../InstructionInterface.ts";
 class LoadInstruction extends InstructionInterface{
   isOfThisType(instruction){
     const runableObjects = ["script"];
-    const getToken = (idx)=>{return instruction[idx];}
-
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "load"){
-      if(getToken(1).type == "word" && runableObjects.includes(getToken(1).value)){
-        if(getToken(2).type == "text"){
-          return {match: true, loadBranch: getToken(1).value, loadId: getToken(2).value};
-        }
-      }
-    }
-    return {match:false};
+    return this.conditionsChecker(instruction, {
+      0: {type:"word", wordMatch:"load"},
+      1: {type:"word", condition:(token)=>{
+        return runableObjects.includes(token.value);
+      }},
+      2: {type:"text", result:(tokens)=>{
+        return {
+          loadBranch: tokens[1].value, 
+          loadId: tokens[2].value};
+      }}
+    });
   }
   interpretate(isInRoutineMode: boolean, extractedParams:Dictionary): string {
     const loadBranch:string = extractedParams.loadBranch;

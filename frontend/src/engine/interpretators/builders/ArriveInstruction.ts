@@ -2,32 +2,36 @@ import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
 export default class ArriveInstruction extends InstructionInterface{
-  isOfThisType(instruction){
-    const getToken = (idx :number)=>{return instruction[idx];}
-
-    try {
-      if(instruction.length >= 4){ //Check for Narration
-        if(getToken(0).type == "word"){
-          if(getToken(1).type == "word" && getToken(1).value.toLowerCase() == "arrives"){
-            if(getToken(2).type == "word" && getToken(2).value.toLowerCase() == "to"){
-              if(getToken(3).type == "word"){
-                if(instruction.length == 6 && getToken(4).type == "word" && getToken(4).value.toLowerCase() == "in"){
-                  if(getToken(5).type == "number"){
-                    return {match:true, actorId: getToken(0).value, markId: getToken(3).value, duration: getToken(5).value};
-                  }
-                }
-                return {match:true, actorId: getToken(0).value, markId: getToken(3).value}
-              }
-            }
-          }
+  isOfThisType(instruction): Dictionary {
+    let result = this.conditionsChecker(instruction,{
+      0: {type:"word"},
+      1: {type:"word", wordMatch:"arrives"},
+      2: {type:"word", wordMatch:"to"},
+      3: [
+        {
+          3:{type:"word", instructionLength:6},
+          4:{type:"word", wordMatch:"in"},
+          5:{type:"number", result:(tokens)=>{
+            return {
+              actorId: tokens[0].value, 
+              markId: tokens[3].value, 
+              duration: tokens[5].value};
+          }}
+        },
+        {
+          3:{type:"word", result:(tokens)=>{
+            return {
+              actorId: tokens[0].value, 
+              markId: tokens[3].value};
+          }}
         }
-      }
-      return {match:false}; 
-    } catch (error) {
-      return {match:false};
-    }
+      ]
+    });
+
+    return result;
   }
-interpretate(isInRoutineMode: boolean, extractedData: Dictionary) {
+
+  interpretate(isInRoutineMode: boolean, extractedData: Dictionary) {
     const actorId:string = extractedData.actorId;
     const markId:string = extractedData.markId;
     const duration:string = extractedData.duration;

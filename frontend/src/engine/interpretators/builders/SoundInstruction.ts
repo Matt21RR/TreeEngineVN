@@ -3,24 +3,25 @@ import InstructionInterface from "../InstructionInterface.ts";
 
 export default class SoundInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "sound"){
-      if(getToken(1).type == "word" || getToken(1).type == "text"){
-        if(getToken(2).type == "word"){
-          return {
-            match: true,
-            action: getToken(2).value,
-            id: getToken(1).type == "word" ? "'"+getToken(1).value+"'" : getToken(1).value
-          };
-        } else {
-          return {
-            match: true, 
-            id: getToken(1).type == "word" ? "'"+getToken(1).value+"'" : getToken(1).value
-          };
+    return this.conditionsChecker(instruction, {
+      0: {type:"word", wordMatch:"sound"},
+      1: {type:["word","text"]},
+      3: [
+        {
+          3: {type:"word", result:(tokens)=>{
+            return {
+              action: tokens[2].value,
+              id: tokens[1].type == "word" ? "'"+tokens[1].value+"'" : tokens[1].value};
+          }}
+        },
+        {
+          3: {isArray:true, result:(tokens)=>{
+            return {
+              id: tokens[1].type == "word" ? "'"+tokens[1].value+"'" : tokens[1].value};
+          }}
         }
-      }
-    }
-    return {match: false};
+      ]
+    });
   }
   interpretate(isInRoutineMode:boolean, extractedData: Dictionary) {
     const id:string = extractedData.id;

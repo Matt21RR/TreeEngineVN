@@ -3,29 +3,32 @@ import InstructionInterface from "../InstructionInterface.ts";
 
 class EmotionChangeInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const getToken = (idx :number)=>{return instruction[idx];}
-
-    try {
-      if(instruction.length >= 3){ //Check for Narration
-        if(getToken(0).type == "word"){
-          if(getToken(1).type == "word" && getToken(1).value.toLowerCase() == "gets"){
-            if(getToken(2).type == "word"){
-              if(instruction.length == 5 && getToken(3).type == "word" && getToken(3).value.toLowerCase() == "in"){
-                if(getToken(4).type == "number"){
-                  return {match:true, actorId: getToken(0).value, emotionId: getToken(2).value, duration: getToken(4).value};
-                }
-              }
-              return {match:true, actorId: getToken(0).value, emotionId: getToken(2).value}
-            }
-          }
+    return this.conditionsChecker(instruction,{
+      0: {type: "word"},
+      1: {type: "word", wordMatch: "gets"},
+      2: [
+        {
+          2: {type: "word", instructionLength: 5},
+          3: {type: "word", wordMatch: "in"},
+          4: {type: "number", result:(tokens)=>{
+            return {
+              actorId: tokens[0].value, 
+              emotionId: tokens[2].value,
+              duration: tokens[4].value};
+          }}
+        },
+        {
+          2: {type: "word", result:(tokens)=>{
+            return {
+              actorId: tokens[0].value, 
+              emotionId: tokens[2].value};
+          }}
         }
-      }
-      return {match:false}; 
-    } catch (error) {
-      return {match:false};
-    }
+      ]
+    });
   }
-   interpretate(isInRoutineMode: boolean, extractedData: Dictionary) {
+  
+  interpretate(isInRoutineMode: boolean, extractedData: Dictionary) {
     const actorId:string = extractedData.actorId;
     const emotionId:string = extractedData.emotionId;
     const duration:string = extractedData.duration;

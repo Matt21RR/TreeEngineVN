@@ -3,11 +3,9 @@ import InstructionInterface from "../InstructionInterface.ts";
 
 class ResumeInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-    if(getToken(0).type == "word" && getToken(0).value.toLowerCase() == "resume"){
-      return {match:true};
-    }
-    return {match:false};
+    return this.conditionsChecker(instruction,{
+      0: {type:"word", wordMatch:"resume", result:()=>{return {}}}
+    });
   }
   interpretate(isInRoutineMode: boolean,extractedData:Dictionary) {
     let res:Array<string> = [];

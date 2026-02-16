@@ -3,17 +3,12 @@ import InstructionInterface from "../InstructionInterface.ts";
 
 class SetSpeakerInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-    try {
-      if(getToken(0).type == "word"){
-        if(getToken(1).type == "word" && getToken(1).value.toLowerCase() == "says"){
-          return {match:true, actor: getToken(0).value};
-        }
-      }
-      return {match:false};
-    } catch (error) {
-      return {match:false};
-    }
+    return this.conditionsChecker(instruction, {
+      0: {type:"word"},
+      1: {type:"word", wordMatch:"says", result:(tokens)=>{
+        return {actor: tokens[0].value}
+      }}
+    });
   }
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const actor:string  = extractedData.actor;

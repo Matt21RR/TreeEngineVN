@@ -6,6 +6,7 @@ import Token from "../Token.ts";
 
 class DialogInstruction extends AgrupableInstructionInterface{
   private specialInstructionReductor(instruction){
+
     var dec:Array<string> = [];
     for (const token of instruction) {
       if(token.constructor === Array){
@@ -33,31 +34,14 @@ class DialogInstruction extends AgrupableInstructionInterface{
     return dec.join(",");
   }
   protected isOfThisType(instruction){
-    const getToken = (idx)=>{return instruction[idx];}
-
-    try {
-      if(instruction.length >= 2){//Check for emotionless Dialog
-        var emotion = "";
-        if(getToken(0).type == "operator" && getToken(0).value == "-"){
-          instruction.shift();
-          if(getToken(0).constructor === Array && getToken(0).length == 3){//Check for dialog with emotion
-            emotion = getToken(0)[1].value as string;
-            instruction.shift();
-          }
-          if(getToken(0).type == "text"){
-            var dialog = this.specialInstructionReductor(instruction);
-            if(emotion != ""){
-              dialog = `{type:"config",value:{emotion:"${emotion}"}} ,` + dialog;
-            }
-            return {match:true, dialog}
-          }
-        }
-      }
-      return {match:false}; 
-    } catch (error) {
-      console.error(error);
-      return {match:false};
-    }
+    return this.conditionsChecker(instruction,{
+      0: {type:"operator", wordMatch:"-"},
+      1: {type:"text", result:(tokens)=>{
+        tokens.shift();
+        const dialog = this.specialInstructionReductor(tokens);
+        return {dialog};
+      }}
+    });
   }
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const dialog:string = "["+extractedData.dialog+"]";
