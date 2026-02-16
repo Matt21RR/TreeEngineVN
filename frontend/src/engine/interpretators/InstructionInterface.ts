@@ -4,6 +4,18 @@ import { Chaos } from "./ChaosInterpreter.ts";
 import Instruction from "./Instruction.ts";
 import Token from "./Token.ts";
 
+interface TokenCondition{
+  type?: string | Array<string>,
+	isArray?: boolean,
+	wordMatch?:string,
+	instructionLength?: number,
+	condition?: (token:Token)=>boolean,
+  result?:(tokens: Array<Token>)=>Dictionary,
+}
+
+type TokenPattern = {
+  [key: number]: TokenCondition | Array<TokenPattern>;
+};
 
 abstract class InstructionInterface{
   protected abstract isOfThisType(instruction: Instruction|Token): Dictionary;
@@ -12,6 +24,67 @@ abstract class InstructionInterface{
 
   isAgrupable(){
     return this.agrupable;
+  }
+
+  protected conditionsChecker(instruction: Instruction, conditions: TokenPattern | Array<TokenPattern>): Dictionary{
+    if(Array.isArray(conditions)){
+      for(let condition of conditions){
+        const res = this.conditionsChecker(instruction, condition);
+        if(res.match){
+          return res;
+        }
+      }
+      return {match:false};
+    }
+    for(let idx in conditions){
+      const condition = conditions[idx];
+      // console.log("Checking condition for token ", idx, " with condition ", condition);
+      const token = instruction[Number(idx)];
+      if(token === undefined){//there is no token in the instruction for this condition, so it can't be of this type
+        break;
+      }
+
+      if(condition.constructor === Array){
+        return this.conditionsChecker(instruction, condition as Array<TokenPattern>);
+      }else{
+        const tokenCondition = condition as TokenCondition;
+        if(tokenCondition.isArray && token.constructor !== Array){
+            break;
+        }else if(!tokenCondition.isArray && token.constructor === Array){
+            break;
+        }
+        if(tokenCondition.type){
+          if(tokenCondition.type.constructor === Array){
+            if(!(tokenCondition.type as Array<string>).includes((token as Token).type)){
+              break;
+            }
+          }else if((token as Token).type != tokenCondition.type){
+            break;
+          }
+        }
+        if(tokenCondition.wordMatch && ((token as Token).value.toLowerCase() != tokenCondition.wordMatch.toLowerCase()) ){
+            break;
+        }
+        if(tokenCondition.instructionLength){
+          if(Array.isArray(instruction) && (instruction.length != tokenCondition.instructionLength)){
+            break;
+          }
+        }
+        if(tokenCondition.condition){
+          if(!tokenCondition.condition(token as Token)){
+            break;
+          }
+        }
+      }
+      if(condition.constructor !== Array && (condition as TokenCondition).result){
+        const result = (condition as TokenCondition).result(instruction as Array<Token>);
+        Object.assign(result, {match:true});
+        return result;
+      }
+      // console.log("Condition for token ", idx, " passed");
+    }
+
+    return {match:false};
   }
 
   private getStrParamsFromInstruction(instruction: Instruction){
