@@ -58,9 +58,9 @@ ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this
 Will run once and then be removed
 
 ```js
-id if (condition) do (obj?: GraphObject, engine?: RenderEngine)=>{}
-
-id if (condition) do (obj?: GraphObject, engine?: RenderEngine)=>{} finally (obj?: GraphObject, engine?: RenderEngine)=>{}
+if (condition) { 
+  (engine?: RenderEngine)=>{} 
+}
 ```
 
 ### While the parameter meet the condition
@@ -424,7 +424,7 @@ You can also insert engine script commands within JavaScript code. This can be u
 
 
 ```ts
-> const indexes = [...new Array(10)].map( (_,index)=>index );
+> const indexes = [...new Array(10)].map( (_, index) => index );
 > for (let index of indexes) {
     //GraphObject creation instruction
     `tree${index}` = new GraphObject({
