@@ -154,11 +154,32 @@ class ChaosInterpreter {
     return this.instructionsDesintegrator(script,true,true) as string;
   }
 
+  //Useful for tokenization script checking, to check if the script have syntax errors before trying to interpretate it
   tokenization(script:string){
     script += "\n"; //To avoid the last line to be ignored
     let tokenList = this.lexer(script).filter(tk=>{return (tk.constructor === Array)||((tk as Token).type != "space")});
     let abs = this.preParser(tokenList);
     return abs;
+  }
+
+  checkScriptAgainstSupportedInstructions(script:string): Array<{instruction: Instruction, matchedInstruction: string}>{
+    const abs = this.tokenization(script);
+    let res: Array<{instruction: Instruction, matchedInstruction: string}> = [];
+
+    for (const instruction of abs) {
+      if(instruction.constructor === Array){
+        for (const supportedInstruction of this.supportedInstructions) {
+          //@ts-ignore
+          const resCheck = (supportedInstruction).check(instruction as Instruction,this,true);
+          // console.log(resCheck, supportedInstruction.constructor.name);
+          if(resCheck.match){
+            res.push({instruction: instruction as Instruction, matchedInstruction: supportedInstruction.constructor.name});
+            break;
+          }
+        }
+      }
+    }
+    return res;
   }
 
   private instructionsDesintegrator(script:string, ignoreSceneOrModuleDefinitionCheck = false, recursiveMode=false){
