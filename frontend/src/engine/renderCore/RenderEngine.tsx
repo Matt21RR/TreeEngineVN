@@ -392,6 +392,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.forceUpdate();  
   }
 
+  getObject(id: string): GraphObject{
+    return this.graphArray.fastGet(id);
+  }
+
   getTexture(id: string):Shader{
     if(this.textureAnims.exist(id)){
       id = this.textureAnims.get(id).getTexture(this.engineTime);
