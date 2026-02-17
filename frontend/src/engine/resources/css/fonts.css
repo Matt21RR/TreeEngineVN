@@ -1,15 +1,3 @@
-@font-face {
-  font-family: 'Terminal';
-  src: url("../Terminal.ttf");
-}
-@font-face {
-  font-family: 'Harry';
-  src: url("../HarryPlain.otf");
-}
-@font-face {
-  font-family: 'Harry Thin';
-  src: url("../HarryThin.otf");
-}
 .loadIconAlter{
   transform-origin: 50% 50%;
   animation: loadIcon 0.5s linear 0s infinite;

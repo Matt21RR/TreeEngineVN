@@ -195,7 +195,7 @@ class Canvas extends React.Component<CanvasProps>{
     if(canvas){
       const context = canvas.getContext("2d");
       if(context){
-        context.font = (12*this.scale)+"px Terminal";
+        context.font = (12*this.scale)+"px Consolas";
         context.fillStyle = "orange";
         context.filter = 'none';
         context.globalAlpha = 1;

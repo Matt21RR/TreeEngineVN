@@ -77,8 +77,8 @@ export function MenuButton (props: MenuButtonProps){
       onClick={()=>{props.action?.()}} 
       style={{
         fontSize: (props.textSize ?? 18)+"px", 
-        fontFamily:"Harry Thin", 
-        letterSpacing:"0.15em", 
+        // fontFamily:"Harry Thin", 
+        letterSpacing:"0.1em", 
         transform:"scaleY(0.9)",  
         filter: "invert(0%)"}}>
       {props.text}
