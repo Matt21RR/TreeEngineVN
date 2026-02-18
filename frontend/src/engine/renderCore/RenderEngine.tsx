@@ -692,7 +692,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         //calc the perspective angle
         this.camera.position.angle = canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width);
         //disable image smoothing
-        canvas.context.imageSmoothingEnabled = false;
+        // canvas.context.imageSmoothingEnabled = false;
         canvas.context.textRendering = "optimizeSpeed";
         canvas.context.textBaseline = 'middle';
 
@@ -711,7 +711,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         //calc the perspective angle
         this.camera.position.angle = canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width);
         //disable image smoothing
-        canvas.context.imageSmoothingEnabled = false;
+        // canvas.context.imageSmoothingEnabled = false;
         canvas.context.textRendering = "optimizeSpeed"; 
         canvas.context.textBaseline = 'middle';
 
@@ -757,7 +757,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       <div className="relative w-full h-full mx-auto my-auto" id={'display'+this.id}>
         <div className="bg-black absolute w-full h-full flex">
           <div className="relative w-full h-full mx-auto my-auto" id={'engineDisplay'+this.id}>
-            <div className="absolute w-full h-full bg-gradient-to-b from-gray-900 to-gray-700">
+            <div className="absolute w-full h-full bg-linear-to-b from-gray-900 to-gray-700">
               {this.renderScene()}
               <PointerCalculation/>
               <UI/>
