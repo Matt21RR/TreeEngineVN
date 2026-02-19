@@ -44,17 +44,17 @@ abstract class InstructionInterface{
         break;
       }
 
-      if(condition.constructor === Array){
+      if(Array.isArray(condition)){
         return this.conditionsChecker(instruction, condition as Array<TokenPattern>);
       }else{
         const tokenCondition = condition as TokenCondition;
-        if(tokenCondition.isArray && token.constructor !== Array){
+        if(tokenCondition.isArray && !Array.isArray(token)){
             break;
-        }else if(!tokenCondition.isArray && token.constructor === Array){
+        }else if(!tokenCondition.isArray && Array.isArray(token)){
             break;
         }
         if(tokenCondition.type){
-          if(tokenCondition.type.constructor === Array){
+          if(Array.isArray(tokenCondition.type)){
             if(!(tokenCondition.type as Array<string>).includes((token as Token).type)){
               break;
             }
@@ -76,7 +76,7 @@ abstract class InstructionInterface{
           }
         }
       }
-      if(condition.constructor !== Array && (condition as TokenCondition).result){
+      if(!Array.isArray(condition) && (condition as TokenCondition).result){
         const result = (condition as TokenCondition).result(instruction as Array<Token>);
         Object.assign(result, {match:true});
         return result;
@@ -110,7 +110,7 @@ abstract class InstructionInterface{
 
   check(instruction, chaosReference:Chaos, isInRoutineMode:boolean){
     let strParams = "";
-    if ((instruction as Instruction).at(-1) instanceof Array){
+    if (Array.isArray((instruction as Instruction).at(-1))){
       strParams = this.getStrParamsFromInstruction(instruction);
     }
 

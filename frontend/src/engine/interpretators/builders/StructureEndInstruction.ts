@@ -10,12 +10,11 @@ class StructureEndInstruction extends InstructionInterface{
       .map(key=>key.toLowerCase())
       .includes(value.toLowerCase());
     }
-
     return this.conditionsChecker(instruction, {
-      0: {type:"word", condition:(token)=>{
+      0: {type:"word", wordMatch:"end"},
+      1: {type:"word",  condition:(token)=>{
         return structTypeCheck(token.value.toLowerCase());
-      }},
-      1: {type:"word", wordMatch:"ends", result: (tokens)=>{
+      }, result: (tokens)=>{
         return {end:tokens[0].value.toLowerCase()};
       }}
     });

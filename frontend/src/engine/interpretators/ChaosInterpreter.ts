@@ -162,7 +162,7 @@ class ChaosInterpreter {
   //Useful for tokenization script checking, to check if the script have syntax errors before trying to interpretate it
   tokenization(script:string){
     script += "\n"; //To avoid the last line to be ignored
-    let tokenList = this.lexer(script).filter(tk=>{return (tk.constructor === Array)||((tk as Token).type != "space")});
+    let tokenList = this.lexer(script).filter(tk=>{return (Array.isArray(tk))||((tk as Token).type != "space")});
     let abs = this.preParser(tokenList);
     return abs;
   }
@@ -172,7 +172,7 @@ class ChaosInterpreter {
     let res: Array<{instruction: Instruction, matchedInstruction: string}> = [];
 
     for (const instruction of abs) {
-      if(instruction.constructor === Array){
+      if(Array.isArray(instruction)){
         for (const supportedInstruction of this.supportedInstructions) {
           //@ts-ignore
           const resCheck = (supportedInstruction).check(instruction as Instruction,this,true);
@@ -191,7 +191,7 @@ class ChaosInterpreter {
     const abs = this.tokenization(script);
     let res = false;
     for (const instruction of abs) {
-      if(instruction.constructor === Array){
+      if( Array.isArray(instruction) ){
         const supportedInstruction = this.invokeSupportedInstruction(instructionType);
         //@ts-ignore
         const resCheck = (supportedInstruction).check(instruction as Instruction,this,true);
@@ -214,7 +214,7 @@ class ChaosInterpreter {
 
     for (let index = 0; index < abs.length; index++) {
       const instruction = abs[index] as Instruction|Token;
-      if(instruction instanceof Array){
+      if(Array.isArray(instruction)){
         const interpretation = this.interpretateInstruction(instruction as Instruction,recursiveMode);
         //@ts-ignore
         if(interpretation.itWasAScriptInstruction){
@@ -402,7 +402,7 @@ class ChaosInterpreter {
     if(_instruction.length == 0){
       return {itWasAScriptInstruction,result,matchName,isAgrupable};
     }
-    const instruction = _instruction.filter(tk=>{return (tk.constructor === Array)||((tk as Token).type != "space")});
+    const instruction = _instruction.filter(tk=>{return Array.isArray(tk)||((tk as Token).type != "space")});
 
     for (const supportedInstruction of this.supportedInstructions) {
       //@ts-ignore
@@ -440,15 +440,15 @@ class ChaosInterpreter {
           if("define" in result && "id" in result){
             const define = ScriptStructure.enumify(result.define as string);
             actualStructureDefinition = {define,id:result.id as string};
-            if(define == ScriptStructure.Scene && !fillingModule && !fillingNode){
+            if(define == ScriptStructure.Scene && !fillingModule && !fillingNode && !fillingScene){
               fillingScene = true;
               tag = actualStructureDefinition.id;
               scenes[tag] = {main:"", nodes:{}};
-            }else if(define == ScriptStructure.Module && !fillingScene && !fillingNode){
+            }else if(define == ScriptStructure.Module && !fillingScene && !fillingNode && !fillingModule){
               fillingModule = true;
               tag = actualStructureDefinition.id;
               modules[tag] = "";
-            }else if(define == ScriptStructure.Node && !fillingModule && fillingScene){
+            }else if(define == ScriptStructure.Node && !fillingModule && fillingScene && !fillingNode){
               fillingNode = true;
               nodeTag = actualStructureDefinition.id;
               scenes[tag].nodes[nodeTag] = "";

@@ -9,7 +9,7 @@ class DialogInstruction extends AgrupableInstructionInterface{
 
     var dec:Array<string> = [];
     for (const token of instruction) {
-      if(token.constructor === Array){
+      if(Array.isArray(token)){
         const configDict = this.getStrParamsFromTokenList(token);
         dec.push(`{type:"config",value:${configDict}}`);
         continue;
