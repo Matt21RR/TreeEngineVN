@@ -4,9 +4,9 @@ class JumpToInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
       0: {type:"word", wordMatch:"jumpto"},
-      1: {type:"separator", wordMatch:":"},
-      2: {type:"word", result:(tokens)=>{
-        return {label: tokens[2].value}
+      // 1: {type:"separator", wordMatch:":"},
+      1: {type:"word", result:(tokens)=>{
+        return {label: tokens[1].value}
       }}
     });
   }
@@ -15,19 +15,19 @@ class JumpToInstruction extends InstructionInterface{
 
     let res:Array<string> = [];
 
-    if(isInRoutineMode){
-      res.push(
-        "engine.routines.push((engine)=>{"
-      );
-    }
+    // if(isInRoutineMode){
+    //   res.push(
+    //     "engine.routines.push((engine)=>{"
+    //   );
+    // }
     res.push(
-      ` engine.loadNode(${label});`
+      ` engine.loadNode("${label}");`
     );
-    if(isInRoutineMode){
-      res.push(
-        "});"
-      );
-    }
+    // if(isInRoutineMode){
+    //   res.push(
+    //     "});"
+    //   );
+    // }
     return res.join(" \n ");
   }
 }
