@@ -7,8 +7,8 @@ import { Button1, MenuButton } from './components/Buttons.tsx';
 
 export default function TexturesE (){
   const [textures, setTextures] = useState<Dictionary<string>>({});
-  const configRoute = window.projectRoute + "img/textures.json";
-  const texturesDir = window.projectRoute + "img/";
+  const configRoute = window.projectRoute + "textures/textures.json";
+  const texturesDir = window.projectRoute + "textures/";
 
   useEffect(()=>{
       fetchData();

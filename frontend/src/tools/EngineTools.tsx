@@ -14,8 +14,8 @@ function KeyFilesControls(){
     const [filesExist, setFilesExist] = useState<Map<string,KeyFileInfo>>( new Map ( [
     ["./game/main.txt", {exist:false, scanable:false, scanType:null}],
     ["./game/scripts/scripts.json", {exist:false, scanable:true, scanType:"script"}],
-    ["./game/img/textures.json", {exist:false, scanable:true, scanType:"texture"}],
-    ["./game/snd/sounds.json", {exist:false, scanable:true, scanType:"sound"}]
+    ["./game/textures/textures.json", {exist:false, scanable:true, scanType:"texture"}],
+    ["./game/sounds/sounds.json", {exist:false, scanable:true, scanType:"sound"}]
   ] ) );
 
   useEffect(()=>{
