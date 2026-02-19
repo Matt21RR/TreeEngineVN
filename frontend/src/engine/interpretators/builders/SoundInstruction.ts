@@ -6,16 +6,16 @@ export default class SoundInstruction extends InstructionInterface{
     return this.conditionsChecker(instruction, {
       0: {type:"word", wordMatch:"sound"},
       1: {type:["word","text"]},
-      3: [
+      2: [
         {
-          3: {type:"word", result:(tokens)=>{
+          2: {type:"word", result:(tokens)=>{
             return {
               action: tokens[2].value,
               id: tokens[1].type == "word" ? "'"+tokens[1].value+"'" : tokens[1].value};
           }}
         },
         {
-          3: {isArray:true, result:(tokens)=>{
+          2: {isArray:true, result:(tokens)=>{
             return {
               id: tokens[1].type == "word" ? "'"+tokens[1].value+"'" : tokens[1].value};
           }}
