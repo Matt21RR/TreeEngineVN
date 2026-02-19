@@ -1,6 +1,5 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
-import Token from "../Token.ts";
 
 class SceneDefinitionInstruction extends InstructionInterface{
   isOfThisType(instruction) {
