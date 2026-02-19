@@ -324,8 +324,9 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               }else{
                 const commands = scriptData[destination].main;
                 this.nodes = scriptData[destination].nodes;
+                console.log(commands);
                 const commandsF = new Function ("engine","ExtendedObjects",commands);
-                console.log(commandsF); 
+                // console.log(commandsF); 
                 commandsF(self,ExtendedObjects);
               }
               self.isReady = true;
@@ -372,8 +373,9 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   }
   loadNode(nodeId: string){
     var commands = this.nodes[nodeId];
+    console.log(commands);
     const commandsF = new Function ("engine","ExtendedObjects",commands);
-    commandsF(self,ExtendedObjects);
+    commandsF(this,ExtendedObjects);
   }
   displayResolutionCalc(aspectRatio:string = this.aspectRatio) {
     const w = document.getElementById("display"+this.id) as HTMLElement;
