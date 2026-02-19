@@ -25,13 +25,17 @@ import EmotionChangeInstruction from "./builders/EmotionChangeInstruction.ts";
 import ArriveInstruction from "./builders/ArriveInstruction.ts";
 import SoundInstruction from "./builders/SoundInstruction.ts";
 
+type ScenesDictionary = Dictionary<{main:string,nodes:Dictionary<string>}>;
+type ModulesDictionary = Dictionary<string>;
 
 class ChaosInterpreter {
-  scripts:Dictionary<{main:string,nodes:{}}>
+  scenes:Dictionary<{main:string,nodes:{}}>
+  modules:Dictionary<string>
   scriptsUrls:Dictionary<string>
   projectRoot:string
   constructor(){
-    this.scripts = {};
+    this.scenes = {};
+    this.modules = {}; //The modules only have a code body, no nodes
     this.scriptsUrls = {};
     this.projectRoot = window.projectRoute;
     this.listScripts();
@@ -90,20 +94,21 @@ class ChaosInterpreter {
         });
     })
   }
-  private interpretateFile(scriptFileName:string): Promise<Dictionary<{main:string,nodes:Dictionary<string>}>>{
+  private interpretateFile(scriptFileName:string): Promise<null>{
     const self = this;
     const jsonPath = `${self.projectRoot}scripts/${scriptFileName}`;
 
-    console.log(`=> Trying to load ${scriptFileName}`)
+    console.log(`=> Trying to load ${scriptFileName}`);
     return new Promise(resolve=>{
       RequestFile(jsonPath)
         .then(res=> atob(res))
         .then(scriptData=>{
           self.kreator(scriptData, false).then(
-          (textScr)=>{
+          (processedScenesAndModules)=>{
             console.log(`${scriptFileName} loaded`)
-            Object.assign(self.scripts,textScr);
-            resolve(textScr);
+            Object.assign(self.scenes,processedScenesAndModules.scenes);
+            Object.assign(self.modules,processedScenesAndModules.modules);
+            resolve(null);
           }
         )}
       )
@@ -136,7 +141,7 @@ class ChaosInterpreter {
       }
     })
   }
-  kreator(script:string,loadAudioVisual = true):Promise<Dictionary<{main:string,nodes:Dictionary<string>}>>{
+  kreator(script:string,loadAudioVisual = true):Promise<{scenes:ScenesDictionary, modules:ModulesDictionary}>{
     return new Promise((resolve,reject)=>{ 
       this.loadScripts(!loadAudioVisual)
         .catch((err)=>{
@@ -144,8 +149,8 @@ class ChaosInterpreter {
           console.log("The scripts file couldn't be loaded. Ignoring!!!");
         })
         .finally(()=>{
-          let scenes = this.instructionsDesintegrator(script) as Dictionary<{main:string,nodes:Dictionary<string>}>;
-          resolve(scenes);
+          let scenesAndNodes = this.instructionsDesintegrator(script) as {scenes:ScenesDictionary, modules:ModulesDictionary};
+          resolve(scenesAndNodes);
         })
     });
   }
@@ -414,9 +419,15 @@ class ChaosInterpreter {
   }
 
   private haveSceneOrModuleDefinition(interpretedInstructions:Array<Interpretation>){
-    let scenes: Dictionary<{main:string,nodes:Dictionary<string>}> = {};
-    let actualStructureDefinition = {define:ScriptStructure.Scene,id:"gameEntrypoint"};
+    let scenes: ScenesDictionary = {};
+    let modules: ModulesDictionary = {};
+
+    let actualStructureDefinition = {define:ScriptStructure.Scene, id:"gameEntrypoint"};
     scenes[actualStructureDefinition.id] = {main:"",nodes:{}};
+
+    let fillingScene = false;
+    let fillingModule = false;
+    let fillingNode = false;
 
     let tag = actualStructureDefinition.id;
     let nodeTag = "";
@@ -425,41 +436,70 @@ class ChaosInterpreter {
       if(interpretation.itWasAScriptInstruction){
         if(interpretation.result.constructor === Object){
           const result = interpretation.result as Object;
+
           if("define" in result && "id" in result){
             const define = ScriptStructure.enumify(result.define as string);
             actualStructureDefinition = {define,id:result.id as string};
-            if([ScriptStructure.Scene, ScriptStructure.Module].includes(define)){
+            if(define == ScriptStructure.Scene && !fillingModule && !fillingNode){
+              fillingScene = true;
               tag = actualStructureDefinition.id;
-              scenes[tag] = {main:"",nodes:{}};
-            }else if(define == ScriptStructure.Node){
+              scenes[tag] = {main:"", nodes:{}};
+            }else if(define == ScriptStructure.Module && !fillingScene && !fillingNode){
+              fillingModule = true;
+              tag = actualStructureDefinition.id;
+              modules[tag] = "";
+            }else if(define == ScriptStructure.Node && !fillingModule && fillingScene){
+              fillingNode = true;
               nodeTag = actualStructureDefinition.id;
               scenes[tag].nodes[nodeTag] = "";
             }
             continue;
           }else if("end" in result){
             const end = ScriptStructure.enumify(result.end as string);
-            if(end == ScriptStructure.Node){
+            if(end == ScriptStructure.Node && fillingNode && fillingScene && !fillingModule){
+              fillingNode = false;              
               nodeTag = "";
-            }else if([ScriptStructure.Scene, ScriptStructure.Module].includes(end)){
+            }else if(end == ScriptStructure.Module && fillingModule && !fillingScene && !fillingNode){
+              fillingModule = false;
+              tag = "";
+            }else if(end == ScriptStructure.Scene && fillingScene && !fillingNode){
+              fillingScene = false;
               nodeTag = "";
               tag = "";
             }
             continue;
           }
         }
+
         if(tag == ""){
           throw new Error(
           "Script with no bounds!!",{cause:
             "ChaosInterpreter is trying to write interpreted code outside a structure. No scene or module defined!!"
           });
-      }
-        else if(nodeTag == ""){
+        }
+        //Fallback if the gameEntrypoint is defined, whitout content in main or nodes, modules are empty, all the filling checks are false, 
+        //and the current instruction is not a scene, module or node definition, then the instruction will be added to the gameEntrypoint main.
+        if(!fillingScene && 
+            !fillingModule && 
+            !fillingNode && 
+            "gameEntrypoint" in scenes && 
+            Object.keys(scenes.gameEntrypoint.nodes).length == 0 && 
+            scenes.gameEntrypoint.main == ""){
+          fillingScene = true;
+          tag = "gameEntrypoint";
+          scenes[tag] = {main:"", nodes:{}};
+        }
+
+        else if(fillingScene && !fillingNode){
           scenes[tag].main+=interpretation.result+"\n";
-        }else{
+        }else if(fillingScene && fillingNode){
           scenes[tag].nodes[nodeTag]+=interpretation.result+"\n";
+        }else if(fillingModule){
+          modules[tag]+=interpretation.result+"\n";
         }
       }
     }
+
     if("gameEntrypoint" in scenes && scenes.gameEntrypoint.main == "" && Object.keys(scenes.gameEntrypoint.nodes).length == 0){
       delete scenes.gameEntrypoint;
     }else if("gameEntrypoint" in scenes){
@@ -471,7 +511,7 @@ class ChaosInterpreter {
       });`
     }
 
-    return scenes;
+    return {scenes,modules};
   }
 }
 

@@ -19,12 +19,12 @@ export default class IncludeInstruction extends InstructionInterface{
     let res:string = "";
 
     const sceneOrModuleId = loadId.replaceAll('"',"");
-    if(!(sceneOrModuleId in chaosReference.scripts)){
-      console.error("List of scripts and modules:",Object.keys(chaosReference.scripts));
+    if(!(sceneOrModuleId in chaosReference.modules)){
+      console.error("List of scripts and modules:",Object.keys(chaosReference.modules));
       console.log(chaosReference);  
-      throw new Error("Scene or module "+sceneOrModuleId+" not found or don't exists.");
+      throw new Error("Module "+sceneOrModuleId+" not found or don't exists.");
     }
-    res = chaosReference.scripts[sceneOrModuleId].main;
+    res = chaosReference.modules[sceneOrModuleId];
 
     return res;
   }

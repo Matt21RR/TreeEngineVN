@@ -316,6 +316,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       .then((scriptFile:string)=>{
         // console.log(scriptFile);
         h.kreator(scriptFile)
+          .then(processedScenesAndModules=>processedScenesAndModules.scenes)
           .then(scriptData=>{
             try {
               console.warn(scriptData);
