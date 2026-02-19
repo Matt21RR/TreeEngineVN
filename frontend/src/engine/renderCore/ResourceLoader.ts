@@ -15,7 +15,7 @@ class ResourceLoader{
           if(Object.keys(soundsList).length > 0){
             Promise.all(Object.keys(soundsList).map(sndName=>
               new Promise(resolveFile=>{
-                RequestFileWithMime(window.projectRoute + "snd/" + soundsList[sndName].replace("./",""))
+                RequestFileWithMime(window.projectRoute + "sounds/" + soundsList[sndName].replace("./",""))
                   .then( res => {
                     const ans = {Base64:res ,ext:soundsList[sndName].split('.').at(-1), id:sndName};
                     resolveFile(ans) 
@@ -76,7 +76,7 @@ class ResourceLoader{
             }else{
               engineRegisteredTexturesList.push(textureName);
               return new Promise((resolveFile)=>{
-                RequestFileWithMime(window.projectRoute + "img/" + texturesData[textureName].replace("./",""))
+                RequestFileWithMime(window.projectRoute + "textures/" + texturesData[textureName].replace("./",""))
                   .then(resK=>{
                     const image = new Image();
                     image.crossOrigin = "Anonymous";

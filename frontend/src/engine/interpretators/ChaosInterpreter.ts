@@ -1,7 +1,7 @@
 import { arrayFlatter } from "../logic/Misc.ts";
 import CreateInstruction from "./builders/CreateInstruction.ts";
 import DialogInstruction from "./builders/DialogInstruction.ts";
-import LoadInstruction from "./builders/LoadInstruction.ts";
+import IncludeInstruction from "./builders/IncludeInstruction.ts";
 import ModuleDefinitionInstruction from "./builders/ModuleDefinitionInstruction.ts";
 import NarrationInstruction from "./builders/NarrationInstruction.ts";
 import ResumeInstruction from "./builders/ResumeInstruction.ts";
@@ -41,7 +41,7 @@ class ChaosInterpreter {
   supportedInstructions = [
     new CreateInstruction(),
     new DialogInstruction(),
-    new LoadInstruction(),
+    new IncludeInstruction(),
     new ModuleDefinitionInstruction(),
     new NodeDefinitionInstruction(),
     new JumpToInstruction(),
@@ -65,10 +65,10 @@ class ChaosInterpreter {
   }
 
   private getSound(){
-    return this.projectRoot + "snd/sounds.json";
+    return this.projectRoot + "sounds/sounds.json";
   }
   private getTexture(){
-    return this.projectRoot + "img/textures.json";
+    return this.projectRoot + "textures/textures.json";
   }
   listScripts(): Promise<Dictionary>{
     const self = this;
@@ -176,6 +176,24 @@ class ChaosInterpreter {
             res.push({instruction: instruction as Instruction, matchedInstruction: supportedInstruction.constructor.name});
             break;
           }
+        }
+      }
+    }
+    return res;
+  }
+
+  checkScriptAgainstSupportedInstruction(script:string, instructionType:string): boolean{
+    const abs = this.tokenization(script);
+    let res = false;
+    for (const instruction of abs) {
+      if(instruction.constructor === Array){
+        const supportedInstruction = this.invokeSupportedInstruction(instructionType);
+        //@ts-ignore
+        const resCheck = (supportedInstruction).check(instruction as Instruction,this,true);
+        if(resCheck.match){
+          console.log(resCheck);
+          res = true;
+          break;
         }
       }
     }
