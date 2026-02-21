@@ -11,7 +11,7 @@ import { getStr, lambdaConverter, TextLine } from "../logic/Misc.ts";
 import Shader from "./Shaders.ts";
 import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
-import { Chaos } from "../interpretators/ChaosInterpreter.ts";
+import { Chaos, ScenesDictionary } from "../interpretators/ChaosInterpreter.ts";
 import { generateCalculationOrder, generateRenderingOrder } from "./RenderingOrder.ts";
 
 //@ts-ignore
@@ -24,20 +24,18 @@ import ResourceLoader from "./ResourceLoader.ts";
 import PointerCalculation from "./PointerCalculation.tsx";
 //@ts-ignore
 import gsap from "gsap";
-import { generateObjectsDisplayDimentions, SharedDisplayCalcs} from "./RenderingDimentions.ts";
+import { generateObjectsDisplayDimentions, SharedDisplayCalcs } from "./RenderingDimentions.ts";
 import UI from "./UI.tsx";
 import Actor from "../engineComponents/Actor.ts";
-import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
+import { CameraData } from "./RenderEngine.d.tsx";
 import Swal from "sweetalert2";
 import { Dictionary } from "../../global.ts";
 import { RequestFile } from "../../../wailsjs/go/main/App.js";
 import StageMark from "../engineComponents/StageMark.ts";
 
 interface RenderEngineProps {
-  clientSideResources?: boolean;
   aspectRatio?: string;
   showFps?: boolean;
-  cyclesPerSecond?: number;
   developmentDeviceHeight?: number;
   avoidResizeBlackout?: boolean;
   setEngine?: (engine: RenderEngine,ExtendedObjects?:ExtendedObjects) => void;
@@ -48,15 +46,14 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   isReady: boolean;
   aspectRatio: string;
   showFps: boolean;
-  cyclesPerSecond: number;
   resizeTimeout: number;
   mounted: boolean;
   canvasRef: CanvasData;
   engineTime: number;
   engineSpeed: number;
   stopEngine: boolean;
-  redraw:boolean;
   actualSceneId: string;
+  chaosInstance: Chaos;
   constructors: {
     graphObject: typeof GraphObject;
     animation: typeof Animation;
@@ -133,7 +130,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
   constructor(props: RenderEngineProps){
     super(props);
-
     //@ts-ignore
     window.engineRef = this;
 
@@ -143,16 +139,14 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
     this.id = "rengine" + String(window.performance.now()).replaceAll(".","");
     if(props){
-      this.isReady = props.clientSideResources ?? false;
+      this.isReady = false;
       this.aspectRatio = props.aspectRatio ?? "16:9";
       this.showFps = props.showFps ?? false;
-      this.cyclesPerSecond = props.cyclesPerSecond ?? 24;
       this.developmentDeviceHeight = props.developmentDeviceHeight ?? window.screen.height*window.devicePixelRatio;
     }
     this.engineDisplayRes = {width:0,height:0};
     this.resizeTimeout = 0;
     this.mounted = false; //internal check
-    // this.canvasRef = null; //Reference to the canvas used to render the scene
 
     this.actualSceneId = "";//Guardar esto
 
@@ -209,7 +203,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     RenderEngine.instance = this;
     if (!this.mounted) {
       this.mounted = true;
-      // initDimensionCalculation(10000, this.developmentDeviceHeight);
       //* ASPECT RATIO
       window.setTimeout(() => {
         this.displayResolutionCalc();
@@ -234,35 +227,25 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           }, 800);
       });
 
-      this.displayObserver.observe(document.getElementById("display"+this.id) as Element,)
+      this.displayObserver.observe(document.getElementById("display"+this.id) as Element)
 
       //*LOAD GAME
-      if(!("clientSideResources" in this.props)){
-        this.entryPoint();
-      }else{
-        if("setEngine" in  this.props){
-          this.dataCleaner();
-          this.isReady = true;
-          this.forceUpdate();
-        }
-      }
+      this.entryPoint();
 
       //*TECLADO
-      const self = this as RenderEngine;
-
       const keydownFunc = (e:KeyboardEvent)=>{
         const keyCode = e.code;  
-        if(self.pressedKeys.indexOf(keyCode) == -1){
-          self.pressedKeys.push(keyCode);
-          const mix = self.pressedKeys.join(" ");
-          if(self.keyboardTriggers.exist(mix)){
+        if(this.pressedKeys.indexOf(keyCode) == -1){
+          this.pressedKeys.push(keyCode);
+          const mix = this.pressedKeys.join(" ");
+          if(this.keyboardTriggers.exist(mix)){
             // @ts-ignore
-            self.keyboardTriggers.get(mix).check(self,"onPress");
+            this.keyboardTriggers.get(mix).check(this,"onPress");
           }
-          if(self.pressedKeys.length > 1){//Si hay mas de una tecla oprimiendose, comprobar la ultima tecla
-            if(self.keyboardTriggers.exist(keyCode)){
+          if(this.pressedKeys.length > 1){//Si hay mas de una tecla oprimiendose, comprobar la ultima tecla
+            if(this.keyboardTriggers.exist(keyCode)){
               // @ts-ignore
-              self.keyboardTriggers.get(keyCode).check(self,"onPress");
+              this.keyboardTriggers.get(keyCode).check(this,"onPress");
             }
           }
         }  
@@ -270,16 +253,16 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
       const keyupFunc = (e:KeyboardEvent)=>{
         const keyCode = e.code;
-        const mix = self.pressedKeys.join(" ");
-        self.pressedKeys.splice(self.pressedKeys.indexOf(keyCode),1);
-        if(self.keyboardTriggers.exist(mix)){
+        const mix = this.pressedKeys.join(" ");
+        this.pressedKeys.splice(this.pressedKeys.indexOf(keyCode),1);
+        if(this.keyboardTriggers.exist(mix)){
           // @ts-ignore
-          self.keyboardTriggers.get(mix).check(self,"onRelease");
+          this.keyboardTriggers.get(mix).check(this,"onRelease");
         }
-        if(self.pressedKeys.length > 0){//Si habia mas de una tecla oprimiendose, comprobar la tecla que se soltó
-          if(self.keyboardTriggers.exist(keyCode)){
+        if(this.pressedKeys.length > 0){//Si habia mas de una tecla oprimiendose, comprobar la tecla que se soltó
+          if(this.keyboardTriggers.exist(keyCode)){
             // @ts-ignore
-            self.keyboardTriggers.get(keyCode).check(self,"onRelease");
+            this.keyboardTriggers.get(keyCode).check(this,"onRelease");
           }
         } 
       };
@@ -290,79 +273,72 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       document.body.addEventListener("keyup", keyupFunc);
     }
   }
-  setEngineClientSideResources(fun:Function){
-    this.dataCleaner();
-    this.isReady = true;
-    this.forceUpdate();
-
-    const numberOfArguments = fun.length;
-    if(numberOfArguments == 1){
-      fun(this);
-    }else if(numberOfArguments == 2){
-      fun(this,ExtendedObjects);
-    }
-  }
   entryPoint(){
     this.loadScript(window.projectRoute + "main.txt");
   }
-  loadScript(scriptRoute:string,destination = "gameEntrypoint"){
+  loadScript(scriptRoute:string,sceneId = "gameEntrypoint"){
     this.dataCleaner();
-    const h = new Chaos(); 
-    window.h = h  
-    var self = this;
+    this.chaosInstance = new Chaos(); 
+    window.h = this.chaosInstance;
     
     RequestFile(scriptRoute)
       .then(res => atob(res))
       .then((scriptFile:string)=>{
         // console.log(scriptFile);
-        h.kreator(scriptFile)
+        this.chaosInstance.kreator(scriptFile)
           .then(processedScenesAndModules=>processedScenesAndModules.scenes)
           .then(scriptData=>{
-            try {
-              console.warn(scriptData);
-              if(Object.keys(scriptData).length == 0){
-                console.error("Script is empty");
-              }else{
-                const commands = scriptData[destination].main;
-                this.nodes = scriptData[destination].nodes;
-                console.log(commands);
-                const commandsF = new Function ("engine","ExtendedObjects",commands);
-                // console.log(commandsF); 
-                commandsF(self,ExtendedObjects);
-              }
-              self.isReady = true;
-              self.forceUpdate();
-            } catch (error) {
-              let timerInterval: NodeJS.Timeout;
-              Swal.fire({
-                title: "Error al ejecutar el script",
-                html: "compruebe la consola!",
-                timer: 1500,
-                timerProgressBar: true,
-                didOpen: () => {
-                  Swal.showLoading();
-                  const timer = Swal.getPopup()!.querySelector("b");
-                  timerInterval = setInterval(() => {
-                    timer!.textContent = `${Swal.getTimerLeft()}`;
-                  }, 100);
-                },
-                willClose: () => {
-                  clearInterval(timerInterval);
-                }
-              });
-              console.warn(scriptData);
-              console.error(error.message);
-              console.error(error.stack);
-              throw error;
-            }
+            console.log(scriptData)
+            this.runScript(sceneId);
         })
     })
     .catch(err=>{
       console.error(err);
       console.warn("Running engine without main script");
-      self.isReady = true;
-      self.forceUpdate();
+      this.isReady = true;
+      this.forceUpdate();
     })
+  }
+  runScript(sceneId:string,nodeId:string = ""){
+    this.dataCleaner();
+    try {
+      if(Object.keys(this.chaosInstance.scenes).length == 0){
+        console.error("Script is empty");
+      }else{
+        const commands = this.chaosInstance.scenes[sceneId].main;
+        this.nodes = this.chaosInstance.scenes[sceneId].nodes;
+        if(nodeId != ""){
+          this.runNode(nodeId);
+          return;
+        }
+        const commandsF = new Function ("engine","ExtendedObjects",commands);
+        commandsF(this,ExtendedObjects);
+      }
+      this.isReady = true;
+      this.forceUpdate();
+    } catch (error) {
+      let timerInterval: number;
+      Swal.fire({
+        title: "Error al ejecutar el script",
+        html: "compruebe la consola!",
+        timer: 1500,
+        timerProgressBar: true,
+        didOpen: () => {
+          Swal.showLoading();
+          const timer = Swal.getPopup()!.querySelector("b");
+          timerInterval = setInterval(() => {
+            timer!.textContent = `${Swal.getTimerLeft()}`;
+          }, 100);
+        },
+        willClose: () => {
+          clearInterval(timerInterval);
+        }
+      });
+      console.warn(this.chaosInstance.scenes);
+      console.error(error.message);
+      console.error(error.stack);
+      throw error;
+    }
   }
   directInterpretation(script:string){
     const chaos = new Chaos();   
@@ -372,10 +348,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     console.warn(interpretationF);
     interpretationF(this,ExtendedObjects);
   }
-  loadNode(nodeId: string){
-    var commands = this.nodes[nodeId];
-    console.log(commands);
-    const commandsF = new Function ("engine","ExtendedObjects",commands);
+  runNode(nodeId: string){
+    const commandsF = new Function ("engine", "ExtendedObjects", this.nodes[nodeId]);
     commandsF(this,ExtendedObjects);
   }
   displayResolutionCalc(aspectRatio:string = this.aspectRatio) {
@@ -436,13 +410,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   }
   loadTexture(indexPath:string, textureId=""){
     const self = this;
-    const areClientSideResources = "clientSideResources" in this.props;
-    if(areClientSideResources && this.texturesList.exist(textureId)){
-      console.warn(`Textura de nombre ${textureId} ya existe. Saltando...`);
-      return new Promise((resolve, reject)=>{resolve(null);});
-    }
     return new Promise((resolve, reject)=>{
-      ResourceLoader.loadTexture(indexPath,textureId,areClientSideResources,self.texturesList.ids())
+      ResourceLoader.loadTexture(indexPath,textureId,self.texturesList.ids())
         .then(shaderList => {
           (shaderList as Array<any>).forEach(shaderExtructure => {
             self.texturesList.push(shaderExtructure)
@@ -456,8 +425,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.engineTime = 0;
     this.engineSpeed = 1;
     this.stopEngine = false; //Stop engine time
-
-    this.redraw = true;
 
     this.graphArray = new RenList();//array de objetos, un objeto para cada imagen en pantalla
     this.anims = new RenList();
@@ -533,7 +500,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     return(
       <Canvas 
       displayResolution={this.engineDisplayRes}
-      fps={this.cyclesPerSecond}
       scale={1} 
       showFps={this.showFps}
       engine={this}
@@ -687,7 +653,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         this.collisionLayer.update(dimentionsObject,resolution.width,resolution.height,excludedIds);
         updatingColsTime = performance.now()-updatingColsTime;
 
-        // this.redraw = false;
         return [orderingTime,renderingOrdTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,updatingColsTime,this.noRenderedItemsCount,performance.now()-startOrdA];
       }} 
       onLoad={(canvas)=>{

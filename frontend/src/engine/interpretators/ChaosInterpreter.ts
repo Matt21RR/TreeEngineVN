@@ -24,8 +24,9 @@ import MoveActorInstruction from "./builders/MoveActorInstruction.ts";
 import EmotionChangeInstruction from "./builders/EmotionChangeInstruction.ts";
 import ArriveInstruction from "./builders/ArriveInstruction.ts";
 import SoundInstruction from "./builders/SoundInstruction.ts";
+import DecisionInstruction from "./builders/DecisionInstruction.ts";
 
-type ScenesDictionary = Dictionary<{main:string,nodes:Dictionary<string>}>;
+export type ScenesDictionary = Dictionary<{main:string,nodes:Dictionary<string>}>;
 type ModulesDictionary = Dictionary<string>;
 
 class ChaosInterpreter {
@@ -44,6 +45,7 @@ class ChaosInterpreter {
   }
   supportedInstructions = [
     new CreateInstruction(),
+    new DecisionInstruction(),
     new DialogInstruction(),
     new IncludeInstruction(),
     new ModuleDefinitionInstruction(),
@@ -105,9 +107,6 @@ class ChaosInterpreter {
         .then(scriptData=>{
           self.kreator(scriptData, false).then(
           (processedScenesAndModules)=>{
-            console.log(`${scriptFileName} loaded`)
-            Object.assign(self.scenes,processedScenesAndModules.scenes);
-            Object.assign(self.modules,processedScenesAndModules.modules);
             resolve(null);
           }
         )}
@@ -150,6 +149,8 @@ class ChaosInterpreter {
         })
         .finally(()=>{
           let scenesAndNodes = this.instructionsDesintegrator(script) as {scenes:ScenesDictionary, modules:ModulesDictionary};
+          Object.assign(this.scenes,scenesAndNodes.scenes);
+          Object.assign(this.modules,scenesAndNodes.modules);
           resolve(scenesAndNodes);
         })
     });
@@ -167,9 +168,9 @@ class ChaosInterpreter {
     return abs;
   }
 
-  checkScriptAgainstSupportedInstructions(script:string): Array<{instruction: Instruction, matchedInstruction: string}>{
+  checkScriptAgainstSupportedInstructions(script:string): Array<{res:any, matchedInstruction: string}>{
     const abs = this.tokenization(script);
-    let res: Array<{instruction: Instruction, matchedInstruction: string}> = [];
+    let res: Array<{res: any, matchedInstruction: string}> = [];
 
     for (const instruction of abs) {
       if(Array.isArray(instruction)){
@@ -178,7 +179,7 @@ class ChaosInterpreter {
           const resCheck = (supportedInstruction).check(instruction as Instruction,this,true);
           // console.log(resCheck, supportedInstruction.constructor.name);
           if(resCheck.match){
-            res.push({instruction: instruction as Instruction, matchedInstruction: supportedInstruction.constructor.name});
+            res.push({res: resCheck.result, matchedInstruction: supportedInstruction.constructor.name});
             break;
           }
         }
@@ -218,6 +219,11 @@ class ChaosInterpreter {
         const interpretation = this.interpretateInstruction(instruction as Instruction,recursiveMode);
         //@ts-ignore
         if(interpretation.itWasAScriptInstruction){
+          //* Agrupation check: if the current interpretation is agrupable, and the last instruction 
+          //* in the collection have the same matchName, then they will be mixed in one single instruction 
+          //* with the agrupator method of the supported instruction class. This is useful for example, 
+          //* for the DialogInstruction, to avoid that each line of dialog to be a different instruction, 
+          //* and instead, they will be grouped in one single instruction with all the lines of dialog.
           if (interpretation.isAgrupable && collection.at(-1)?.matchName == interpretation.matchName){
             const supportedInstruction = this.invokeSupportedInstruction(interpretation.matchName);
             const mixedInterpretation = (supportedInstruction as AgrupableInstructionInterface)
