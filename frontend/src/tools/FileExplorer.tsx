@@ -84,7 +84,6 @@ class FileExplorer extends React.Component{
   getHierarchy(){
     Request({action: "getHierarchy"})
     .then(res =>{
-      console.log(res);
       this.gameContent = [res];
       this.setActualContent();
       this.forceUpdate();
