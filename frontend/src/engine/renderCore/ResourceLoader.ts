@@ -45,22 +45,7 @@ class ResourceLoader{
     })
   }
 
-  static loadTexture(indexPath:string, textureId:string, clientSideResources:boolean, engineRegisteredTexturesList:Array<string>){
-    if(clientSideResources){
-      return new Promise(function (resolve, reject) {
-        const image = new Image();
-        image.crossOrigin = "Anonymous";
-        image.src = indexPath;
-        image.addEventListener('load',()=>{
-          (new Shader())
-            .instanceIt(image,textureId)
-            .then((shader)=>{
-              resolve([shader]);
-            })
-        });
-      });
-    }
-
+  static loadTexture(indexPath:string, textureId:string, engineRegisteredTexturesList:Array<string>){
     return new Promise(function (resolve, reject) {
       RequestFile( indexPath )
         .then(res => atob(res))
