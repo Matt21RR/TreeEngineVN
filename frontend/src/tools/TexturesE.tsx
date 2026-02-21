@@ -20,7 +20,6 @@ export default function TexturesE (){
         return atob(res)})
       .then(res=>JSON.parse(res))
       .then(data=>{
-        console.log(data)
         setTextures(data);
     });
   };
