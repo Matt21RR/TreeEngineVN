@@ -505,7 +505,7 @@ class GraphObject extends GraphObjectDataType{
 
     const atributesNames = this._getAtribs();
 
-    var graphData = new Object();
+    let graphData = new Object();
     atributesNames.forEach(element => {
         Object.assign(graphData,{[element] : this[element]});
     });
