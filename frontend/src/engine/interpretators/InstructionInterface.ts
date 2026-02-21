@@ -93,7 +93,7 @@ abstract class InstructionInterface{
   }
 
   protected getStrParamsFromTokenList(instruction: Array<Token>){
-    var strParams = instruction.map(token=>token.value).join("");
+    let strParams = instruction.map(token=>token.value).join("");
 
     if(strParams.indexOf("(") == 0){
       strParams = strParams.substring(1,strParams.length-1);
@@ -119,7 +119,7 @@ abstract class InstructionInterface{
     if(extractedData.match){
       extractedData["value"] = strParams;
       extractedData["chaosReference"] = chaosReference;
-      var interpretation = this.interpretate(isInRoutineMode,extractedData);
+      const interpretation = this.interpretate(isInRoutineMode,extractedData);
       return {match:true, result:interpretation}
     }else{
       return {match:false}
