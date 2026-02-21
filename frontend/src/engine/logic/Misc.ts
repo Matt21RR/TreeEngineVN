@@ -177,7 +177,7 @@ function getAttribs<T>(element: T){
 
 function arrayFlatter(list:Array<any>){
   list = list.flat() as Array<any>;
-  if(list.filter(e => {return Array.isArray(e)}).length != 0){
+  if(list.filter(e => Array.isArray(e)).length != 0){
       list = arrayFlatter(list);
   }
   return list;
