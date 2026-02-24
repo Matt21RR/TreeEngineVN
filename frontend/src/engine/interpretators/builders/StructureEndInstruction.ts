@@ -15,7 +15,7 @@ class StructureEndInstruction extends InstructionInterface{
       1: {type:"word",  condition:(token)=>{
         return structTypeCheck(token.value.toLowerCase());
       }, result: (tokens)=>{
-        return {end:tokens[0].value.toLowerCase()};
+        return {end:tokens[1].value.toLowerCase()};
       }}
     });
   }
