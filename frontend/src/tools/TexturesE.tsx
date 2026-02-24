@@ -27,7 +27,7 @@ export default function TexturesE (){
   const listB = () => {
     return (
       Object.keys(textures).map((textureId) => (
-        <div className={'border-4 flex flex-row w-[98%] relative my-1'}>
+        <div className={'border-4 flex flex-row w-[98%] relative my-1'} key={textureId}>
           <div className={'m-1 h-[7.75rem] w-56 '}
             style={{
               backgroundImage: `url(' ${textures[textureId].replace("./",texturesDir)} ')`,

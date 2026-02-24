@@ -40,7 +40,7 @@ function KeyFilesControls(){
   const existCheckIcons = ()=>{
     return <div className="text-white">
       {Array.from(filesExist).map(([key,value])=>{
-        return <div className="flex">
+        return <div className="flex" key={key}>
            <InputCheck key={key} label={key} checked={value.exist} uncheckedColor="bg-red-700"/>
            {
             value.scanable && <Button1 

@@ -320,6 +320,7 @@ class FileExplorer extends React.Component{
     if(resInfo.type == "dir"){
       return (
         <div 
+          key={index}
           className='flex flex-row border-2 my-2 mr-3 h-9 cursor-pointer' 
           onContextMenu={(e)=>{
             this.openContextMenu(e,resInfo);

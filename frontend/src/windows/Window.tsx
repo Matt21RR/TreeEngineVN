@@ -243,6 +243,7 @@ class Window extends React.Component<WindowProps> {
             const classString = laterals[key];
             return  <div 
                       className={`absolute ${classString}`}
+                      key={key+this.id}
                       id={key+this.id}
                       onMouseDown={(e)=>{
                         e.preventDefault();
@@ -258,6 +259,7 @@ class Window extends React.Component<WindowProps> {
             const classString = corners[key];
             return  <div 
               className={`absolute h-3 w-3 ${classString}`}
+              key={key+this.id}
               id={key+this.id}
               onMouseDown={(e)=>{
                 e.preventDefault();
