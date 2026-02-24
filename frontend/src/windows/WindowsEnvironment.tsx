@@ -71,7 +71,8 @@ class WindowsEnvironment extends React.Component<WindowsEnvironmentProps>{
         const windowAtTop = this.renderingOrder.indexOf(contentId)+1 == this.renderingOrder.length
         return (
         <div 
-          className="relative" 
+          className="relative"
+          key={contentId}
           style={{
             zIndex:this.renderingOrder.indexOf(contentId)+1, 
             filter:
@@ -106,12 +107,13 @@ class WindowsEnvironment extends React.Component<WindowsEnvironmentProps>{
   }
   renderTaskBar(){
     return(
-      <div className="relative h-full min-w-[3rem] bg-[#2f2f2fba] flex flex-col">
+      <div className="relative h-full min-w-12 bg-[#2f2f2fba] flex flex-col">
         {this.minimizedTable.map(contentId=>{return (
           <BaseButton
-            action={()=>{this.minimizedTable.splice(this.minimizedTable.indexOf(contentId),1);this.forceUpdate();}}
+            key={contentId}
+            action={()=>{this.minimizedTable.splice(this.minimizedTable.indexOf(contentId),1); this.forceUpdate();}}
             enter={()=>{this.previewTable.push(contentId); this.forceUpdate();}}
-            leave={()=>{this.previewTable.splice(this.previewTable.indexOf(contentId),1);this.forceUpdate();}}
+            leave={()=>{this.previewTable.splice(this.previewTable.indexOf(contentId),1); this.forceUpdate();}}
             style="text-white mx-auto p-2 hover:bg-white hover:bg-opacity-30 cursor-pointer"
             text = {contentId}
           />
