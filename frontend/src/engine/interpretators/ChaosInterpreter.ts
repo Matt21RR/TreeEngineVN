@@ -345,8 +345,8 @@ class ChaosInterpreter {
         acum = new Instruction();
         continue;
       }
-      if(acum.length == 0 && token.type == "operator"){
-        if(token.value == ">"){
+      if(acum.length == 0 && token.type == "word"){
+        if(token.value == "@"){
           isJsCode = true;
           continue
         }
