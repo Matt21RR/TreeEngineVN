@@ -9,7 +9,7 @@ interface TokenCondition{
 	isArray?: boolean,
 	wordMatch?:string,
 	instructionLength?: number,
-	condition?: (token:Token)=>boolean,
+	condition?: (token:Token,tokens?: Array<Token>)=>boolean,
   result?:(tokens: Array<Token>)=>Dictionary,
 }
 
@@ -50,7 +50,7 @@ abstract class InstructionInterface{
         const tokenCondition = condition as TokenCondition;
         if(tokenCondition.isArray && !Array.isArray(token)){
             break;
-        }else if(!tokenCondition.isArray && Array.isArray(token)){
+        }else if(!tokenCondition.isArray && Array.isArray(token) && (tokenCondition.type || tokenCondition.wordMatch)){
             break;
         }
         if(tokenCondition.type){
@@ -71,7 +71,7 @@ abstract class InstructionInterface{
           }
         }
         if(tokenCondition.condition){
-          if(!tokenCondition.condition(token as Token)){
+          if(!tokenCondition.condition(token as Token, instruction as Array<Token>)){
             break;
           }
         }
