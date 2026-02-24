@@ -18,8 +18,8 @@ class UI extends React.Component{
     super(props);
     UI.instance = this;
     this.decisions = [
-      {label:"1",condition:(e)=>{return true;}},
-      {label:"2",condition:(e)=>{return true;}},
+      {label:"1", condition:(e)=>{return true;}},
+      {label:"2", condition:(e)=>{return true;}},
       {label:"3"}
     ];
     this.base = React.createRef() as React.RefObject<HTMLDivElement>;
@@ -29,11 +29,12 @@ class UI extends React.Component{
     UI.instance = this;
     if(!this.mounted){
       this.mounted = true;
-          this.forceUpdate();
-    this.openDecide();
+      this.forceUpdate();
+      this.openDecide();
     }
   }
   loadDecisions(decisions: Array<Decision>) {
+    RenderEngine.getInstance().resume = false;
     this.decisions = decisions;
     this.forceUpdate();
     this.openDecide();
@@ -43,7 +44,10 @@ class UI extends React.Component{
     this.base.current.style.pointerEvents = "none";
     gsap.to(decideRef, {duration:0.15, height:0, opacity:0}).then(()=>{
       gsap.to(decideRef, {height:"fit-content"});
-      RenderEngine.getInstance().callThisShitWhenDecisionEnds(RenderEngine.getInstance(),finalDecision);
+      RenderEngine.getInstance().resume = true;
+      if("nextNode" in finalDecision){
+        RenderEngine.getInstance().runNode(finalDecision.nextNode);
+      }
     });
   }
   private openDecide(){
@@ -59,7 +63,7 @@ class UI extends React.Component{
     return this.decisions
       .filter((el)=>{return el.condition ? el.condition(RenderEngine.getInstance()) : true})
       .map((element,index) => (
-      <span className="hover:invert-100 backdrop-opacity-50 cursor-pointer select-none" onClick={()=>{
+      <span key={index} className="hover:invert-100 backdrop-opacity-50 cursor-pointer select-none" onClick={()=>{
         this.closeDecide(element);
       }}>
         {element.label}

@@ -1,55 +1,84 @@
 import { Dictionary } from "../../../global.ts";
-import { arrayFlatter } from "../../logic/Misc.ts";
-import AgrupableInstructionInterface from "../AgrupableInstructionInterface.ts";
-import { Interpretation } from "../ChaosInterpreter.ts";
+import { arrayChuncker, arrayFlatter } from "../../logic/Misc.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 
-class DecisionOptionInstruction extends AgrupableInstructionInterface{
+class OptionInstruction extends InstructionInterface{
   isOfThisType(instruction){
+    /**
+     * 	 * "yes" then { "that's fantastic" }
+     *   * "maybe" if { Math.random() >= 0.5 } then { jumpto "fire" } 
+     *   * "no"
+     */
+    let firstElement, firstExpresion;
+    let secondElement, secondExpresion;
     return this.conditionsChecker(instruction, {
-      0: {type:"word", wordMatch:"ask", instructionLength:3},
-      1: {type:"text"},
-      2: {isArray:true, result:(tokens)=>{
-        let tokArray = tokens[2] as unknown as Array<any>;
-        tokArray.shift();
-        tokArray.pop();
-        console.log(tokArray);
-        debugger;
-        return {tokArray: tokArray};
-        }}
+      0: {type:"operator", wordMatch:"*"},
+      1: [
+        { 
+          1: {type:"text", instructionLength:2, result:(tokens)=>{
+            return {label: tokens[1].value};
+          }}
+        },
+        {
+          1: {type:"text"},
+          2: {type:"word", condition:(token)=>{
+            firstElement = token.value;
+            return ["if", "nextNode"].includes(token.value);
+          }},
+          3: [
+            {
+              3: {instructionLength:4, result:(tokens)=>{
+                if(firstElement == "nextNode"){
+                  firstExpresion = tokens[3].value;
+                }else{
+                  let tokArray = tokens[3] as unknown as Array<any>;
+                  tokArray.shift();
+                  tokArray.pop();
+                  firstExpresion = `(engine)=>{${arrayFlatter(tokArray).map(e=>e.value).join("")} }`;
+                }
+                return {[firstElement]: firstExpresion, label: tokens[1].value};
+              }}
+            },{
+              3: {instructionLength:6},
+              4: {type:"word", condition:(token)=>{
+                secondElement = token.value;
+                return ["if", "nextNode"].includes(token.value) && secondElement != firstElement;
+              }},
+              5: {result:(tokens)=>{
+                if(firstElement == "nextNode"){
+                  firstExpresion = tokens[3].value;
+                }else{
+                  let tokArray = tokens[3] as unknown as Array<any>;
+                  tokArray.shift();
+                  tokArray.pop();
+                  firstExpresion = `(engine)=>{${arrayFlatter(tokArray).map(e=>e.value).join("")} }`;
+                }
+                
+                if(secondElement == "nextNode"){
+                  secondExpresion = tokens[5].value;
+                }else{
+                  let tokArray = tokens[5] as unknown as Array<any>;
+                  tokArray.shift();
+                  tokArray.pop();
+                  firstExpresion = `(engine)=>{${arrayFlatter(tokArray).map(e=>e.value).join("")} }`;
+                }
+
+                return {[firstElement]: firstExpresion, [secondElement]: secondExpresion, label: tokens[1].value};
+              }}
+            }
+          ]
+        }
+      ]
     });
   }
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
-    const value:string = extractedData.value;
-    const tokArray = extractedData.tokArray as Array<any>;
-    const tokenString = arrayFlatter(tokArray).join(" "); 
+    const label = extractedData.label;
+    const condition = extractedData.if;
+    const nextNode = extractedData.nextNode ? `"${extractedData.nextNode}"` : undefined;
     const res =
-    `engine.routines.push((engine)=>{
-      ${tokenString}
-    });`;
+    `{label: ${label}, condition: ${condition}, nextNode: ${nextNode}}`;
 
     return res;
-  }
-  agrupator(interpretedInstructions: Array<Interpretation>): Interpretation {
-    var newResult = interpretedInstructions
-      .map(e=> (e.result as string)
-        .split("\n")
-        .slice(2,-3)
-        .join("\n"))
-      .join("\n")
-
-    newResult = `engine.routines.push((engine)=>{
-      engine.resume = false;
-
-      ${newResult}
-
-      engine.paragraph += engine.getStr(engine.lambdaConverter(engine.narration[0]));
-      engine.graphArray.get('narrationBox').enabled = true;
-    });`;
-
-    var res = structuredClone(interpretedInstructions[0]);
-    res.result = newResult;
-    return res
   }
 }
 
@@ -69,13 +98,21 @@ export default class DecisionInstruction extends InstructionInterface{
     });
   }
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
-    const value:string = extractedData.value;
     const tokArray = extractedData.tokArray as Array<any>;
-    const tokenString = arrayFlatter(tokArray).map(e=>e.value).join(" "); 
-    console.log(tokenString)
+    const optionInstruction = new OptionInstruction();
+    const options = arrayChuncker(tokArray, (token)=>{return token.type == "lineBreak"})
+      .map((chunk)=>{
+        return optionInstruction.isOfThisType(chunk.filter((token)=>(token.type != "space")));
+      })
+      .filter(optionData=>optionData.match)
+      .map(optionData=>{
+        return optionInstruction.interpretate(isInRoutineMode, optionData);
+      })
+      .join(",");
     const res =
     `engine.routines.push((engine)=>{
-      ${tokenString}
+      const optionsData = [${options}];
+      engine.uiInstance.loadDecisions(optionsData);
     });`;
 
     return res;
