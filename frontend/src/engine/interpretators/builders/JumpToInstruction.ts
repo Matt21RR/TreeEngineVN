@@ -21,7 +21,7 @@ class JumpToInstruction extends InstructionInterface{
     //   );
     // }
     res.push(
-      ` engine.loadNode("${label}");`
+      ` engine.runNode("${label}");`
     );
     // if(isInRoutineMode){
     //   res.push(

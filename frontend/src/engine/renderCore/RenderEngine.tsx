@@ -54,6 +54,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   stopEngine: boolean;
   actualSceneId: string;
   chaosInstance: Chaos;
+  uiInstance: UI;
   constructors: {
     graphObject: typeof GraphObject;
     animation: typeof Animation;
@@ -202,6 +203,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   componentDidMount(){
     RenderEngine.instance = this;
     if (!this.mounted) {
+      this.uiInstance = UI.getInstance();
       this.mounted = true;
       //* ASPECT RATIO
       window.setTimeout(() => {
@@ -340,17 +342,22 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       throw error;
     }
   }
-  directInterpretation(script:string){
-    const chaos = new Chaos();   
-    console.log(script)
-    const interpretation = chaos.directKreator(script);
-    const interpretationF = new Function ("engine","ExtendedObjects",interpretation);
-    console.warn(interpretationF);
-    interpretationF(this,ExtendedObjects);
-  }
+  // directInterpretation(script:string){
+  //   const chaos = new Chaos();   
+  //   const interpretation = chaos.directKreator(script);
+  //   const interpretationF = new Function ("engine","ExtendedObjects",interpretation);
+  //   console.warn(interpretationF);
+  //   interpretationF(this,ExtendedObjects);
+  // }
   runNode(nodeId: string){
+    const routineNumber = this.routineNumber;
+    const prevRoutines = this.routines.slice(0,routineNumber+1);
+    const nextRoutines = this.routines.slice(routineNumber+1);
+
+    this.routines = prevRoutines;
     const commandsF = new Function ("engine", "ExtendedObjects", this.nodes[nodeId]);
     commandsF(this,ExtendedObjects);
+    this.routines = this.routines.concat(nextRoutines);
   }
   displayResolutionCalc(aspectRatio:string = this.aspectRatio) {
     const w = document.getElementById("display"+this.id) as HTMLElement;
@@ -442,8 +449,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     const self = this;
     const handler = {
       get(target, prop:string) {
-        // return typeof  target[prop] === 'object' &&  target[prop] !== null ? new Proxy(target[prop],handler) :  target[prop];
-        // return typeof  target[prop] === 'object' ? new Proxy(target[prop],handler) :  target[prop];
         return target[prop];
       },
       set(target, prop:string, value:any) {
