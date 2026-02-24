@@ -182,6 +182,27 @@ function arrayFlatter(list:Array<any>){
   }
   return list;
 }
+
+function arrayChuncker<T>(list:Array<T>, condition:(element:T)=>boolean){
+  let arrayOfArrays:Array<Array<T>> = [];
+  let newArray: Array<T> = [];
+
+  list.forEach((element:any)=>{
+    if(!(condition(element))){
+      newArray.push(element);
+    }else{
+      arrayOfArrays.push(newArray);
+      newArray = [];
+    }
+  });
+
+  if(newArray.length != 0){
+    arrayOfArrays.push(newArray);
+  }
+
+  return arrayOfArrays
+}
+
 function sortByReference(arr:Array<any>, order:Array<any>) {
   return arr.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 }
@@ -242,4 +263,4 @@ function templateLiteralSplitter(source:string){
 
   return parts;
 }
-export {mobileCheck,wrapText,random,lambdaConverter, getStr,degToRad,rad2Deg,getAttribs,arrayFlatter, sortByReference, Mixin, templateLiteralSplitter, isTemplateLiteral}
+export {mobileCheck,wrapText,random,lambdaConverter, getStr,degToRad,rad2Deg,getAttribs,arrayFlatter, sortByReference, Mixin, templateLiteralSplitter, isTemplateLiteral, arrayChuncker}
