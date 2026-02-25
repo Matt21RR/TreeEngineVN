@@ -2,9 +2,8 @@ import GraphObject from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
 import { getStr, wrapText } from "../logic/Misc.ts";
 import { CanvasData } from "./Canvas.ts";
-import { CalculationOrder, CameraData } from "./RenderEngine.d.tsx";
+import { CameraData } from "./RenderEngine.d.tsx";
 import { RenderEngine } from "./RenderEngine.tsx";
-import { arrayiseTree } from "./RenderingOrder.ts";
 import Shader from "./Shaders.ts";
 
 export class SharedDisplayCalcs{
