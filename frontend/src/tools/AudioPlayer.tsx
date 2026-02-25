@@ -79,8 +79,8 @@ export default function AudioPlayer(props:AudioPlayerProps){
   const timeConverter = (sec: number)=>{
     const addZero = (number:string)=>{return number.length == 1 ? `0${number}` : number };
     const secsNumeric = (sec % 60);
-    var toSeconds = secsNumeric.toFixed(0);
-    var toMinutes = ((sec-secsNumeric)/60).toFixed(0);
+    let toSeconds = secsNumeric.toFixed(0);
+    let toMinutes = ((sec-secsNumeric)/60).toFixed(0);
     toSeconds = addZero(toSeconds);
     toMinutes = addZero(toMinutes);
     return toMinutes + ":" +toSeconds;

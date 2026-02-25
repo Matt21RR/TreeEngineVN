@@ -10,10 +10,10 @@ declare global {
         return;
       }
 
-      var now = window.performance.now();
+      const now = window.performance.now();
 
       // Time between the calls less the time it took to execute the engine cycle (running code and rendering)
-			var nextTime = interval - (now - prevCycleStartedAt);
+			const nextTime = interval - (now - prevCycleStartedAt);
 
       if(nextTime < 0){
         const engDelta = now - prevCycleStartedAt;
@@ -34,8 +34,8 @@ declare global {
         return;
       }
 
-      var now = window.performance.now();
-      var nextTime = interval - (now - prevCycleStartedAt);
+      const now = window.performance.now();
+      const nextTime = interval - (now - prevCycleStartedAt);
 
       if(nextTime < 0){
         const engDelta = now - prevCycleStartedAt;

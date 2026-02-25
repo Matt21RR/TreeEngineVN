@@ -30,7 +30,7 @@ export default class SoundInstruction extends InstructionInterface{
 
     let res:Array<string> = [];
 
-    var dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
+    const dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
 
     if(isInRoutineMode){
       res.push(
@@ -40,7 +40,7 @@ export default class SoundInstruction extends InstructionInterface{
 
     if(value){
       res.push(
-        `var ${dynaVarName} = ${value};`
+        `let ${dynaVarName} = ${value};`
       );
 
       res.push(

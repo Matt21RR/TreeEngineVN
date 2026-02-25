@@ -197,8 +197,8 @@ export default class InputScript extends React.Component<InputScriptProps, Input
               className={height + "w-full resize-none outline-none align-top border-none bg-transparent text-transparent caret-white p-2"}
               onBlur={(e)=>{
                 const element = $("#"+this.id).get(0) as HTMLTextAreaElement;
-                var start = element.selectionStart;
-                var end = element.selectionEnd;
+                const start = element.selectionStart;
+                const end = element.selectionEnd;
                 this.caretPosWhenBlur = {start:start,end:end};
               }}
               defaultValue={this.props.value ?? ""}
@@ -219,8 +219,8 @@ export default class InputScript extends React.Component<InputScriptProps, Input
                   if (e.key == 'Tab') {
                     e.preventDefault();
                     const element = $("#"+this.id).get(0) as HTMLTextAreaElement;
-                    var start = element.selectionStart;
-                    var end = element.selectionEnd;
+                    const start = element.selectionStart;
+                    const end = element.selectionEnd;
                 
                     if(e.shiftKey){
                       // set textarea value to: text before caret + tab + text after caret
@@ -244,8 +244,8 @@ export default class InputScript extends React.Component<InputScriptProps, Input
                   if (e.key == 'Enter') { //Avoid autoscroll on enter
                     e.preventDefault();
                     const element = $("#"+this.id).get(0) as HTMLTextAreaElement;
-                    var start = element.selectionStart;
-                    var end = element.selectionEnd;
+                    const start = element.selectionStart;
+                    const end = element.selectionEnd;
                 
                     // set textarea value to: text before caret + tab + text after caret
                     element.value = element.value.substring(0, start) +

@@ -52,7 +52,7 @@ class CreateInstruction extends InstructionInterface{
       );
     }
     res.push(
-      `var ${dynaVarName} = ${value};`
+      `let ${dynaVarName} = ${value};`
     );
     switch(branch){
       case "GraphObject":
@@ -63,7 +63,7 @@ class CreateInstruction extends InstructionInterface{
         break;
       case "TextureAnim":
         res.push(
-          `var data${dynaVarName} = {
+          `let data${dynaVarName} = {
               list:${dynaVarName}[0],
               id:${id}
           };
@@ -96,7 +96,7 @@ class CreateInstruction extends InstructionInterface{
         break;
       case "KeyboardTrigger":
         res.push(
-          `var data${dynaVarName} = {
+          `let data${dynaVarName} = {
               keys:${dynaVarName}[0]
           };
           Object.assign(data${dynaVarName},${dynaVarName}[1]);
@@ -106,7 +106,7 @@ class CreateInstruction extends InstructionInterface{
         break;
       case "Animation":
         res.push(
-          `var data${dynaVarName} = {
+          `let data${dynaVarName} = {
              id:${id},
              relatedTo:${dynaVarName}[0],
              keyframes:${dynaVarName}[1],

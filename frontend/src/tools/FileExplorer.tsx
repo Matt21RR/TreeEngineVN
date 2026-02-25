@@ -162,7 +162,7 @@ class FileExplorer extends React.Component{
     this.backendRequest({action: "createDir", dir:dir, folderName:folderName})
   }
   setActualContent(){
-    var res = this.gameContent;
+    let res = this.gameContent;
     this.actualRoute = "./";
     for (let index = 0; index < this.numericalRoute.length; index++) {
       this.actualRoute = res[this.numericalRoute[index]].route;
@@ -309,7 +309,7 @@ class FileExplorer extends React.Component{
   }
   openContextMenu(e,resInfo){
     e.preventDefault();
-    var offset = $("#"+this.id).offset();
+    const offset = $("#"+this.id).offset();
     this.contextMenuData.x = e.clientX -=offset.left;
     this.contextMenuData.y = e.clientY -=offset.top;
     this.contextMenuData.show = true;

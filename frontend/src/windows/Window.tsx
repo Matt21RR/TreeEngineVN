@@ -77,8 +77,8 @@ class Window extends React.Component<WindowProps> {
     );
   }
   private coordsExtractor(){
-    var w = document.getElementById("body"+this.id) as HTMLDivElement;
-    var coords = w.style.transform.replace(/[^0-9,-]/g,"").split(",").map(el=>parseFloat(el));
+    const w = document.getElementById("body"+this.id) as HTMLDivElement;
+    let coords = w.style.transform.replace(/[^0-9,-]/g,"").split(",").map(el=>parseFloat(el));
     if(coords.length == 0){
       coords = [0,0];
     }
@@ -100,7 +100,7 @@ class Window extends React.Component<WindowProps> {
     this.fullSized = true;
     this.forceUpdate();
 
-    var w = document.getElementById("body"+this.id) as HTMLDivElement;
+    const w = document.getElementById("body"+this.id) as HTMLDivElement;
     const coords = this.coordsExtractor();
 
     this.unfullSizedData = {
@@ -138,13 +138,13 @@ class Window extends React.Component<WindowProps> {
     if(this.resizeBlocked){return;}
 
     const e = ev.originalEvent;
-    var mov = {x:e.movementX, y:e.movementY}
+    const mov = {x:e.movementX, y:e.movementY}
 
-    var window = document.getElementById("body"+this.id) as HTMLDivElement;
-    var top = parseFloat(window.style.top) || 0;
-    var left = parseFloat(window.style.left) || 0;
-    var width = window.offsetWidth;
-    var height = window.offsetHeight;
+    const window = document.getElementById("body"+this.id) as HTMLDivElement;
+    const top = parseFloat(window.style.top) || 0;
+    const left = parseFloat(window.style.left) || 0;
+    const width = window.offsetWidth;
+    const height = window.offsetHeight;
     switch (border) {
       case "top":
         window.style.height = (height-mov.y)+"px";

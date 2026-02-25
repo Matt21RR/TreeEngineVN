@@ -7,7 +7,7 @@ import Token from "../Token.ts";
 class DialogInstruction extends AgrupableInstructionInterface{
   private specialInstructionReductor(instruction){
 
-    var dec:Array<string> = [];
+    let dec:Array<string> = [];
     for (const token of instruction) {
       if(Array.isArray(token)){
         const configDict = this.getStrParamsFromTokenList(token);
@@ -63,7 +63,7 @@ class DialogInstruction extends AgrupableInstructionInterface{
     return res;
   }
   agrupator(interpretedInstructions: Array<Interpretation>): Interpretation {
-    var newResult = interpretedInstructions
+    let newResult = interpretedInstructions
       .map(e=> (e.result as string)
         .split("\n")
         .slice(5,-3)
@@ -82,7 +82,7 @@ class DialogInstruction extends AgrupableInstructionInterface{
       engine.graphArray.get('voiceByName').enabled = true;
     });`;
 
-    var res = structuredClone(interpretedInstructions[0]);
+    let res = structuredClone(interpretedInstructions[0]);
     res.result = newResult;
     return res
   }

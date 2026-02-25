@@ -654,7 +654,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           RenderMisc.drawCollisionsMatrix(canvas.context,resolution);
         }
 
-        var updatingColsTime = performance.now();
+        let updatingColsTime = performance.now();
         this.collisionLayer.update(dimentionsObject,resolution.width,resolution.height,excludedIds);
         updatingColsTime = performance.now()-updatingColsTime;
 

@@ -62,7 +62,7 @@ class InputList extends React.Component<InputListProps, InputListState> {
 
     }
     //Calcuulate Max
-    var offset = $("#"+this.optionsBoxId).offset();
+    const offset = $("#"+this.optionsBoxId).offset();
     const max = (window.innerHeight -(offset.top-window.scrollY));
     if(boxHeight>max){boxHeight=max;}
     return boxHeight

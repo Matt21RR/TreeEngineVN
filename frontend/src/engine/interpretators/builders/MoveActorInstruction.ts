@@ -33,7 +33,7 @@ export default class MoveActorInstruction extends InstructionInterface{
     const markId:string = extractedData.markId;
     const duration:string = extractedData.duration;
 
-    var dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
+    const dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
 
     let res = [];
     

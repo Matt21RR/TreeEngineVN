@@ -25,7 +25,7 @@ class NarrationInstruction extends AgrupableInstructionInterface{
     return res;
   }
   agrupator(interpretedInstructions: Array<Interpretation>): Interpretation {
-    var newResult = interpretedInstructions
+    let newResult = interpretedInstructions
       .map(e=> (e.result as string)
         .split("\n")
         .slice(2,-3)
@@ -41,7 +41,7 @@ class NarrationInstruction extends AgrupableInstructionInterface{
       engine.graphArray.get('narrationBox').enabled = true;
     });`;
 
-    var res = structuredClone(interpretedInstructions[0]);
+    let res = structuredClone(interpretedInstructions[0]);
     res.result = newResult;
     return res
   }

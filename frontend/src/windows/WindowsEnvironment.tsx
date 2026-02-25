@@ -55,7 +55,7 @@ class WindowsEnvironment extends React.Component<WindowsEnvironmentProps>{
     if(this.renderingOrder.indexOf(windowId) == (this.renderingOrder.length-1)){
       return;
     }
-    var a = structuredClone(this.renderingOrder);
+    let a = structuredClone(this.renderingOrder);
     a.splice(a.indexOf(windowId),1);
     a.push(windowId);
     this.renderingOrder = a;

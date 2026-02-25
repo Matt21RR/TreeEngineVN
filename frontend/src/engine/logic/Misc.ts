@@ -41,7 +41,7 @@ function wrapText(
   }
 
   // Lets iterate over each word
-  for(var n = 0; n < words.length; n++) {
+  for(let n = 0; n < words.length; n++) {
     // Create a test line, and measure it..
     testLine += `${words[n]} `;
     let metrics = ctx.measureText(testLine);
@@ -157,8 +157,8 @@ function rad2Deg(rad:number){
  */
 function getAttribs<T>(element: T){
   //Todo: if the prototype have a prototype
-  var proto = Object.getPrototypeOf(element);
-  var attributesNames:Array<string> = [];
+  let proto = Object.getPrototypeOf(element);
+  let attributesNames:Array<string> = [];
   //*Iterate the prototype and arent prototypes
   while(proto && proto !== Object.prototype){
     const propertyDescriptors = (Object.getOwnPropertyDescriptors(proto));

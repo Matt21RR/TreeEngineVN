@@ -33,7 +33,7 @@ class EmotionChangeInstruction extends InstructionInterface{
     const emotionId:string = extractedData.emotionId;
     const duration:string = extractedData.duration;
 
-    var dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
+    const dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
 
     let res = [];
     

@@ -21,7 +21,7 @@ class SetInstruction extends InstructionInterface{
 
     let res:Array<string> = [];
 
-    var dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
+    const dynaVarName = "ref"+(performance.now()*Math.random()).toFixed(8).replaceAll(".","");
 
     if(isInRoutineMode){
       res.push(
@@ -29,7 +29,7 @@ class SetInstruction extends InstructionInterface{
       );
     }
     res.push(
-      `var ${dynaVarName} = ${value};`
+      `let ${dynaVarName} = ${value};`
     );
     if(branch != "Engine")
       res.push(

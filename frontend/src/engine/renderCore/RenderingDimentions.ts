@@ -210,7 +210,7 @@ function generateObjectsDisplayDimentions(
 
         if(gObject.fitContent){
           canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
-          var texts = wrapText(//TODO: Wrap it until all the text get wraped
+          let texts = wrapText(//TODO: Wrap it until all the text get wraped
             canvas.context,
             strRef,
             objectWidthMargin + dimentionsPack.corner.x,

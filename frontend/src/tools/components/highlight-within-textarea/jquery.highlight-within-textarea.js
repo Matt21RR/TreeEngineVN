@@ -274,7 +274,7 @@ HighlightWithinTextarea.prototype = {
 
 		// replace start tokens with opening <mark> tags with class name
 		input = input.replace(/\{\{hwt-mark-start\|(\d+)\}\}/g, function(match, submatch) {
-			var className = boundaries[+submatch].className;
+			const className = boundaries[+submatch].className;
 			if (className) {
 				return '<span class="' + className + '">';
 			} else {
