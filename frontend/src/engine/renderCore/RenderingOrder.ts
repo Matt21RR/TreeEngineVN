@@ -1,7 +1,9 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import GraphObject from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
-import { CalculationOrder } from "./RenderEngine.d.tsx";
+
+//export type CalculationOrder = {id:string,weight:number,z:number}[];
+type CalculationOrder = [string,number,number][];
 
 function _deepRootSearch(
     graphObject: GraphObject, 
@@ -14,7 +16,7 @@ function _deepRootSearch(
   if(graphObject.parentRef && !isInGeneralOrder){
     const [levels, z, newVisited] = _deepRootSearch(graphObject.parentRef, generalOrder, generalOrderMap, visited);
 
-    newVisited.push({id: graphObject.id, weight: levels, z: graphObject.z});
+    newVisited.push([graphObject.id, levels, graphObject.z]);
     graphObject.accomulatedZ = graphObject.z + z;
     return [levels + 1, z + graphObject.z, newVisited];
 
@@ -23,12 +25,12 @@ function _deepRootSearch(
     const parentIndex = generalOrderMap.get(graphObject.parentRef.id);
     const parentData = generalOrder[parentIndex];
 
-    visited.push({id: graphObject.id, weight: parentData.weight + 1, z: graphObject.z + parentData.z});
-    graphObject.accomulatedZ = graphObject.z + parentData.z;
-    return [parentData.weight + 1, graphObject.z + parentData.z, visited];
+    visited.push([graphObject.id, parentData[1] + 1, graphObject.z + parentData[2]]);
+    graphObject.accomulatedZ = graphObject.z + parentData[2];
+    return [parentData[1] + 1, graphObject.z + parentData[2], visited];
 
   }else {
-    visited.push({id: graphObject.id, weight: 0, z: graphObject.z});
+    visited.push([graphObject.id, 0, graphObject.z]);
     graphObject.accomulatedZ = graphObject.z;
     return [0, graphObject.z, visited]; //Root element has weight 0 and its own z
   }
@@ -46,31 +48,35 @@ function generateCalculationOrder(graphArray: RenList<GraphObject>) {
   
   // Queue for items ready to process
   let unprocessedIds = new Set(allIds);
+
+  let graphObject: GraphObject;
+  let parentRef: GraphObject | undefined;
+  let currentIndex: number;
   
   while (processedCount < totalItems) {
-    const graphObject = graphArray.get(unprocessedIds.values().next().value);
+    graphObject = graphArray.fastGet(unprocessedIds.values().next().value);
     if (!graphObject) continue;
 
-    const parentRef = graphObject.parentRef;
+    parentRef = graphObject.parentRef;
 
     if(parentRef){
       const [_,__,branchToParentRoot] = _deepRootSearch(graphObject, order, orderMap);
       //*Process branch to root, adding elements to order if they haven't been processed yet
       branchToParentRoot.forEach(element => {
-        const currentIndex = order.length;
+        currentIndex = order.length;
         order.push(element);
-        final.push(element.id);
-        orderMap.set(element.id, currentIndex);
+        final.push(element[0]);
+        orderMap.set(element[0], currentIndex);
         processedCount++;
-        unprocessedIds.delete(element.id);
+        unprocessedIds.delete(element[0]);
 
         //Note: The accomulatedZ of each element is calculated in the _deepRootSearch function,
         // so update that value in that function to avoid having to recalculate it here, since 
         // we already accesing to the element in that function
       });
     }else{
-      const currentIndex = order.length;
-      order.push({id: graphObject.id, weight: 0, z: graphObject.z});
+      currentIndex = order.length;
+      order.push([graphObject.id, 0, graphObject.z]);
       final.push(graphObject.id);
       orderMap.set(graphObject.id, currentIndex);
       processedCount++;
@@ -95,15 +101,15 @@ function arrayiseTree(calculationOrder: CalculationOrder) {
 
   // Sort by weight first, then by z-index
   const sorted = calculationOrder.sort((a, b) => {
-    if (a.weight !== b.weight) {
+    if (a[1] !== b[1]) {
       // Sort by weight ascending (parents before children)
-      return a.weight - b.weight;
+      return a[1] - b[1];
     }
-    return a.z - b.z; // Sort by z within same weight
+    return a[2] - b[2]; // Sort by z within same weight
   });
   
   // Extract IDs
-  return sorted.map(element => element.id);
+  return sorted.map(element => element[0]);
 }
 
 function generateRenderingOrder(dimentionsPack: Record<string, ObjectRenderingData>) {
