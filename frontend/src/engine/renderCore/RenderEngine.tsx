@@ -11,7 +11,7 @@ import { getStr, lambdaConverter, TextLine } from "../logic/Misc.ts";
 import Shader from "./Shaders.ts";
 import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
-import { Chaos, ScenesDictionary } from "../interpretators/ChaosInterpreter.ts";
+import { Chaos } from "../interpretators/ChaosInterpreter.ts";
 import { generateCalculationOrder, generateRenderingOrder } from "./RenderingOrder.ts";
 
 //@ts-ignore
