@@ -1,4 +1,3 @@
-export type CalculationOrder = {id:string,weight:number,z:number}[];
 export type CameraData = {
     id: string;
     maxZ: number;
