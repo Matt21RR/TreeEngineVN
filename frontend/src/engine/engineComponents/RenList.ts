@@ -37,6 +37,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
   #_ids:Array<string> = [];
   #_elementsDict:Dictionary<T> = {};  //Dictionary of references
   #_enabledIds:Array<string> = [];
+  #_enabledIdsIndexTable: Dictionary<number> = {};
   #_relatedToIds: Dictionary<string> = {};
   #_reversedRelatedToLists: Dictionary<Array<string>> = {};
   #_unRelatedToIds: Array<string> = []; //*For elements with relatedTo field but aren't related to anything
@@ -66,6 +67,13 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     this.dummy.hasRelatedTo = getAttribs(element).includes("relatedTo");
   }
 
+  private updateEnabledIdsIndexTable(){
+    this.#_enabledIdsIndexTable = {};
+    this.#_enabledIds.forEach((id, idx)=>{
+      this.#_enabledIdsIndexTable[id] = idx;
+    })
+  }
+
   push(element:T){
     if(this.exist(element.id)){
       console.warn(`Element with ${element.id} id already exists`);
@@ -82,8 +90,10 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
         element.updateEnabled = (id:string,enabled:boolean) =>{
           if(enabled && !this.#_enabledIds.includes(id)){
             this.#_enabledIds.push(id);
+            this.updateEnabledIdsIndexTable();
           }else if(!enabled && this.#_enabledIds.includes(id)){
-            this.#_enabledIds.splice(this.#_enabledIds.indexOf(id))
+            this.#_enabledIds.splice( this.#_enabledIdsIndexTable[id] );
+            this.updateEnabledIdsIndexTable();
           }
         }
       }
@@ -116,9 +126,10 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
       if(unRelatedId != -1){
         this.#_unRelatedToIds.splice( unRelatedId,1 );
       }
-      let enabledId = this.#_enabledIds.indexOf(objectId);
-      if(enabledId != -1){
+      let enabledId = this.#_enabledIdsIndexTable[objectId];
+      if(enabledId !== undefined){
         this.#_enabledIds.splice( enabledId,1 );
+        this.updateEnabledIdsIndexTable();
       }
 
       if(element instanceof GraphObject){
@@ -156,6 +167,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     return this.#_relatedToIds;
   }
   get enabledIds(){ return this.#_enabledIds; }
+  get enabledIdsIndexTable(){return this.#_enabledIdsIndexTable; }
   enabledList(){
     return this.#_enabledIds.map(id => this.fastGet(id))
   }
