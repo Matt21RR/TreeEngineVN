@@ -2,43 +2,40 @@ import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import GraphObject from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
 
-//export type CalculationOrder = {id:string,weight:number,z:number}[];
-type CalculationOrder = [string,number,number][];
+export type CalculationOrder = Array<string>;
+// type CalculationOrder = [string,number,number][];
 
 function _deepRootSearch(
     graphObject: GraphObject, 
-    generalOrder: CalculationOrder, 
-    generalOrderMap: Map<string, number>, 
-    visited: CalculationOrder = []): [number, number, CalculationOrder] {
+    generalIdMap: Array<string>, 
+    visited: CalculationOrder = []): CalculationOrder {
   //if the parent is not in the generalOrderMap, we need to go up the tree until we find a parent that is in the generalOrderMap or we reach a root element (no parent)
-  const isInGeneralOrder = generalOrderMap.has(graphObject.parentRef?.id || "");
+  const isInGeneralOrder = generalIdMap.includes(graphObject.parentRef?.id || "");
 
   if(graphObject.parentRef && !isInGeneralOrder){
-    const [levels, z, newVisited] = _deepRootSearch(graphObject.parentRef, generalOrder, generalOrderMap, visited);
+    const newVisited = _deepRootSearch(graphObject.parentRef, generalIdMap, visited);
 
-    newVisited.push([graphObject.id, levels, graphObject.z]);
-    graphObject.accomulatedZ = graphObject.z + z;
-    return [levels + 1, z + graphObject.z, newVisited];
+    newVisited.push(graphObject.id);
+    graphObject.accomulatedZ = graphObject.z + graphObject.parentRef.accomulatedZ;
+    return newVisited;
 
   //if the parent is in the generalOrderMap, we can calculate the weight and z based on the parent's data
   }else if(graphObject.parentRef && isInGeneralOrder){
-    const parentIndex = generalOrderMap.get(graphObject.parentRef.id);
-    const parentData = generalOrder[parentIndex];
+    const parentData = graphObject.parentRef;
 
-    visited.push([graphObject.id, parentData[1] + 1, graphObject.z + parentData[2]]);
-    graphObject.accomulatedZ = graphObject.z + parentData[2];
-    return [parentData[1] + 1, graphObject.z + parentData[2], visited];
+    visited.push(graphObject.id);
+    graphObject.accomulatedZ = graphObject.z + parentData.accomulatedZ;
+    return visited;
 
-  }else {
-    visited.push([graphObject.id, 0, graphObject.z]);
+  }else { //Root element, no parent
+    visited.push(graphObject.id);
     graphObject.accomulatedZ = graphObject.z;
-    return [0, graphObject.z, visited]; //Root element has weight 0 and its own z
+    return visited; //Root element has weight 0 and its own z
   }
 }
 
 function generateCalculationOrder(graphArray: RenList<GraphObject>) {
   let final: Array<string> = [];
-  const order: CalculationOrder = [];
   let processedCount = 0;
   const orderMap = new Map<string, number>(); // id -> index in order array
   
@@ -47,69 +44,42 @@ function generateCalculationOrder(graphArray: RenList<GraphObject>) {
   const totalItems = allIds.length;
   
   // Queue for items ready to process
-  let unprocessedIds = new Set(allIds);
+  // let unprocessedIds = new Set(allIds);
+  let unprocessedIds = [...allIds]
 
   let graphObject: GraphObject;
-  let parentRef: GraphObject | undefined;
   let currentIndex: number;
   
   while (processedCount < totalItems) {
-    graphObject = graphArray.fastGet(unprocessedIds.values().next().value);
-    if (!graphObject) continue;
+    // graphObject = graphArray.fastGet(unprocessedIds.values().next().value);
+    graphObject = graphArray.fastGet(unprocessedIds[0]);
+    // if (!graphObject) continue;
 
-    parentRef = graphObject.parentRef;
-
-    if(parentRef){
-      const [_,__,branchToParentRoot] = _deepRootSearch(graphObject, order, orderMap);
+    if(graphObject.parentRef){
+      const branchToParentRoot = _deepRootSearch(graphObject, final);
       //*Process branch to root, adding elements to order if they haven't been processed yet
       branchToParentRoot.forEach(element => {
-        currentIndex = order.length;
-        order.push(element);
-        final.push(element[0]);
-        orderMap.set(element[0], currentIndex);
+        currentIndex = final.length;
+        final.push(element);
         processedCount++;
-        unprocessedIds.delete(element[0]);
+        unprocessedIds.splice(unprocessedIds.indexOf(element),1);
 
         //Note: The accomulatedZ of each element is calculated in the _deepRootSearch function,
         // so update that value in that function to avoid having to recalculate it here, since 
         // we already accesing to the element in that function
       });
     }else{
-      currentIndex = order.length;
-      order.push([graphObject.id, 0, graphObject.z]);
+      currentIndex = final.length;
       final.push(graphObject.id);
-      orderMap.set(graphObject.id, currentIndex);
       processedCount++;
-      unprocessedIds.delete(graphObject.id);
+
+      unprocessedIds.splice(0,1);
 
       graphObject.accomulatedZ = graphObject.z;
     }
   }
 
   return final;
-}
-
-/**
- * Aplana el CalculationOrder para generar un array de los id de los elementos
- * ordenado según el orden de renderización de los elementos (primero los padres, 
- * luego los hijos, y dentro de cada grupo ordenados por z)
- * @param calculationOrder 
- * @returns 
- */
-function arrayiseTree(calculationOrder: CalculationOrder) {
-  if (calculationOrder.length === 0) return [];
-
-  // Sort by weight first, then by z-index
-  const sorted = calculationOrder.sort((a, b) => {
-    if (a[1] !== b[1]) {
-      // Sort by weight ascending (parents before children)
-      return a[1] - b[1];
-    }
-    return a[2] - b[2]; // Sort by z within same weight
-  });
-  
-  // Extract IDs
-  return sorted.map(element => element[0]);
 }
 
 function generateRenderingOrder(dimentionsPack: Record<string, ObjectRenderingData>) {
@@ -159,4 +129,4 @@ function generateRenderingOrder_(graphArray: RenList<GraphObject>) {
     .flatMap(([_, ids]) => ids);  // Extract all IDs in order
 }
 
-export {generateCalculationOrder, arrayiseTree, generateRenderingOrder}
+export {generateCalculationOrder, generateRenderingOrder}
