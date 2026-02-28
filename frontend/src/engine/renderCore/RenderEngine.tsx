@@ -510,11 +510,13 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       engine={this}
       renderGraphics={(canvas)=>{
         const startOrdA = performance.now();
+        //TODO: Only recalculate order if some object have changed its parent
         this.calculationOrder = generateCalculationOrder(this.graphArray);
+        
         const orderingTime = performance.now()-startOrdA;
 
         const renderingOrdA = performance.now();
-        const [dimentionsPack, requireRepaint] = generateObjectsDisplayDimentions(canvas, this.graphArray, this.calculationOrder, this.camera);
+        const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.calculationOrder, this.camera);
 
         this.dimentionsPack = dimentionsPack;
 
