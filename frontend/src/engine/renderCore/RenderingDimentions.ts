@@ -30,7 +30,7 @@ function generateObjectsDisplayDimentions(
   canvas: CanvasData, 
   graphArray: RenList<GraphObject>, 
   calculationOrder: Array<string>,
-  camera: CameraData): [Set<string>, Array<string>]{
+  camera: CameraData): Set<string> {
     const engine = RenderEngine.getInstance();
 
     let nDicoSet: Set<string> = new Set();
@@ -79,9 +79,6 @@ function generateObjectsDisplayDimentions(
 
     let dimentionsPack = null;
 
-    let requireRepaint: Set<string> = new Set();
-
-
     for (let index = 0; index < graphArray.length; index++) {
       gObject = graphArray.fastGet(calculationOrder[index]);
       if(!gObject.pendingRenderingRecalculation){
@@ -90,7 +87,6 @@ function generateObjectsDisplayDimentions(
         //TODO: if text value is not null, jump to text attribs recalculation
         continue;
       }
-      requireRepaint.add(gObject.id);
 
       objectZ = gObject.accomulatedZ;
       if(objectZ + camCenter.z < 0){
@@ -102,8 +98,8 @@ function generateObjectsDisplayDimentions(
       texRef = gObject.textureName ? engine.getTexture(gObject.textureName) : null;
       
 
-      if(!!gObject.parent && nDicoSet.has(gObject.parent)){
-        parent = graphArray.fastGet(gObject.parent);
+      if(gObject.parentRef && nDicoSet.has(gObject.parent)){
+        parent = gObject.parentRef;
         origin.x = parent.dimentionsPack.base.x;
         origin.y = parent.dimentionsPack.base.y;
       }
@@ -245,7 +241,7 @@ function generateObjectsDisplayDimentions(
       gObject.pendingRenderingRecalculation = false;
 
     }
-    return [nDicoSet, finalArrayisedTree];
+    return nDicoSet;
   }
 
 export {generateObjectsDisplayDimentions}
