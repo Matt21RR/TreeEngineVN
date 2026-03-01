@@ -399,17 +399,17 @@ This allows to mix the game engine script commands with javascript code. The pos
 
 ## Javascript outside a script command
 
-Simply type “>” as the first character of the line, followed by a space, and then type the JavaScript code you want to execute.
+Simply type “@” as the first character of the line, followed by a space, and then type the JavaScript code you want to execute.
 
 ```ts
-> console.log( Math.random() );
+@ console.log( Math.random() );
 ```
 
-If the JavaScript code you want to add to your script takes up more than one line, you can write the code as a variable or constant that stores a lambda function with the code inside, and then execute that lambda function by using the “>” symbol again on the next line to call that function.
+If the JavaScript code you want to add to your script takes up more than one line, you can write the code as a variable or constant that stores a lambda function with the code inside, and then execute that lambda function by using the “@” symbol again on the next line to call that function.
 
 ```ts
 //Create a lambda function with the code inside
-> const ourInterestingFunction = () => {
+@ const ourInterestingFunction = () => {
     console.log("This is a interesting function.");
     const num = 2.7;
     const floorInteger = Math.floor(num);
@@ -417,15 +417,15 @@ If the JavaScript code you want to add to your script takes up more than one lin
 }
 
 //excecuting that lambda function
-> ourInterestingFunction();
+@ ourInterestingFunction();
 ```
 
 You can also insert engine script commands within JavaScript code. This can be useful when you want to automate a specific task, such as executing the command to create graphic objects multiple times.
 
 
 ```ts
-> const indexes = [...new Array(10)].map( (_, index) => index );
-> for (let index of indexes) {
+@ const indexes = [...new Array(10)].map( (_, index) => index );
+@ for (let index of indexes) {
     //GraphObject creation instruction
     `tree${index}` = new GraphObject({
       enabled:true,
