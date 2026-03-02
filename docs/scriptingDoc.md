@@ -52,34 +52,6 @@ ignoreParallax = !("z" in graphInfo);
 ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this._ignoreParallax;
 ```
 
-## Events Command - GraphObject parameters change actions
-
-### Only when the parameter meet the condition
-Will run once and then be removed
-
-```js
-if (condition) { 
-  (engine?: RenderEngine)=>{} 
-}
-```
-
-### While the parameter meet the condition
-Will run while the condition has been meet
-
-```ts
-id while (condition) do (obj?: GraphObject, engine?: RenderEngine, engineDelta?: number)=>{}
-
-id while (condition) do (obj?: GraphObject, engine?: RenderEngine, engineDelta?: number)=>{} finally (obj?: GraphObject, engine?: RenderEngine, engineDelta?: number)=>{}
-```
-
-
-- **id**: *`string`*
-- **properties**: *`Dictionary<any>`*
-
-<br>
-
----
-
 # KeyboardTrigger
 
 ## Creation Command
@@ -435,4 +407,58 @@ You can also insert engine script commands within JavaScript code. This can be u
       scale:0.15
     })
 }
+```
+
+
+<br>
+
+---
+# Scoped (Scenes, Nodes and Modules) behavior and script commands
+
+## Scenes and Nodes
+### Scene Scope Definition:
+```ts
+Scene sceneName
+  //script commands of the scene
+  ...
+End Scene
+```
+### Scene Run Command
+```ts
+Run sceneName
+```
+
+### Node Scope Definition
+```ts
+  Node nodeName
+    //script commands of the node
+    ...
+  End Node
+```
+> [!NOTE]
+> the creation of a node requires to be inside a scene, and the node will only be active when the scene is active. This allows you to create different nodes for different parts of the same scene, and activate them as needed.
+
+### Node JumpTo (Run) Commmand
+```ts
+JumpTo nodeName
+```
+Also you can (theorically, i'm implemented it but not checked if this works well) jump directly to a node in another scene using this: 
+```ts
+Run sceneName -> nodeName
+```
+
+## Modules
+A module is a bunch of script commands and code that can be reused inside any scene.
+### Module Scope Definition
+```ts
+  Module moduleName
+    //script commands of the module
+    ...
+  End Module
+```
+### Module Include Command
+The content of a module is straightly copied where you use the include command.
+
+```ts
+Include moodule
 ```
