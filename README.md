@@ -4,7 +4,7 @@
 
 ## About
 
-This project is driven by the classic slogan ‘the real question is not why, but why not?’.😅
+The games developed acts as a desktop application instead of a webpage. One of the benefits of using wails is that the final excecutable filesize is significatively small, compared with other web bundler solutions.
 
 A semi-custom scripting language has been designed for building code that is interpreted and executed by the engine and is also interoperable with JavaScript code.
 
