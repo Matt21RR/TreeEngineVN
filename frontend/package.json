@@ -14,7 +14,6 @@
     "@testing-library/react": "^16.3.0",
     "byte-size": "^9.0.1",
     "d3-random": "^3.0.1",
-    "downloadjs": "^1.4.7",
     "ease-component": "^1.0.0",
     "gsap": "^3.13.0",
     "howler": "^2.2.4",
@@ -22,7 +21,6 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-draggable": "^4.5.0",
-    "react-highlight-within-textarea": "^3.2.2",
     "sweetalert2": "^11.22.0",
     "tailwindcss": "^4.1.10",
     "vite-plugin-commonjs": "^0.10.4"
@@ -30,7 +28,6 @@
   "devDependencies": {
     "@eslint/js": "^9.25.0",
     "@types/d3-random": "^3.0.3",
-    "@types/downloadjs": "^1.4.6",
     "@types/jquery": "^3.5.32",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
