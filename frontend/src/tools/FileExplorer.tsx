@@ -4,7 +4,6 @@ import Swal from 'sweetalert2';
 import Loading from './components/alerts.tsx';
 import byteSize from 'byte-size';
 import Multimedia from './Multimedia.tsx';
-import download from 'downloadjs';
 import { Request } from '../../wailsjs/go/main/App.js';
 import { Button1, IconButton, MenuButton } from './components/Buttons.tsx';
 
@@ -150,7 +149,6 @@ class FileExplorer extends React.Component{
   download(dir:string, type:string){
     this.backendRequest({action: "download", dir, type})
       .then((res:string)=>{
-        download(JSON.parse(res).dataUrl,dir.split("/").at(-1));
       },(error)=>{
         console.error(error);
       });    

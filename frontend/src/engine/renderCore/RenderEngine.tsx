@@ -98,14 +98,11 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   //*ScriptNode stuff
   nodes: Dictionary<string>;
   scenicPositions: RenList<any>;
-  callThisShitWhenDialogEnds:(engine:RenderEngine)=>void;
-  callThisShitWhenDecisionEnds:(engine:RenderEngine,data:Dictionary)=>void;
   //*Rendering stuff
   developmentDeviceHeight: number;
   engineDisplayRes: { width: number; height: number };
   camera: CameraData;
   calculationOrder: Array<string>;
-  // dimentionsPack: Record<string, ObjectRenderingData>;
   dimentionsPack: Set<string>;
   renderingOrderById: Array<string>;
 
@@ -342,13 +339,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       throw error;
     }
   }
-  // directInterpretation(script:string){
-  //   const chaos = new Chaos();   
-  //   const interpretation = chaos.directKreator(script);
-  //   const interpretationF = new Function ("engine","ExtendedObjects",interpretation);
-  //   console.warn(interpretationF);
-  //   interpretationF(this,ExtendedObjects);
-  // }
   runNode(nodeId: string){
     const routineNumber = this.routineNumber;
     const prevRoutines = this.routines.slice(0,routineNumber+1);
