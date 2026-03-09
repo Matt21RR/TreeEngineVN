@@ -34,7 +34,7 @@ type Button1Props = BaseButtonProps & {
 export function Button1 (props: Button1Props){
   return(
     <div 
-      className={`cursor-pointer p-1 rounded-md ${props.color || "bg-teal-700"} text-white w-fit h-fit text-[12px] ${props.style ?? "m-1"} ${props.hide ? "hidden":""}`} 
+      className={`cursor-pointer p-0.5 rounded-sm ${props.color || "bg-teal-700"} text-white w-fit h-fit text-[12px] ${props.style ?? "mx-0.5 my-1"} ${props.hide ? "hidden":""}`} 
       onClick={()=>{props.action?.()}}
       onMouseEnter={()=>{props.enter?.();}}
       onMouseLeave={()=>{props.leave?.();}}>

@@ -114,7 +114,7 @@ class WindowsEnvironment extends React.Component<WindowsEnvironmentProps>{
             action={()=>{this.minimizedTable.splice(this.minimizedTable.indexOf(contentId),1); this.forceUpdate();}}
             enter={()=>{this.previewTable.push(contentId); this.forceUpdate();}}
             leave={()=>{this.previewTable.splice(this.previewTable.indexOf(contentId),1); this.forceUpdate();}}
-            style="text-white mx-auto p-2 hover:bg-white hover:bg-opacity-30 cursor-pointer"
+            style="text-white mx-auto p-1 hover:bg-white hover:bg-opacity-30 cursor-pointer"
             text = {contentId}
           />
         )})}

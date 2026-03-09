@@ -178,7 +178,7 @@ export default function EngineTools(props:EngineToolsProps){
   const buttons = () => {
     const engine = props.engine;
     const canvasObject = engine.canvasRef.object;
-    return <div className="flex gap-2">
+    return <div className="flex">
       <div>
         <Button1 text={`Perspective: ${engine.camera.usePerspective}`} action={()=>{
           engine.camera.usePerspective = !engine.camera.usePerspective;
