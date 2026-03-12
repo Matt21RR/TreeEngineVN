@@ -55,7 +55,7 @@ class ResourceLoader{
             .map(textureName=>{
             if(engineRegisteredTexturesList.includes(textureName)){
               return new Promise((resolveFile)=>{
-                console.warn(textureName + " already in engine.texturesList");
+                console.warn(textureName + " already in engine.textureManager.texturesList");
                 resolveFile(null);
               });
             }else{
