@@ -510,7 +510,7 @@ class ChaosInterpreter {
       delete scenes.gameEntrypoint;
     }else if("gameEntrypoint" in scenes){
       scenes.gameEntrypoint.main = 
-      `engine.loadTexture('${this.getTexture()}').then(()=>{
+      `engine.textureManager.loadTexture('${this.getTexture()}').then(()=>{
         engine.loadSound('${this.getSound()}').then(()=>{
           ${scenes.gameEntrypoint.main}
         });

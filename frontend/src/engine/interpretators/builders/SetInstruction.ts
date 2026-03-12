@@ -58,7 +58,7 @@ class SetInstruction extends InstructionInterface{
         break;
       case "TextureAnim":
         res.push(
-          `engine.textureAnims.get(${id})[key] = ${dynaVarName}[key];`
+          `engine.textureManager.textureAnims.get(${id})[key] = ${dynaVarName}[key];`
         );
         break;
       case "Trigger":
@@ -68,7 +68,7 @@ class SetInstruction extends InstructionInterface{
         break;
       case "KeyboardTrigger":
         res.push(
-          `engine.keyboardTriggers.get(${id})[key] = ${dynaVarName}[key];`
+          `engine.inputManager.keyboardTriggers.get(${id})[key] = ${dynaVarName}[key];`
         );
         break;
       case "Animation":

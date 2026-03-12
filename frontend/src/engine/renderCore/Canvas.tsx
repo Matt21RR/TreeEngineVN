@@ -326,7 +326,7 @@ class Canvas extends React.Component<CanvasProps>{
           "Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2),
           "Res: "+this.resolutionWidth+"x"+this.resolutionHeight,
           "EngTime: "+this.totalEngineElapsedTime.toFixed(2) + "ms",
-          "Keys: "+this.renderEngine.pressedKeys.join(" "),
+          "Keys: "+this.renderEngine.inputManager.pressedKeys.join(" "),
           "GPU: "+(total | 0) + "ms" ,
           "CPU: "+(this.animatingElapsed | 0) + "ms" ,
           "cycle:"+(total+this.animatingElapsed | 0) + "ms" ,

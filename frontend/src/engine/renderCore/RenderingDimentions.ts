@@ -95,7 +95,7 @@ function generateObjectsDisplayDimentions(
       analyzed++;
       dimentionsPack = gObject.dimentionsPack;
 
-      texRef = gObject.textureName ? engine.getTexture(gObject.textureName) : null;
+      texRef = gObject.textureName ? engine.textureManager.getTexture(gObject.textureName) : null;
       
 
       if(gObject.parentRef && nDicoSet.has(gObject.parent)){

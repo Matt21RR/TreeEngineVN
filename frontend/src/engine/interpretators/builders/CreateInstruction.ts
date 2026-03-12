@@ -68,8 +68,10 @@ class CreateInstruction extends InstructionInterface{
               id:${id}
           };
           Object.assign(data${dynaVarName},${dynaVarName}[1]);
-
-          engine.textureAnims.push(new engine.constructors.textureAnim(data${dynaVarName}));`
+          console.log(engine.textureManager.textureAnims);
+          const zepto = new engine.constructors.textureAnim(data${dynaVarName});
+          console.log(zepto);
+          engine.textureManager.textureAnims.push(zepto);`
         );
         break;
       case "Trigger":
@@ -101,7 +103,7 @@ class CreateInstruction extends InstructionInterface{
           };
           Object.assign(data${dynaVarName},${dynaVarName}[1]);
 
-          engine.keyboardTriggers.push(new engine.constructors.keyboardTrigger(data${dynaVarName}));`
+          engine.inputManager.keyboardTriggers.push(new engine.constructors.keyboardTrigger(data${dynaVarName}));`
         );
         break;
       case "Animation":

@@ -35,7 +35,7 @@ class DeleteInstruction extends InstructionInterface{
         break;
       case "TextureAnim":
         res.push(
-          `engine.textureAnims.remove(${id});`
+          `engine.textureManager.textureAnims.remove(${id});`
         );
         break;
       case "Trigger":
@@ -45,7 +45,7 @@ class DeleteInstruction extends InstructionInterface{
         break;
       case "KeyboardTrigger":
         res.push(
-          `engine.keyboardTriggers.remove(${id});`
+          `engine.inputManager.keyboardTriggers.remove(${id});`
         );
         break;
       case "Animation":
