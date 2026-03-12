@@ -451,10 +451,10 @@ Run sceneName -> nodeName
 A module is a bunch of script commands and code that can be reused inside any scene.
 ### Module Scope Definition
 ```ts
-  Module moduleName
-    //script commands of the module
-    ...
-  End Module
+Module moduleName
+  //script commands of the module
+  ...
+End Module
 ```
 ### Module Include Command
 The content of a module is straightly copied where you use the include command.
