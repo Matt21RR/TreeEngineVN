@@ -1,16 +1,10 @@
 # TreeEngineVN
 
-## TreeEngineVN is a 2d video game engine based on web technologies and geared towards the creation of 2D visual novel-type games.
-
 ![TreeEngineVN Screenshot](docs/screenshots/presentation.png)
 
 ## About
 
-The games developed acts as a desktop application instead of a webpage. One of the benefits of using wails is that the final excecutable filesize is significatively small, compared with other web bundler solutions.
-
-A semi-custom scripting language has been designed for building code that is interpreted and executed by the engine and is also interoperable with JavaScript code.
-
-Wails is used to package the project and manage multimedia resources in the device's storage.
+TreeEngineVN is a 2D video game engine based on web technologies, geared towards the creation of 2D visual novel-type games. Games developed with TreeEngineVN act as desktop applications rather than webpages. One of the key benefits of using Wails as the packaging solution is that the final executable file size is significantly smaller compared to other web bundler solutions. A semi-custom scripting language has been designed for building game logic that is interpreted and executed by the engine, and is also interoperable with JavaScript code. Wails is used to package the project and manage multimedia resources in the device's storage.
 
 ## Features
 - 2D rendering using the HTML5 Canvas API
