@@ -270,6 +270,7 @@ class GraphObject extends GraphObjectDataType{
     
   get texture() { return this._textureName; }
   set texture(x) { 
+    this.dimentionsPack.solvedTexture = null;
     this._textureName = x != undefined ? x : null;
   }
     
@@ -422,15 +423,15 @@ class GraphObject extends GraphObjectDataType{
       }  
     }
   }
+  
+  get x() {return this._x;}
+  set x(x:any) {
+    this._x = parseFloat(x) || 0;
+  }
 
   get y() {return this._y;}
   set y(x:any) {
     this._y = parseFloat(x) || 0;
-  }
-
-  get x() {return this._x;}
-  set x(x:any) {
-    this._x = parseFloat(x) || 0;
   }
 
   get scale() {return this._scale;}
@@ -439,9 +440,9 @@ class GraphObject extends GraphObjectDataType{
   }
 
   get rotate() {return (this._rotate*180)/Math.PI;}
+  set rotate(x:any) {this._rotate = (parseFloat(x)*Math.PI/180) || 0;}
   set rotateRad(x) {this._rotate = x}
   get rotateRad() {return this._rotate;}
-  set rotate(x:any) {this._rotate = (parseFloat(x)*Math.PI/180) || 0;}
 
   get z() {return this._z;}
   set z(x:any) {
@@ -471,6 +472,12 @@ class GraphObject extends GraphObjectDataType{
 
   get parent() {return this._parent;}
   set parent(x) {
+    // Pendiente, esto es un caso improbable,
+    // Si el objeto padre no se ha creado, se asigna la id del padre a este objeto
+    // pero la referencia al padre no se asigna por que el padre no existe aun.
+    // por lo tanto.
+
+    //TODO: If the parent is created after it's child(s), the parentref must be asigned to each child
     const engine = RenderEngine.getInstance();
     if(engine.graphArray.exist(x)){
       const newParent = engine.graphArray.fastGet(x);
@@ -485,6 +492,8 @@ class GraphObject extends GraphObjectDataType{
         this._parentRef.childsRefs.delete(this.id);
       }
     }
+    console.log(engine.graphArray.fastGet("dialogbox"))
+    console.log("For "+this.id+" setting parent: "+ x+ " and the parent ref", this._parentRef)
     this._parent = x;
   }
 
@@ -525,34 +534,5 @@ class GraphObject extends GraphObjectDataType{
   }
 }
 
-type EngineEventInfo = {
-  condition: (ref:GraphObject)=>boolean
-  callback: (object?:GraphObject, engine?:RenderEngine, engineDelta?:number)=>void
-  finalCallback?: (object?:GraphObject, engine?:RenderEngine, engineDelta?:number)=>void
-}
-
-class EngineEvent {
-  condition: (ref:GraphObject)=>boolean
-  callback: (object?:GraphObject, engine?:RenderEngine, engineDelta?:number)=>void
-  finalCallback?: (object?:GraphObject, engine?:RenderEngine, engineDelta?:number)=>void
-  constructor(){}
-  setContidion(strCondition: string){
-    
-  }
-
-}
-
-class Eventor {
-  ifEvents: Map<string,EngineEvent> = new Map();
-
-  addIfEvent(info:EngineEvent){
-
-  }
-
-  addWhileEvent(info:EngineEvent){
-
-  }
-
-}
 
 export default GraphObject
