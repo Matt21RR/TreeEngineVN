@@ -3,3 +3,5 @@ node_modules
 frontend/dist
 frontend/wailsjs
 game
+frontend/wailsjs/go/main/App.d.ts
+frontend/wailsjs/go/main/App.js
