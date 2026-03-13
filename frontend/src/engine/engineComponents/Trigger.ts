@@ -13,7 +13,6 @@ class Trigger extends EnabledObject{
   private _onMouseMove:Function|null
 
   constructor(tInfo){
-    console.log(tInfo);
     super();
     if(!("id" in tInfo))
       throw new Error("Trying to create a Trigger without id");
