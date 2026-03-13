@@ -263,7 +263,7 @@ class ObjectEditor  extends React.Component<ObjectEditorProps> {
   }
   
   render(){
-    return <div className="h-full w-full max-w-full p-2 overflow-hidden">
+    return <div className="h-full w-full max-w-full p-2 overflow-hidden flex flex-col">
             <div>
               Edit
             </div>

@@ -319,7 +319,7 @@ class Window extends React.Component<WindowProps> {
           <div className='flex flex-row w-full h-full'>
             <div className='relative w-full h-full min-w-full max-h-full border border-gray-700 flex flex-col'>
               {this.renderWindowTop()}
-              <div className='relative w-full h-full bg-[rgba(0,0,0,0.80)] flex flex-col overflow-y-auto text-base'>
+              <div className='relative w-full h-full bg-[rgba(0,0,0,0.90)] flex flex-col overflow-y-auto text-base'>
                 {this.props.content ?? <div className='text-white'>Content</div>}
               </div>
             </div>
