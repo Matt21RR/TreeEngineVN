@@ -82,8 +82,8 @@ class PointerCalculation extends React.Component{
       //@ts-ignore
       clientY = mouse.clientY;
     }
-    clientX-=offset.left;
-    clientY-=offset.top;
+    clientX -= offset.left;
+    clientY -= offset.top;
 
     //@ts-ignore
     mX = clientX/mouse.target.clientWidth;
