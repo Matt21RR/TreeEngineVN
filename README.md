@@ -18,7 +18,7 @@ For game engine scripting info check [The Scripting Doc](docs/scriptingDoc.md)
 
 ## Prerequisites
 - Go 1.20 or later
-- Node.js 16 or later
+- Node.js 20 or later
 - Wails (https://wails.io/docs/gettingstarted/installation)
 
 ## How to run
