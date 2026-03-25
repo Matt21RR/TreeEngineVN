@@ -26,7 +26,11 @@ class Test extends React.Component{
             showFps
             developmentDeviceHeight={1080}
             cyclesPerSecond={60}
-            setEngine={(engine)=>{this.engine=engine; this.windowsEnvironment.renderSecondaryContent = true; this.windowsEnvironment.forceUpdate(); this.forceUpdate();}}/>
+            setEngine={(engine)=>{
+              this.engine = engine; 
+              this.windowsEnvironment.renderSecondaryContent = true; 
+              this.windowsEnvironment.forceUpdate(); 
+              this.forceUpdate(); }}/>
         }
         windows={{
           fileExplorer:{
@@ -36,13 +40,13 @@ class Test extends React.Component{
             disabled:this.engine == null
           },
           triggers:{
-            title:"Triggers en escena",
+            title:"In-scene Triggers",
             content:<TriggersE  engine={this.engine} objectsERef={this.ObjectsERef} reRender={()=>{this.windowsEnvironment.forceUpdate();}} />,
             minimized:true,
             disabled:this.engine == null
           },
           objectsInfo:{
-            title:"Objetos en escena",
+            title:"In-scene GraphObjects",
             content:<ObjectsE 
               engine={this.engine} 
               reRender={()=>{this.windowsEnvironment.forceUpdate()}} 
@@ -54,13 +58,13 @@ class Test extends React.Component{
             disabled:this.engine == null
           },
           engTools:{
-            title:"Herramientas del motor",
+            title:"EngineTools",
             content:<EngineTools engine={this.engine} reRender={()=>{this.windowsEnvironment.forceUpdate()}}/>,
             minimized:true,
             disabled:this.engine == null
           },
           textures:{
-            title:"Texturas",
+            title:"Textures",
             content:<TexturesE/>,
             minimized:false,
             disabled:this.engine == null
