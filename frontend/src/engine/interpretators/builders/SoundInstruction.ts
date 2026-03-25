@@ -46,14 +46,14 @@ export default class SoundInstruction extends InstructionInterface{
       res.push(
         `
         Object.keys(${dynaVarName}).forEach(key=>{
-          engine.soundsList.fastGet(${id}).sound[key]( ${dynaVarName}[key] );
+          engine.audioManager.soundsList.fastGet(${id}).sound[key]( ${dynaVarName}[key] );
         });
         `
       );
     }
     if(action){
       res.push(`
-        engine.soundsList.fastGet(${id}).sound.${action}();  
+        engine.audioManager.soundsList.fastGet(${id}).sound.${action}();  
       `);
     }
 

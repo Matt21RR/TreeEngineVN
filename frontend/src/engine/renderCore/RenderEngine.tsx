@@ -71,9 +71,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   graphArray: RenList<GraphObject>;
   anims: RenList<Animation>;
   triggers: RenList<Trigger>;
-
   
-  soundsList: RenList<any>;
   actors:RenList<Actor>;
   stageMarks: RenList<StageMark>;
   
@@ -87,13 +85,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   routineNumber: number;
   resume: boolean;
   //*Dialog struff
-  actualSpeaker: Actor;
-  paragraphNumber: number;
-  paragraph: string;
-  dialogNumber: number;
-  charNumber: number;
-  dialog: Array<any>;
-  narration: Array<any>;
+  dialogManager: DialogManager;
   
   //*ScriptNode stuff
   nodes: Dictionary<string>;
@@ -118,6 +110,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   getStr: Function;
 
   textureManager: TextureManager;
+
+  audioManager: AudioManager;
   
   displayObserver: ResizeObserver;
   
@@ -163,7 +157,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
     //*Texture Fallback
     this.textureManager = new TextureManager();
-    this.soundsList = new RenList();
+    this.audioManager = new AudioManager();
 
     //MOUSE
     this.mouse = {x:0,y:0,origin:null};
@@ -183,6 +177,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.scenicPositions = new RenList();
 
     this.inputManager = new InputManager();
+
+    this.dialogManager = new DialogManager();
     console.warn("Cleaning");
     this.dataCleaner();
   } 
@@ -328,17 +324,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     console.warn(error);
     console.log(info);
   }
-  loadSound(indexPath:string){
-    const self = this;
-    return new Promise(function (resolve, reject) {
-      ResourceLoader.loadSound(indexPath).then((soundList)=>{
-        (soundList as Array<any>).forEach(soundExtructure => {
-          self.soundsList.push(soundExtructure);
-        });
-        resolve(null);
-      });
-    })
-  }
   private dataCleaner(){
     //reset values
     this.engineTime = 0;
@@ -395,17 +380,9 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.routineNumber = -1;
     this.resume = true;
     //Dialogs
-    this.paragraphNumber = 0;
-    this.paragraph = "";
-    this.dialogNumber = 0;
-    this.charNumber = 0;
-    this.dialog = [];
-    this.narration = [];
+    this.dialogManager.cleaner();
     //ScriptNode stuff
     this.nodes = {};
-  }
-  play(songId:string){
-    this.soundsList.get(songId).sound.play();
   }
   renderScene(){
     if(!this.isReady){
@@ -704,6 +681,31 @@ class TextureManager{
   }
 }
 
+class AudioManager {
+  soundsList: RenList<any>;
+ 
+  constructor() {
+    this.soundsList = new RenList();
+  }
+ 
+  play(songId: string): void {
+    this.soundsList.get(songId)?.sound?.play();
+  }
+ 
+  loadSound(indexPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ResourceLoader.loadSound(indexPath)
+        .then((soundList) => {
+          (soundList as Array<any>).forEach((soundEntry) => {
+            this.soundsList.push(soundEntry);
+          });
+          resolve();
+        })
+        .catch(reject);
+    });
+  }
+}
+
 class InputManager{
   //*Keyboard Triggers stuff
   keyboardTriggers: RenList<KeyboardTrigger>;
@@ -781,6 +783,66 @@ class InputManager{
         this.keyboardTriggers.get(key).check(engineRef,"onHold");
       }
     });
+  }
+}
+
+class DialogManager {
+  actualSpeaker: Actor | null = null;
+  //NarrationText
+  narration: any[] = [];
+  paragraphNumber = 0;
+  paragraph = "";
+  //ActorText
+  dialogs: any[] = [];
+  dialogNumber = 0;
+  charNumber = 0;
+ 
+  cleaner(): void {
+    this.actualSpeaker = null;
+    this.narration = [];
+    this.paragraphNumber = 0;
+    this.paragraph = "";
+    this.dialogNumber = 0;
+    this.charNumber = 0;
+    this.dialogs = [];
+  }
+
+  isPendingParagraphsToLoad(){
+    return this.paragraphNumber < this.narration.length;
+  }
+  getActualParagraph(){
+    return this.narration[this.paragraphNumber];
+  }
+  concatActualParagraphToNarrationText(){
+    this.paragraph += '\n\n' + getStr(lambdaConverter( this.getActualParagraph() ));
+  }
+  cleanNarration(){
+    this.narration = [];
+    this.paragraphNumber = 0;
+    this.paragraph = "";
+  }
+
+
+
+  isPendingDialogsToLoad():boolean{
+    return this.dialogNumber+1 < this.dialogs.length;
+  }
+  loadNextDialog():void{
+    this.dialogNumber++;
+    this.charNumber = 0;
+  }
+  isPendingCharsInActualDialog():boolean{
+    //number of chars joined to the showing text < Number of chars in actual dialog
+    return this.charNumber < this.dialogs[this.dialogNumber].length;
+  }
+  getActualDialogChar(){
+    return this.dialogs[this.dialogNumber][this.charNumber];
+  }
+
+  cleanActorDialogs():void{
+    this.dialogNumber = 0;
+    this.charNumber = 0;
+    this.dialogs = [];
   }
 }
 

@@ -16,9 +16,9 @@ class NarrationInstruction extends AgrupableInstructionInterface{
     `engine.routines.push((engine)=>{
       engine.resume = false;
 
-      engine.narration.push(${narration});
+      engine.dialogManager.narration.push(${narration});
 
-      engine.paragraph += engine.getStr(engine.lambdaConverter(engine.narration[0]));
+      engine.dialogManager.paragraph += engine.getStr(engine.lambdaConverter(engine.dialogManager.narration[0]));
       engine.graphArray.get('narrationBox').enabled = true;
     });`;
 
@@ -37,7 +37,9 @@ class NarrationInstruction extends AgrupableInstructionInterface{
 
       ${newResult}
 
-      engine.paragraph += engine.getStr(engine.lambdaConverter(engine.narration[0]));
+      //This is a dirty fix
+      //a definitive solution could be register the triggers, graphObjects and codedRoutines into the DialogManager of the engine
+      engine.dialogManager.paragraph += engine.getStr(engine.lambdaConverter(engine.dialogManager.narration[0]));
       engine.graphArray.get('narrationBox').enabled = true;
     });`;
 

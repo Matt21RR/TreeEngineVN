@@ -50,11 +50,11 @@ class DialogInstruction extends AgrupableInstructionInterface{
     `engine.routines.push((engine)=>{
       engine.resume = false;
       engine.graphArray.get('dialogbox').text = '';
-      engine.dialogNumber = 0;
-      engine.charNumber = 0;
+      engine.dialogManager.dialogNumber = 0;
+      engine.dialogManager.charNumber = 0;
 
       const ${dynaVarName} = ${dialog};
-      engine.dialog.push(${dynaVarName}); //TODO: Map the dictionary to know the config values to backup
+      engine.dialogManager.dialogs.push(${dynaVarName}); //TODO: Map the dictionary to know the config values to backup
 
       engine.graphArray.get('dialogbox').enabled = true;
       engine.graphArray.get('voiceByName').enabled = true;
@@ -73,8 +73,8 @@ class DialogInstruction extends AgrupableInstructionInterface{
     newResult = `engine.routines.push((engine)=>{
       engine.resume = false;
       engine.graphArray.get('dialogbox').text = '';
-      engine.dialogNumber = 0;
-      engine.charNumber = 0;
+      engine.dialogManager.dialogNumber = 0;
+      engine.dialogManager.charNumber = 0;
 
       ${newResult}
 

@@ -22,11 +22,11 @@ class SetSpeakerInstruction extends InstructionInterface{
     }
     res.push(
      `
-      if(engine.actualSpeaker){
-        engine.actualSpeaker.getActiveMask().grayscale = 0.3;
+      if(engine.dialogManager.actualSpeaker){
+        engine.dialogManager.actualSpeaker.getActiveMask().grayscale = 0.3;
       }
-      engine.actualSpeaker = engine.actors.get('${actor}');
-      engine.actualSpeaker.getActiveMask().grayscale = 0;
+      engine.dialogManager.actualSpeaker = engine.actors.get('${actor}');
+      engine.dialogManager.actualSpeaker.getActiveMask().grayscale = 0;
      `
     );
     if(isInRoutineMode){
