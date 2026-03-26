@@ -171,6 +171,7 @@ function generateObjectsDisplayDimentions(
       cornerX = objectLeft - objectWidth*0.5;
       cornerY = objectTop - objectHeight*0.5;
 
+      if(gObject.repeat == "")
       if(cornerX > canvas.resolution.width || cornerY > canvas.resolution.height || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
         continue;
       }

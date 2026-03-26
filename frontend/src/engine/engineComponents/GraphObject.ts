@@ -54,6 +54,7 @@ class GraphObjectDataType{
     y : "number",
     z : "number",
     scale : "number",
+    repeat : "string",
     widthScale : "number",
     heightScale : "number",
     rotate : "number",
@@ -99,6 +100,8 @@ class GraphObject extends GraphObjectDataType{
   _widthScale:number;
   _heightScale:number;
   _rotate:number;
+  _repeat:string;
+  _repeatPattern:CanvasPattern = null;
 
   _ignoreParallax:boolean;
 
@@ -157,8 +160,6 @@ class GraphObject extends GraphObjectDataType{
     this.hueRotate =       "hueRotate" in graphInfo ? parseFloat(graphInfo.hueRotate): 0;//deg
     //***SHADERS
     this.blur =            "blur" in graphInfo ? parseFloat(graphInfo.blur): 0;//px
-    //static or shaky
-    // _dither:graphInfo.dither != undefined ? graphInfo.dither : 1,
     //***END SHADERS
     this.invert =          graphInfo.invert ?? 0;
     this.saturate =        graphInfo.saturate ?? 1;
@@ -176,6 +177,9 @@ class GraphObject extends GraphObjectDataType{
     this._scale =           graphInfo.scale ?? 1;
     //imageRotation
     this._rotate =          "rotate" in graphInfo ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0;
+
+    this.repeat =          graphInfo.repeat ?? "";
+
 
     //ignoreParallax forces the object to ignore the camera parallax movement
     this._ignoreParallax = !!graphInfo.ignoreParallax;
@@ -434,6 +438,11 @@ class GraphObject extends GraphObjectDataType{
     this._y = parseFloat(x) || 0;
   }
 
+  get z() {return this._z;}
+  set z(x:any) {
+    this._z = parseFloat(x) || 0;
+  }
+
   get scale() {return this._scale;}
   set scale(x:any) {
     this._scale = parseFloat(x) || 0;
@@ -444,10 +453,21 @@ class GraphObject extends GraphObjectDataType{
   set rotateRad(x) {this._rotate = x}
   get rotateRad() {return this._rotate;}
 
-  get z() {return this._z;}
-  set z(x:any) {
-    this._z = parseFloat(x) || 0;
+  get repeat(){ return this._repeat; }
+  set repeat(x:string){
+    this._repeat = x;
+    console.log(RenderEngine.getInstance().textureManager,x);
+    if(RenderEngine.getInstance().textureManager.getTexture(this.textureName) && ["repeat","repeat-x","repeat-y"].includes(x)){
+      this._repeatPattern = RenderEngine.getInstance()
+                            .canvasRef
+                            .context
+                            .createPattern( RenderEngine.getInstance().textureManager.getTexture(this.textureName).getTexture() , "repeat");
+    }else{
+      this._repeatPattern = null;
+    }
   }
+
+  get repeatPattern(){ return this._repeatPattern; }
 
   get ignoreParallax() {return this._ignoreParallax;}
   set ignoreParallax(x) {
@@ -477,7 +497,7 @@ class GraphObject extends GraphObjectDataType{
     // pero la referencia al padre no se asigna por que el padre no existe aun.
     // por lo tanto.
 
-    //TODO: If the parent is created after it's child(s), the parentref must be asigned to each child
+    //TODO: If the parent is created after it's child(s), the parentRef must be asigned to each child
     const engine = RenderEngine.getInstance();
     if(engine.graphArray.exist(x)){
       const newParent = engine.graphArray.fastGet(x);

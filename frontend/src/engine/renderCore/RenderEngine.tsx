@@ -488,10 +488,25 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               }
               
               if(texRef){
-                RenderMisc.drawImage(
-                  texRef.getTexture(),
-                  renderingData,
-                  canvas.context);
+                if(gObject.repeatPattern){
+                  const matrix = new DOMMatrix([renderingData.width/texRef.resolution.width, 0, 0, renderingData.height/texRef.resolution.height, renderingData.corner.x, renderingData.corner.y]);
+
+                  // 4. Apply the matrix to the pattern
+                  gObject.repeatPattern.setTransform(matrix);
+                  canvas.context.fillStyle = gObject.repeatPattern;
+                  if(gObject.repeat == "repeat"){
+                    canvas.context.fillRect(0, 0, resolution.width, resolution.height)
+                  }else if(gObject.repeat == "repeat-x"){
+                    canvas.context.fillRect(0, renderingData.corner.y, resolution.width, renderingData.height)
+                  }else if(gObject.repeat == "repeat-y"){
+                    canvas.context.fillRect(renderingData.corner.x, 0, renderingData.width, resolution.height)
+                  }
+                }else{
+                  RenderMisc.drawImage(
+                    texRef.getTexture(),
+                    renderingData,
+                    canvas.context);
+                }
               }
 
               if(renderingData.text){
