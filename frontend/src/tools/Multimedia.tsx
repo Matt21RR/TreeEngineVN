@@ -113,9 +113,11 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
     );
   }
   const switcher = (src: string) => {
-    if(show && mime != "" && activateSwitch && src != ""){
+    //if(show && mime != "" && activateSwitch && src != ""){
+    if(show && mime != "" && activateSwitch){
       return {text,audio,video,image}[mime](src);
     }
+    return <>No content to show {show? "true" : "false"} {mime}</>
   }
   const closeBtn = (index: number, limit: number) => {
     return(
