@@ -6,3 +6,4 @@ game
 frontend/wailsjs/go/main/App.d.ts
 frontend/wailsjs/go/main/App.js
 frontend/package.json.md5
+frontend/package-lock.json
