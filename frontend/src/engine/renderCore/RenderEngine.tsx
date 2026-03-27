@@ -411,13 +411,11 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           dimentionsObject[key] = this.graphArray.fastGet(key).dimentionsPack;
         });
 
-        // this.renderingOrderById = requireRepaint;
         this.renderingOrderById = generateRenderingOrder(dimentionsObject);
 
 
         const renderingOrdTime = performance.now()-renderingOrdA;
 
-        this.canvasRef = canvas;
         const resolution = canvas.resolution;
 
         canvas.context.clearRect(0, 0, resolution.width, resolution.height);//cleanning window
@@ -491,7 +489,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
                 if(gObject.repeatPattern){
                   const matrix = new DOMMatrix([renderingData.width/texRef.resolution.width, 0, 0, renderingData.height/texRef.resolution.height, renderingData.corner.x, renderingData.corner.y]);
 
-                  // 4. Apply the matrix to the pattern
                   gObject.repeatPattern.setTransform(matrix);
                   canvas.context.fillStyle = gObject.repeatPattern;
                   if(gObject.repeat == "repeat"){
