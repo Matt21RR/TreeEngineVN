@@ -9,7 +9,8 @@
     "noImplicitAny": false,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "moduleResolution": "nodenext"
+    "moduleResolution": "nodenext",
+    "types": ["@webgpu/types"]
   },
   
 }
