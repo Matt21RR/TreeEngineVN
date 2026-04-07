@@ -206,11 +206,6 @@ function arrayChuncker<T>(list:Array<T>, condition:(element:T)=>boolean){
 function sortByReference(arr:Array<any>, order:Array<any>) {
   return arr.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 }
-function Mixin(...mixins: any[]) {
-    return function (target: any) {
-        Object.assign(target.prototype, ...mixins.map(m => m.prototype));
-    };
-}
 
 function isTemplateLiteral(source:string):boolean{
  return source.startsWith("`") && source.endsWith("`");
@@ -263,4 +258,18 @@ function templateLiteralSplitter(source:string){
 
   return parts;
 }
-export {mobileCheck,wrapText,random,lambdaConverter, getStr,degToRad,rad2Deg,getAttribs,arrayFlatter, sortByReference, Mixin, templateLiteralSplitter, isTemplateLiteral, arrayChuncker}
+export {
+  mobileCheck,
+  wrapText,
+  random,
+  lambdaConverter,
+  getStr,
+  degToRad,
+  rad2Deg,
+  getAttribs,
+  arrayFlatter,
+  sortByReference,
+  templateLiteralSplitter,
+  isTemplateLiteral,
+  arrayChuncker
+}
