@@ -10,6 +10,7 @@ export class SharedDisplayCalcs{
   private static instance: SharedDisplayCalcs;
 
   public lookupTable: Map<number,number>;
+  nDicoSet: Set<string> = new Set();
 
   static getInstance(){
     return SharedDisplayCalcs.instance;
@@ -32,8 +33,9 @@ function generateObjectsDisplayDimentions(
   calculationOrder: Array<string>,
   camera: CameraData): Set<string> {
     const engine = RenderEngine.getInstance();
+    const sharedInstance = SharedDisplayCalcs.getInstance();
 
-    let nDicoSet: Set<string> = new Set();
+    sharedInstance.nDicoSet.clear();
 
     let finalArrayisedTree: Array<string> = [];
 
@@ -43,12 +45,9 @@ function generateObjectsDisplayDimentions(
       z: -camera.position.z + 0.56
     };
 
-    const sharedDisplayCalcsInstance = SharedDisplayCalcs.getInstance();
 
     const developmentRatio = canvas.resolution.height/engine.developmentDeviceHeight;
-
     const perspectiveDiffHelper = (1/camera.maxZ) - 1;
-
     const toAddSizeHelper = (camera.position.angle*canvas.resolution.height*camera.maxZ) / canvas.resolution.height;
 
     let analyzed = 0;
@@ -82,7 +81,7 @@ function generateObjectsDisplayDimentions(
     for (let index = 0; index < graphArray.length; index++) {
       gObject = graphArray.fastGet(calculationOrder[index]);
       if(!gObject.pendingRenderingRecalculation){
-        nDicoSet.add(gObject.id);
+        sharedInstance.nDicoSet.add(gObject.id);
         finalArrayisedTree.push(gObject.id);
         //TODO: if text value is not null, jump to text attribs recalculation
         continue;
@@ -98,7 +97,7 @@ function generateObjectsDisplayDimentions(
       texRef = gObject.textureName ? engine.textureManager.getTexture(gObject.textureName) : null;
       
 
-      if(gObject.parentRef && nDicoSet.has(gObject.parent)){
+      if(gObject.parentRef && sharedInstance.nDicoSet.has(gObject.parent)){
         parent = gObject.parentRef;
         origin.x = parent.dimentionsPack.base.x;
         origin.y = parent.dimentionsPack.base.y;
@@ -122,11 +121,11 @@ function generateObjectsDisplayDimentions(
         objectZ += camCenter.z;
 
         const lookupTableIndex = Math.trunc(objectZ*100)
-        if(sharedDisplayCalcsInstance.lookupTable.has(lookupTableIndex)){
-          perspectiveDiff = sharedDisplayCalcsInstance.lookupTable.get(lookupTableIndex);
+        if(sharedInstance.lookupTable.has(lookupTableIndex)){
+          perspectiveDiff = sharedInstance.lookupTable.get(lookupTableIndex);
         }else{
           perspectiveDiff = 1 - ((1/objectZ)-1)/perspectiveDiffHelper;
-          sharedDisplayCalcsInstance.lookupTable.set(lookupTableIndex, perspectiveDiff);
+          sharedInstance.lookupTable.set(lookupTableIndex, perspectiveDiff);
         }
 
         perspectiveScale = perspectiveDiff * toAddSizeHelper;
@@ -236,13 +235,13 @@ function generateObjectsDisplayDimentions(
       }else{
         dimentionsPack.text = null;
       }
-      nDicoSet.add(gObject.id);
+      sharedInstance.nDicoSet.add(gObject.id);
       finalArrayisedTree.push(gObject.id);
 
       gObject.pendingRenderingRecalculation = false;
 
     }
-    return nDicoSet;
+    return sharedInstance.nDicoSet;
   }
 
 export {generateObjectsDisplayDimentions}
