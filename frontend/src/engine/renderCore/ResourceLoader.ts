@@ -19,7 +19,7 @@ class ResourceLoader{
                   .then( res => {
                     const ans = {Base64:res ,ext:soundsList[sndName].split('.').at(-1), id:sndName};
                     resolveFile(ans) 
-                });
+                  });
               })
             )).then((sounds) => {
               let soundsListRes: Array<{sound:Howl,id:string}> = [];
@@ -51,7 +51,8 @@ class ResourceLoader{
         .then(res => atob(res))
         .then(res => JSON.parse(res))
         .then(texturesData=>{
-          Promise.all(Object.keys(texturesData)
+          Promise.all(
+            Object.keys(texturesData)
             .map(textureName=>{
             if(engineRegisteredTexturesList.includes(textureName)){
               return new Promise((resolveFile)=>{
@@ -73,6 +74,10 @@ class ResourceLoader{
                           resolveFile(shader);
                         });
                     });
+                  })
+                  .catch(err=>{
+                    console.warn(err);
+                    resolveFile(null);
                   })
               })
             }
