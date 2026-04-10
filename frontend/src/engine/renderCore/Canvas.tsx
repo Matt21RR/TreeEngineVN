@@ -7,7 +7,7 @@ type CanvasData = {
   object:Canvas,
   context:CanvasRenderingContext2D,
   resolution:{width:number,height:number,scale:number},
-  fps:{promedio:{cps:number,fps:number},elapsed:number} | {}
+  fps:{promedio:number,elapsed:number} | {}
 }
 
 interface CanvasProps{
@@ -18,7 +18,7 @@ interface CanvasProps{
   engine:RenderEngine;
 
   renderGraphics : (canvasData: CanvasData) => Array<number>;
-  animateGraphics : (deltaData: {promedio:{cps:number,fps:number},elapsed:number}) => void;
+  animateGraphics : (deltaData: {promedio:number,elapsed:number}) => void;
   onLoad? : (canvasData: CanvasData) => void;
   onResize? : (canvasData: CanvasData) => void;
   afterEffects?:Function;
@@ -261,7 +261,7 @@ class Canvas extends React.Component<CanvasProps>{
     }
     let context = canvas.getContext("2d") as CanvasRenderingContext2D;
 
-    let checkEvents = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
+    let checkEvents = (fps:{promedio:number,elapsed:number}) => {
       try {
         this.props.events();
         animator(fps);
@@ -273,7 +273,7 @@ class Canvas extends React.Component<CanvasProps>{
       }
     }
 
-    let animator = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
+    let animator = (fps:{promedio:number,elapsed:number}) => {
       //*ANIMATE
       try {
         const animateStartAt = performance.now();
@@ -295,7 +295,7 @@ class Canvas extends React.Component<CanvasProps>{
         return;
       }
     }
-    let renderer = (fps:{promedio:{cps:number,fps:number},elapsed:number}) => {
+    let renderer = (fps:{promedio:number,elapsed:number}) => {
 
       context.filter = 'none';
       
@@ -321,7 +321,7 @@ class Canvas extends React.Component<CanvasProps>{
         const mouse = this.renderEngine.mouse;
 
         const fpsData: Array<string> = [
-          "CPS: "+fps.promedio.cps + "/ FPS: "+fps.promedio.fps,
+          "FPS: "+fps.promedio,
           "Interval: "+fps.elapsed.toFixed(4),
           "Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2),
           "Res: "+this.resolutionWidth+"x"+this.resolutionHeight,
@@ -345,7 +345,7 @@ class Canvas extends React.Component<CanvasProps>{
         context.globalAlpha = actualGlobalAlpha;
       }
     }
-    let promedio = {cps:this.targetFps,fps:this.targetFps};
+    let promedio = this.targetFps;
     let drawnFrames = 0, startTimer = window.performance.now(),maxCps = 0;
     const draw = (engDelta:number,lId:string) => {       
 
@@ -365,8 +365,7 @@ class Canvas extends React.Component<CanvasProps>{
         maxCps=drawnFrames-1;
         startTimer = window.performance.now();  
         drawnFrames=1;
-        promedio.fps = this.fpsCounter;
-        promedio.cps = maxCps;
+        promedio = this.fpsCounter;
         this.fpsCounter = 0;
       }
 
@@ -376,9 +375,9 @@ class Canvas extends React.Component<CanvasProps>{
 
       if(this.windowHasFocus){
         this.totalEngineElapsedTime += engDelta;   
-        checkEvents({promedio:promedio,elapsed:engDelta});
+        checkEvents({promedio,elapsed:engDelta});
       }else{
-        checkEvents({promedio:promedio,elapsed:0});
+        checkEvents({promedio,elapsed:0});
       }
     }
 
