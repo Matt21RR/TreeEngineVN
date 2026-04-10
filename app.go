@@ -66,7 +66,8 @@ func (a *App) Request(request map[string]string) (any) {
 	return Request.Request(request)
 }
 
-func (a *App) openFileExplorer(path string) error {
+func (a *App) OpenFileExplorer(path string) error {
+		fmt.Println("Opening file explorer at:", path)
     var cmd *exec.Cmd
 
     switch osRuntime.GOOS {
