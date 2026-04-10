@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import Loading from './components/alerts.tsx';
 import byteSize from 'byte-size';
 import Multimedia from './Multimedia.tsx';
-import { Request } from '../../wailsjs/go/main/App.js';
+import { OpenFileExplorer, Request } from '../../wailsjs/go/main/App.js';
 import { Button1, IconButton, MenuButton } from './components/Buttons.tsx';
 
 type DirData = {
@@ -234,6 +234,12 @@ class FileExplorer extends React.Component{
                 }
               });
             }}/>
+          <MenuButton
+            text='Show in explorer'
+            action={()=>{
+              OpenFileExplorer(this.actualRoute.replaceAll("/","\\"));
+            }}
+          />
         </div>
       )
     }
