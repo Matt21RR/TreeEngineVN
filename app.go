@@ -5,7 +5,9 @@ import (
 
 	"fmt"
 	"os"
+	"os/exec"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	osRuntime "runtime"
 
 	"TreeEngineVN/backend/ScanFiles" 
 	"TreeEngineVN/backend/Request"
@@ -62,4 +64,19 @@ func (a * App) FileExists(path string) bool {
 func (a *App) Request(request map[string]string) (any) {
 	fmt.Println("Action:", request["action"])
 	return Request.Request(request)
+}
+
+func (a *App) openFileExplorer(path string) error {
+    var cmd *exec.Cmd
+
+    switch osRuntime.GOOS {
+    case "windows":
+        cmd = exec.Command("explorer", path)
+    case "darwin":
+        cmd = exec.Command("open", path)
+    case "linux":
+        cmd = exec.Command("xdg-open", path)
+    }
+
+    return cmd.Start()
 }
