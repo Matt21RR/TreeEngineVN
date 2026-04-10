@@ -14,7 +14,6 @@ import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
 import { Chaos } from "../interpretators/ChaosInterpreter.ts";
 import { generateCalculationOrder, generateRenderingOrder } from "./RenderingOrder.ts";
 
-//@ts-ignore
 import noImageTexture from "../resources/no-image.png";
 
 import CollisionLayer from "../engineComponents/CollisionLayer.ts";
@@ -22,7 +21,7 @@ import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
 import { RenderMisc } from "./RenderMisc.ts";
 import ResourceLoader from "./ResourceLoader.ts";
 import PointerCalculation from "./PointerCalculation.tsx";
-//@ts-ignore
+
 import gsap from "gsap";
 import { generateObjectsDisplayDimentions, SharedDisplayCalcs } from "./RenderingDimentions.ts";
 import UI from "./UI.tsx";
@@ -40,7 +39,6 @@ interface RenderEngineProps {
   avoidResizeBlackout?: boolean;
   setEngine?: (engine: RenderEngine,ExtendedObjects?:ExtendedObjects) => void;
 }
-
 
 class RenderEngine extends React.Component<RenderEngineProps>{
   id: string;
@@ -181,7 +179,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.dialogManager = new DialogManager();
     console.warn("Cleaning");
     this.dataCleaner();
-  } 
+  }
   
   componentDidMount(){
     RenderEngine.instance = this;
