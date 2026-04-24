@@ -19,6 +19,7 @@ export type ObjectRenderingData = {
     z: any;
   },
   id:string,
+  repeatPattern:CanvasPattern,
   solvedTexture:Shader,
   text?:{
     value?:Array<TextLine>,

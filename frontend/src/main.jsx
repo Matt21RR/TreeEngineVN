@@ -3,7 +3,7 @@ import './index.css';
 import "./engine/resources/css/fonts.css";
 
 import { Test } from './windows/Test.jsx';
-
+import WebGpuTest from "./WebGpuTest";
 
 window.workRoute = "./";
 window.projectRoute = window.workRoute + "game/";
@@ -14,5 +14,8 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 document.title = "TreeEngineVN";
 
 root.render(
+  <>
   <Test/>
+  {/* <WebGpuTest/> */}
+  </>
 );

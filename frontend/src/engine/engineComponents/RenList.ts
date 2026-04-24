@@ -92,7 +92,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
             this.#_enabledIds.push(id);
             this.updateEnabledIdsIndexTable();
           }else if(!enabled && this.#_enabledIds.includes(id)){
-            this.#_enabledIds.splice( this.#_enabledIdsIndexTable[id] );
+            this.#_enabledIds.splice( this.#_enabledIdsIndexTable[id], 1 );
             this.updateEnabledIdsIndexTable();
           }
         }

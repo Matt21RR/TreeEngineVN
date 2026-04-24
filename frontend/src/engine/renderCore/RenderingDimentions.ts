@@ -6,6 +6,9 @@ import { CameraData } from "./RenderEngine.d.tsx";
 import { RenderEngine } from "./RenderEngine.tsx";
 import Shader from "./Shaders.ts";
 
+import RenderMiscCanvas2D from "./RenderMiscCanvas2D.ts";
+const RenderDebug = RenderMiscCanvas2D;
+
 export class SharedDisplayCalcs{
   private static instance: SharedDisplayCalcs;
 
@@ -27,10 +30,11 @@ export class SharedDisplayCalcs{
  * Se recalcula un objeto cuando su información o la información de la camara cambia
  * @returns 
  */
-function generateObjectsDisplayDimentions(
+export function generateObjectsDisplayDimentions(
   canvas: CanvasData, 
   graphArray: RenList<GraphObject>, 
   calculationOrder: Array<string>,
+  canvasResolution: {width:number, height:number,scale:number},
   camera: CameraData): Set<string> {
     const engine = RenderEngine.getInstance();
     const sharedInstance = SharedDisplayCalcs.getInstance();
@@ -46,9 +50,9 @@ function generateObjectsDisplayDimentions(
     };
 
 
-    const developmentRatio = canvas.resolution.height/engine.developmentDeviceHeight;
+    const developmentRatio = canvasResolution.height/engine.developmentDeviceHeight;
     const perspectiveDiffHelper = (1/camera.maxZ) - 1;
-    const toAddSizeHelper = (camera.position.angle*canvas.resolution.height*camera.maxZ) / canvas.resolution.height;
+    const toAddSizeHelper = (camera.position.angle*canvasResolution.height*camera.maxZ) / canvasResolution.height;
 
     let analyzed = 0;
 
@@ -74,7 +78,7 @@ function generateObjectsDisplayDimentions(
     let cornerX = 0;
     let cornerY = 0;
 
-    const finalCameraHorizontalPixelOrigin = (camera.origin.x-0.5)*canvas.resolution.width;
+    const finalCameraHorizontalPixelOrigin = (camera.origin.x-0.5)*canvasResolution.width;
 
     let dimentionsPack = null;
 
@@ -113,8 +117,8 @@ function generateObjectsDisplayDimentions(
       perspectiveScale = 0.99;
 
       if(!camera.usePerspective || gObject.ignoreParallax){
-        objectLeft = ((gObject.x + origin.x + addition.x)*canvas.resolution.height) + finalCameraHorizontalPixelOrigin; //*(camera.origin.x-0.5)*canvas.resolution.width
-        objectTop = (gObject.y + origin.y + addition.y + (camera.origin.y-0.5))*canvas.resolution.height; //* (camera.origin.y-0.5))*canvas.resolution.height
+        objectLeft = ((gObject.x + origin.x + addition.x)*canvasResolution.height) + finalCameraHorizontalPixelOrigin; //*(camera.origin.x-0.5)*canvasResolution.width
+        objectTop = (gObject.y + origin.y + addition.y + (camera.origin.y-0.5))*canvasResolution.height; //* (camera.origin.y-0.5))*canvasResolution.height
       }else{
         objectLeft = gObject.x + origin.x + camCenter.x;
         objectTop = gObject.y + origin.y + camCenter.y;
@@ -137,19 +141,19 @@ function generateObjectsDisplayDimentions(
         objectScale *= perspectiveScale;
 
         //*recalculate gObject coords
-        perspectiveLayer = canvas.resolution.height*perspectiveScale;
+        perspectiveLayer = canvasResolution.height*perspectiveScale;
 
         //it will calc were the image must to be, inside the perspectiveLayer
         objectLeft *= perspectiveLayer;
         objectTop *= perspectiveLayer;
         //now add the origin of the perspectiveLayer
-        objectLeft += -(perspectiveLayer-canvas.resolution.height)*(0.88889); // 177/2 :display horizontal center
-        objectTop += -(perspectiveLayer-canvas.resolution.height)*camera.origin.y;
+        objectLeft += -(perspectiveLayer-canvasResolution.height)*(0.88889); // 177/2 :display horizontal center
+        objectTop += -(perspectiveLayer-canvasResolution.height)*camera.origin.y;
       }
 
       //By default values for the textboxes
-      objectWidth = canvas.resolution.width*objectScale*gObject.widthScale;
-      objectHeight = canvas.resolution.height*objectScale*gObject.heightScale;
+      objectWidth = canvasResolution.width*objectScale*gObject.widthScale;
+      objectHeight = canvasResolution.height*objectScale*gObject.heightScale;
 
       if(texRef){
         if(!dimentionsPack.solvedTexture)
@@ -158,21 +162,28 @@ function generateObjectsDisplayDimentions(
           objectWidth = texRef.resolution.width*objectScale*gObject.widthScale*developmentRatio;
           objectHeight = texRef.resolution.height*objectScale*gObject.heightScale*developmentRatio;
         }else{
-          objectHeight = (texRef.resolution.heightWidthRelation)*canvas.resolution.width*objectScale*gObject.heightScale;
+          objectHeight = (texRef.resolution.heightWidthRelation)*canvasResolution.width*objectScale*gObject.heightScale;
         }
       }else{
         //dimentionsPack.solvedTextureName = ""; Unused in RenderEngine
         if(gObject.useEngineUnits){
-          objectWidth = canvas.resolution.height*objectScale*gObject.widthScale;
+          objectWidth = canvasResolution.height*objectScale*gObject.widthScale;
         }
       }
 
       cornerX = objectLeft - objectWidth*0.5;
       cornerY = objectTop - objectHeight*0.5;
 
-      if(gObject.repeat == "")
-      if(cornerX > canvas.resolution.width || cornerY > canvas.resolution.height || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
-        continue;
+      if(!gObject.repeatPattern){
+        dimentionsPack.repeatPattern = null;
+        if(cornerX > canvasResolution.width || cornerY > canvasResolution.height || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
+          continue;
+        }
+      }else{
+        if(gObject.repeatPattern instanceof CanvasPattern){
+          dimentionsPack.repeatPattern = gObject.repeatPattern;
+          engine.renderMisc.applyPatternTransformation(gObject.dimentionsPack);
+        }
       }
 
       dimentionsPack.x  = Math.trunc(objectLeft);
@@ -186,14 +197,14 @@ function generateObjectsDisplayDimentions(
       dimentionsPack.base.z = gObject.accomulatedZ;
 
       dimentionsPack.sizeInDisplay  = perspectiveScale;
-      dimentionsPack.width  = Math.trunc(objectWidth);
-      dimentionsPack.height  = Math.trunc(objectHeight);
+      dimentionsPack.width  = objectWidth;
+      dimentionsPack.height  = objectHeight;
       dimentionsPack.rotation = Math.trunc(gObject.rotate);
 
       //TODO: texts requires continous recomputing
       const strRef = gObject.text == null ? null : getStr(gObject.text);
       if(strRef != null){
-        const fontSizeRenderingValue = gObject.fontSizeNumeric*canvas.resolution.scale*(developmentRatio)*perspectiveScale;
+        const fontSizeRenderingValue = gObject.fontSizeNumeric*(canvasResolution.scale*developmentRatio)*perspectiveScale;
         const objectWidthMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.horizontalMargin;
         const objectHeightMargin = (fontSizeRenderingValue/gObject.fontSize)*gObject.verticalMargin;
 
@@ -205,11 +216,18 @@ function generateObjectsDisplayDimentions(
         };
 
         if(gObject.fitContent){
-          canvas.context.font = `${fontSizeRenderingValue}px ${gObject.font}`;
+          RenderDebug.getInstance().setFont(fontSizeRenderingValue, gObject.font, window.debugContext);
+
+          //Why i do this here?
+          //Because i need to know the fontSizeRenderingValue to calculate the margin, 
+          // and i need the margin to calculate the wrapText, and i need the wrapText 
+          // to calculate the height of the textbox, and i need the height of the
+          // textbox to calculate the fontSizeRenderingValue... (because of fitContent)
+
           let texts = wrapText(//TODO: Wrap it until all the text get wraped
-            canvas.context,
-            strRef,
-            objectWidthMargin + dimentionsPack.corner.x,
+            window.debugContext,//equal as in RenderMiscCanvas2D
+            strRef,//Eual
+            objectWidthMargin + dimentionsPack.corner.x, //equal
             fontSizeRenderingValue/2,
             dimentionsPack.width - objectWidthMargin*2,
             0,
@@ -242,6 +260,30 @@ function generateObjectsDisplayDimentions(
 
     }
     return sharedInstance.nDicoSet;
+}
+
+/**
+ * Calculates the apropiate engine display resolution
+ * @param aspectRatio 
+ * @param w 
+ * @returns 
+ */
+export function displayResolutionCalc(aspectRatio:string, w:HTMLElement){
+  let engineDisplayRes:{width:number, height:number};
+
+  if (aspectRatio != "undefined") {
+    let newWidth = Math.floor((w.offsetHeight / parseInt(aspectRatio.split(":")[1])) * parseInt(aspectRatio.split(":")[0]));
+    let newHeight = Math.floor((w.offsetWidth / parseInt(aspectRatio.split(":")[0])) * parseInt(aspectRatio.split(":")[1]));
+    if (newWidth <= w.offsetWidth) {
+      newHeight = w.offsetHeight;
+    } else {
+      newWidth = w.offsetWidth;
+    }
+
+    engineDisplayRes = {width:newWidth,height:newHeight};
+  } else {
+    engineDisplayRes = {width:w.offsetWidth,height:w.offsetHeight};
   }
 
-export {generateObjectsDisplayDimentions}
+  return engineDisplayRes;
+}

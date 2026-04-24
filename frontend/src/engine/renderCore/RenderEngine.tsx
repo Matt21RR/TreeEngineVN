@@ -1,5 +1,14 @@
 import React from "react";
 
+import RenderMiscCanvas2D from "./RenderMiscCanvas2D.ts";
+
+// const RenderMisc = new RenderMiscCanvas2D();
+import RenderMiscWebGPU from "./RenderMiscWebGPU.ts";
+const RenderMisc = RenderMiscWebGPU.getInstance();
+
+const RenderDebug = new RenderMiscCanvas2D();
+
+
 import { Canvas, CanvasData } from "./Canvas.tsx";
 
 import { Animation } from "../engineComponents/Animation.ts"
@@ -18,12 +27,11 @@ import noImageTexture from "../resources/no-image.png";
 
 import CollisionLayer from "../engineComponents/CollisionLayer.ts";
 import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
-import { RenderMisc } from "./RenderMisc.ts";
 import ResourceLoader from "./ResourceLoader.ts";
 import PointerCalculation from "./PointerCalculation.tsx";
 
 import gsap from "gsap";
-import { generateObjectsDisplayDimentions, SharedDisplayCalcs } from "./RenderingDimentions.ts";
+import { displayResolutionCalc, generateObjectsDisplayDimentions, SharedDisplayCalcs } from "./RenderingDimentions.ts";
 import UI from "./UI.tsx";
 import Actor from "../engineComponents/Actor.ts";
 import { CameraData } from "./RenderEngine.d.tsx";
@@ -48,6 +56,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   resizeTimeout: number;
   mounted: boolean;
   canvasRef: CanvasData;
+  renderMisc = RenderMisc;
   engineTime: number;
   engineSpeed: number;
   stopEngine: boolean;
@@ -182,6 +191,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   }
   
   componentDidMount(){
+    window.debugContext = (document.getElementById("auxCanvas") as HTMLCanvasElement).getContext("2d") ?? null;
     RenderEngine.instance = this;
     if (!this.mounted) {
       this.uiInstance = UI.getInstance();
@@ -211,12 +221,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       });
 
       this.displayObserver.observe(document.getElementById("display"+this.id) as Element)
-      
-
-      //*LOAD GAME
-      this.entryPoint();
-
-
     }
   }
   entryPoint(){
@@ -225,6 +229,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
   loadScript(scriptRoute:string,sceneId = "gameEntrypoint"){
     this.dataCleaner();
     this.chaosInstance = new Chaos(); 
+    //@ts-ignore
     window.h = this.chaosInstance;
     
     RequestFile(scriptRoute)
@@ -296,11 +301,15 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     commandsF(this,ExtendedObjects);
     this.routines = this.routines.concat(nextRoutines);
   }
+
   private displayResolutionCalc(aspectRatio:string = this.aspectRatio) {
     const w = document.getElementById("display"+this.id) as HTMLElement;
     const engDisplay = document.getElementById("engineDisplay"+this.id) as HTMLElement;
 
-    this.engineDisplayRes = RenderMisc.displayResolutionCalc(aspectRatio,w);
+    this.engineDisplayRes = displayResolutionCalc(aspectRatio,w);
+
+    window.debugContext.canvas.width = this.engineDisplayRes.width;
+    window.debugContext.canvas.height = this.engineDisplayRes.height;
 
     gsap.to(engDisplay, 
       { 
@@ -308,7 +317,11 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         width : this.engineDisplayRes.width + "px", 
         height : this.engineDisplayRes.height + "px"
       } 
-    );
+    ).then(()=>{
+      this.graphArray.objects.forEach(e=>{
+          e.pendingRenderingRecalculation = true;
+        });
+    });
 
     this.forceUpdate();  
   }
@@ -383,9 +396,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
     this.nodes = {};
   }
   renderScene(){
-    if(!this.isReady){
-      return(<span className="text-white absolute">ISN'T READY YET, OR UNABLE TO RUN YOUR SCRIPT</span>);
-    }
     return(
       <Canvas 
       displayResolution={this.engineDisplayRes}
@@ -400,7 +410,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         const orderingTime = performance.now()-startOrdA;
 
         const renderingOrdA = performance.now();
-        const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.calculationOrder, this.camera);
+        const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.calculationOrder, canvas.resolution, this.camera);
 
         this.dimentionsPack = dimentionsPack;
 
@@ -416,7 +426,8 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 
         const resolution = canvas.resolution;
 
-        canvas.context.clearRect(0, 0, resolution.width, resolution.height);//cleanning window
+        RenderMisc.clearCanvas(canvas.context);
+        RenderDebug.clearCanvas(window.debugContext);
 
         this.noRenderedItemsCount = 0;
 
@@ -435,8 +446,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           const gObject = this.graphArray.fastGet(availableIdsToRender[index]); //!Non-confirmed bottleneck
           
           const renderingData = gObject.dimentionsPack;
-
-          const objectIsRotated = renderingData.rotation % 360 != 0;
           
           // const texRef = ( gObject.textureName ? this.getTexture(gObject.textureName) : null ); //Null works as false / not assigned
           const texRef = gObject.dimentionsPack.solvedTexture ?? ( gObject.textureName ? this.textureManager.getTexture(gObject.textureName) : null ); //Null works as false / not assigned
@@ -450,52 +459,38 @@ class RenderEngine extends React.Component<RenderEngineProps>{
             excludedIds[gObject.id] = true;
           }else{
               //*part one: global alpha
-              canvas.context.globalAlpha = gObject.opacity;//if the element to render have opacity != of the previous rendered element}
-
+              //TODO: RenderMisc refactor
+              if(gObject.opacity != 1)
+                RenderMisc.setOpacity(canvas.context, gObject.opacity);
               let texts: Array<TextLine> = [];
               if(renderingData.text){
                 const fontSize = renderingData.text.fontSize;
-                canvas.context.font = `${fontSize}px ${gObject.font}`;
+                RenderDebug.setFont(fontSize, gObject.font, window.debugContext);
 
                 if(renderingData.text?.value){
                   texts = renderingData.text.value;
                 }else{
-                  texts = RenderMisc.wrapText(
+                  texts = RenderDebug.wrapText(
                     strRef as string,
                     renderingData,
                     gObject.center,
                     gObject.verticalCenter,
-                    canvas.context);
+                    window.debugContext);
                 }
               }
 
               if(gObject.filterString != "none")
-                canvas.context.filter = gObject.filterString;//if the element to render have filtering values != of the previous element
-              if(objectIsRotated){
-                canvas.context.save();
-                canvas.context.setTransform(//transform using center as origin
-                  1,
-                  0,
-                  0,
-                  1,
-                  renderingData.x, 
-                  renderingData.y); // sets scale and origin
-                canvas.context.rotate(gObject.rotateRad);
-              }
+                RenderMisc.setFilter(canvas.context, gObject.filterString);//if the element to render have filtering values != of the previous element
               
               if(texRef){
                 if(gObject.repeatPattern){
-                  const matrix = new DOMMatrix([renderingData.width/texRef.resolution.width, 0, 0, renderingData.height/texRef.resolution.height, renderingData.corner.x, renderingData.corner.y]);
-
-                  gObject.repeatPattern.setTransform(matrix);
-                  canvas.context.fillStyle = gObject.repeatPattern;
-                  if(gObject.repeat == "repeat"){
-                    canvas.context.fillRect(0, 0, resolution.width, resolution.height)
-                  }else if(gObject.repeat == "repeat-x"){
-                    canvas.context.fillRect(0, renderingData.corner.y, resolution.width, renderingData.height)
-                  }else if(gObject.repeat == "repeat-y"){
-                    canvas.context.fillRect(renderingData.corner.x, 0, renderingData.width, resolution.height)
-                  }
+                  RenderMisc.drawPattern(
+                    texRef.getTexture(),
+                    renderingData,
+                    canvas.resolution.width,
+                    canvas.resolution.height,
+                    gObject.repeat,
+                    canvas.context);
                 }else{
                   RenderMisc.drawImage(
                     texRef.getTexture(),
@@ -505,26 +500,20 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               }
 
               if(renderingData.text){
-                if(gObject.boxColor != "transparent"){
-                  RenderMisc.drawRectangle(
-                    renderingData,
-                    gObject.boxColor,
-                    canvas.context);
-                }
-                RenderMisc.drawText(
+                RenderMisc.drawRectangle(renderingData, gObject.boxColor, canvas.context);
+                RenderDebug.drawText(
                   renderingData,
                   texts,
                   gObject.color,
-                  canvas.context);
+                  gObject.boxColor,
+                  window.debugContext);
               }
 
-              if(objectIsRotated){
-                canvas.context.restore();
-              }
               //*part four: anullate globalalpha and filters
               if(gObject.filterString != "none")
-                canvas.context.filter = "none";
-              canvas.context.globalAlpha = 1;
+                RenderMisc.setFilter(canvas.context, "none");
+              if(gObject.opacity != 1)
+                RenderMisc.setOpacity(canvas.context, 1);
           }
           drawingTime += performance.now()-drawingTimePre;
 
@@ -533,39 +522,47 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           if(this.objectsToDebug.has(gObject.id)){
             //*part five: draw object info
             if(this.drawObjectLimits){
-              RenderMisc.drawObjectLimits(canvas.context,renderingData,resolution,this.camera.position.z);
+              RenderDebug.drawObjectLimits(window.debugContext, renderingData, resolution, this.camera.position.z);
             }
           }
           if(this.drawCollisionsMatrix){
-            RenderMisc.drawCollisionBox(canvas.context,renderingData);
+            RenderDebug.drawCollisionBox(window.debugContext, renderingData);
           }
           //* DRAW TRIGGERS
           if(this.drawTriggers){
-            if(this.triggers.objects.filter(e=>{return e.enabled}).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
-              RenderMisc.drawTrigger(canvas.context,renderingData);
+            if(this.triggers.objects.filter(e => e.enabled).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
+              RenderDebug.drawTrigger(window.debugContext, renderingData);
             }
           }
           debugTime += performance.now()-debugTimePre;
         }
         //* DRAW COLLISION LAYER
         if(this.drawCollisionsMatrix){
-          RenderMisc.drawCollisionsMatrix(canvas.context,resolution);
+          RenderDebug.drawCollisionsMatrix(window.debugContext, resolution);
         }
 
         let updatingColsTime = performance.now();
         this.collisionLayer.update(dimentionsObject,resolution.width,resolution.height,excludedIds);
         updatingColsTime = performance.now()-updatingColsTime;
 
-        return [orderingTime,renderingOrdTime,infoAdjudicationTime,drawingTime,debugTime,objectsToRender,updatingColsTime,this.noRenderedItemsCount,performance.now()-startOrdA];
+        return [orderingTime,
+                renderingOrdTime,
+                infoAdjudicationTime,
+                drawingTime,
+                debugTime,
+                objectsToRender,
+                updatingColsTime,
+                this.noRenderedItemsCount,
+                performance.now()-startOrdA];
       }} 
       onLoad={(canvas)=>{
         this.canvasRef = canvas;
         //calc the perspective angle
         this.camera.position.angle = canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width);
         //disable image smoothing
-        canvas.context.textRendering = "optimizeSpeed";
-        canvas.context.textBaseline = 'middle';
 
+        //*LOAD GAME
+        this.entryPoint();
         //*Cargar funcion externa
         this.setEngine();
       }}
@@ -574,8 +571,6 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         //calc the perspective angle
         this.camera.position.angle = canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width);
         //disable image smoothing
-        canvas.context.textRendering = "optimizeSpeed"; 
-        canvas.context.textBaseline = 'middle';
 
         //prevents reescaling glitches
         this.graphArray.objects.forEach(e=>{
@@ -619,11 +614,17 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       <div className="relative w-full h-full mx-auto my-auto" id={'display'+this.id}>
         <div className="bg-black absolute w-full h-full flex">
           <div className="relative w-full h-full mx-auto my-auto" id={'engineDisplay'+this.id}>
-            <div className="absolute w-full h-full bg-linear-to-b from-gray-900 to-gray-700">
+            <div className="absolute w-full h-full bg-linear-to-b from-gray-900 to-gray-700 ">
               {this.renderScene()}
               <PointerCalculation/>
               <UI/>
             </div>
+              <canvas
+                width={1279}
+                height={705}
+                id="auxCanvas"
+                className="absolute w-full h-full pointer-events-none"
+              />
           </div>
         </div>
       </div>
@@ -632,7 +633,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 }
 
 class TextureManager{
-  texturesList: RenList<any>
+  texturesList: RenList<Shader>
   textureAnims: RenList<TextureAnim>
 
   noImageTexture: Shader;

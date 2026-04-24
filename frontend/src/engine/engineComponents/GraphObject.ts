@@ -101,7 +101,7 @@ class GraphObject extends GraphObjectDataType{
   _heightScale:number;
   _rotate:number;
   _repeat:string;
-  _repeatPattern:CanvasPattern = null;
+  _repeatPattern:CanvasPattern|boolean = null;
 
   _ignoreParallax:boolean;
 
@@ -121,6 +121,7 @@ class GraphObject extends GraphObjectDataType{
     x: 0, y: 0, z: 0,
     corner: { x: 0, y: 0 },
     base: { x: 0, y: 0, z: 0 },
+    repeatPattern: null,
     sizeInDisplay: 0,
     width: 0, height: 0,
     rotation: 0,
@@ -456,18 +457,20 @@ class GraphObject extends GraphObjectDataType{
   get repeat(){ return this._repeat; }
   set repeat(x:string){
     this._repeat = x;
-    console.log(RenderEngine.getInstance().textureManager,x);
-    if(RenderEngine.getInstance().textureManager.getTexture(this.textureName) && ["repeat","repeat-x","repeat-y"].includes(x)){
-      this._repeatPattern = RenderEngine.getInstance()
-                            .canvasRef
-                            .context
-                            .createPattern( RenderEngine.getInstance().textureManager.getTexture(this.textureName).getTexture() , "repeat");
+    let shader = RenderEngine.getInstance().textureManager.getTexture(this.textureName);
+    if(["repeat","repeat-x","repeat-y"].includes(x) && shader){
+      const RenderMisc = RenderEngine.getInstance().renderMisc;
+
+      this._repeatPattern = RenderMisc.createRepeatPattern(shader.getTexture(), x, RenderEngine.getInstance().canvasRef.context);
     }else{
       this._repeatPattern = null;
     }
   }
 
   get repeatPattern(){ return this._repeatPattern; }
+  set repeatPattern(x:CanvasPattern|boolean) {
+    this._repeatPattern = x;
+  }
 
   get ignoreParallax() {return this._ignoreParallax;}
   set ignoreParallax(x) {

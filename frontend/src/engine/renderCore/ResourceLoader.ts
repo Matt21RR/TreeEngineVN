@@ -2,8 +2,10 @@ import { Howl } from "howler";
 import Shader from "./Shaders.ts";
 import { Dictionary } from "../../global.ts";
 import { RequestFile, RequestFileWithMime } from "../../../wailsjs/go/main/App.js";
-
-
+import RenderMiscWebGPU from "./RenderMiscWebGPU.ts";
+const RenderMisc = RenderMiscWebGPU;
+// import RenderMiscCanvas2D from "./RenderMiscCanvas2D.ts";
+// const RenderMisc = RenderMiscCanvas2D;
 
 class ResourceLoader{
   static loadSound(indexPath:string){
@@ -69,9 +71,11 @@ class ResourceLoader{
                     image.src = resK;
                     image.addEventListener('load',()=>{
                       (new Shader())
-                        .instanceIt(image,textureName)
-                        .then((shader)=>{
-                          resolveFile(shader);
+                      .instanceIt(image,textureName)
+                      .then((shader)=>{
+                          RenderMisc.getInstance().preloadImage(shader.getTexture(), textureName).then(()=>{
+                            resolveFile(shader);
+                          });
                         });
                     });
                   })

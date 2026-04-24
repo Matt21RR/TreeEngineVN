@@ -17,6 +17,7 @@ declare global{
     workRoute:string;
     backendRoute:string;
     zetas: Set<number>;
+    debugContext: CanvasRenderingContext2D | null;
   }
 }
 

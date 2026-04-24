@@ -192,9 +192,9 @@ export default function EngineTools(props:EngineToolsProps){
         }}/>
       </div>
       <div>
-        <Button1 text={"Draw collisions matrix: "+engine.drawCollisionsMatrix} action={()=>{
+        <Button1 text={"Switch draw collisions matrix"} action={()=>{
           engine.drawCollisionsMatrix = !engine.drawCollisionsMatrix;
-          engine.forceUpdate();
+          // engine.forceUpdate();
         }}/>
         <Button1 text={"Show fps: "+engine.showFps} action={()=>{
           engine.showFps = !engine.showFps;

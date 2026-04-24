@@ -1,3 +1,5 @@
+import RenderMiscWebGPU from "./RenderMiscWebGPU.ts";
+
 export default class Shader{
   #image: ImageBitmap;
   #resolution: {width:number,height:number, widthHeightRelation:number, heightWidthRelation:number};
@@ -14,8 +16,10 @@ export default class Shader{
 
         this.#id = id;
         
-        const width = image.naturalWidth;
-        const height = image.naturalHeight;
+        // const width = image.naturalWidth;
+        const width = res.width;
+        // const height = image.naturalHeight;
+        const height = res.height;
         const widthHeightRelation = width/height;
         const heightWidthRelation = height/width;
 

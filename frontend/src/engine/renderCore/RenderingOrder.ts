@@ -37,10 +37,11 @@ function _deepRootSearch(
 function generateCalculationOrder(graphArray: RenList<GraphObject>) {
   let final: Array<string> = [];
   let processedCount = 0;
-  const orderMap = new Map<string, number>(); // id -> index in order array
+  // const orderMap = new Map<string, number>(); // id -> index in order array
   
   // Get all IDs once
   const allIds = graphArray.enabledIds;
+  // console.log("All IDs to process:", allIds.length);
   const totalItems = allIds.length;
   
   // Queue for items ready to process
@@ -84,27 +85,13 @@ function generateCalculationOrder(graphArray: RenList<GraphObject>) {
 
 function generateRenderingOrder(dimentionsPack: Record<string, ObjectRenderingData>) {
   const ids = Object.keys(dimentionsPack);
-  
   if (ids.length === 0) return [];
-  
-  // Group by z-index using Map (preserves numeric keys)
-  const zGroups = new Map<number, string[]>();
-  
-  for (const id of ids) {
-    const z = dimentionsPack[id].z;
-    const group = zGroups.get(z);
-    
-    if (group) {
-      group.push(id);
-    } else {
-      zGroups.set(z, [id]);
-    }
-  }
-  
-  // Sort z-indices descending and flatten
-  return Array.from(zGroups.entries())
-    .sort((a, b) => b[0] - a[0]) // Sort by z-index descending
-    .flatMap(([_, ids]) => ids);  // Extract all IDs in order
+
+  // Sort directly on the array. V8 can optimize this much better 
+  // than the Map -> Array.from -> flatMap pipeline.
+  return ids.sort((a, b) => {
+    return dimentionsPack[b].z - dimentionsPack[a].z;
+  });
 }
 
 function generateRenderingOrder_(graphArray: RenList<GraphObject>) {
