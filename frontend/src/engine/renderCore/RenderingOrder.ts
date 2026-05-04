@@ -3,7 +3,6 @@ import GraphObject from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
 
 export type CalculationOrder = Array<string>;
-// type CalculationOrder = [string,number,number][];
 
 function _deepRootSearch(
     graphObject: GraphObject, 
@@ -92,28 +91,6 @@ function generateRenderingOrder(dimentionsPack: Record<string, ObjectRenderingDa
   return ids.sort((a, b) => {
     return dimentionsPack[b].z - dimentionsPack[a].z;
   });
-}
-
-function generateRenderingOrder_(graphArray: RenList<GraphObject>) {
-  if (graphArray.enabledIds.length === 0) return [];
-  
-  // Group by z-index using Map (preserves numeric keys)
-  const zGroups = new Map<number, string[]>();
-  for (const graphObject of graphArray.enabledList()) {
-    const z = graphObject.dimentionsPack.z;
-    const group = zGroups.get(z);
-    
-    if (group) {
-      group.push(graphObject.id);
-    } else {
-      zGroups.set(z, [graphObject.id]);
-    }
-  }
-  
-  // Sort z-indices descending and flatten
-  return Array.from(zGroups.entries())
-    .sort((a, b) => b[0] - a[0]) // Sort by z-index descending
-    .flatMap(([_, ids]) => ids);  // Extract all IDs in order
 }
 
 export {generateCalculationOrder, generateRenderingOrder}
