@@ -410,7 +410,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         const orderingTime = performance.now()-startOrdA;
 
         const renderingOrdA = performance.now();
-        const dimentionsPack = generateObjectsDisplayDimentions(canvas, this.graphArray, this.calculationOrder, canvas.resolution, this.camera);
+        const dimentionsPack = generateObjectsDisplayDimentions(this.graphArray, this.calculationOrder, canvas.resolution, this.camera);
 
         this.dimentionsPack = dimentionsPack;
 
