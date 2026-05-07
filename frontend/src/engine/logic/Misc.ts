@@ -1,6 +1,5 @@
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
-import colors from 'color-name';
-import convert from "color-convert";
+import { ColorTranslator } from 'colortranslator';
 
 export type TextLine = {value:string,x:number,y:number};
 
@@ -262,17 +261,9 @@ function templateLiteralSplitter(source:string){
 }
 // convert.hex.rgb(boxColor).concat(255) as [number, number, number, number],
 export function colorToRGBA(colorCode: string) : [number, number, number, number]{
-  if(colorCode in (colors as {[key:string]: [number,number,number]})){
-    return convert.keyword.rgb(colorCode).concat(255) as [number, number, number, number];
-  }
-
-  let colorArray = colorCode.replaceAll(/[A-z]|\(|\)/g,"")
-                    .split(",")
-                    .map( v => parseInt(v) );
-  if(colorArray.length == 3){
-    colorArray.push(255);
-  }
-  return colorArray as [number, number, number, number];
+  const res = new ColorTranslator(colorCode);
+  
+  return [res.R, res.G, res.B, res.A*255] as [number, number, number, number];
 }
 export {
   mobileCheck,
