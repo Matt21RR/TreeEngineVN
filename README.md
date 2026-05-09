@@ -14,6 +14,7 @@ TreeEngineVN is a 2D video game engine based on web technologies, geared towards
 - Development tools for building and testing games
 
 ## Scripting
+![Editor Screenshot](docs/screenshots/editor.png)
 For game engine scripting info check [The Scripting Doc](docs/scriptingDoc.md)
 
 ## Prerequisites
