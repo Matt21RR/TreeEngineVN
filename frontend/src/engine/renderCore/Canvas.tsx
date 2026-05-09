@@ -15,7 +15,7 @@ type CanvasData = {
   // context:CanvasRenderingContext2D,
   context:GPUCanvasContext,
   resolution:{width:number,height:number,scale:number},
-  fps:{promedio:number,elapsed:number} | {}
+  fps:{promedio:number,delta:number}
 }
 
 interface CanvasProps{
@@ -25,8 +25,8 @@ interface CanvasProps{
 
   engine:RenderEngine;
 
-  renderGraphics : (canvasData: CanvasData) => Array<number>;
-  animateGraphics : (deltaData: {promedio:number,elapsed:number}) => void;
+  renderGraphics : ( canvasData: CanvasData ) => Array<number>;
+  animateGraphics : ( deltaData: {promedio:number,delta:number} ) => void;
   onLoad? : (canvasData: CanvasData) => void;
   onResize? : (canvasData: CanvasData) => void;
   afterEffects?:Function;
@@ -133,7 +133,7 @@ class Canvas extends React.Component<CanvasProps>{
           object:this,
           context:this.canvasContext,
           resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
-          fps:{}
+          fps:{promedio:0,delta:0}
         });
       }
     }
@@ -176,7 +176,7 @@ class Canvas extends React.Component<CanvasProps>{
             //I doubt it'll need to request the context again
             context:this.canvasContext,
             resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
-            fps:{}}
+            fps:{promedio:0,delta:0}}
           );
           //call engine
           this.engine(this.loopId);
@@ -230,7 +230,7 @@ class Canvas extends React.Component<CanvasProps>{
     }
     let context = this.canvasContext;
 
-    let checkEvents = (fps:{promedio:number,elapsed:number}) => {
+    let checkEvents = (fps:{promedio:number,delta:number}) => {
       try {
         this.props.events();
         animator(fps);
@@ -242,7 +242,7 @@ class Canvas extends React.Component<CanvasProps>{
       }
     }
 
-    let animator = (fps:{promedio:number,elapsed:number}) => {
+    let animator = (fps:{promedio:number,delta:number}) => {
       //*ANIMATE
       try {
         const animateStartAt = performance.now();
@@ -264,7 +264,7 @@ class Canvas extends React.Component<CanvasProps>{
         return;
       }
     }
-    let renderer = (fps:{promedio:number,elapsed:number}) => {
+    let renderer = (fps:{promedio:number,delta:number}) => {
       const [
         orderingTime,
         renderingOrdTime,
@@ -288,7 +288,7 @@ class Canvas extends React.Component<CanvasProps>{
 
         const fpsData: Array<string> = [
           "FPS: "+fps.promedio,
-          "Interval: "+fps.elapsed.toFixed(4),
+          "Interval: "+fps.delta.toFixed(4),
           "Mouse: x:"+mouse.x.toFixed(2)+" ,y:"+mouse.y.toFixed(2),
           "Res: "+this.resolutionWidth+"x"+this.resolutionHeight,
           "EngTime: "+this.totalEngineElapsedTime.toFixed(2) + "ms",
@@ -339,9 +339,9 @@ class Canvas extends React.Component<CanvasProps>{
 
       if(this.windowHasFocus){
         this.totalEngineElapsedTime += engDelta;   
-        checkEvents({promedio,elapsed:engDelta});
+        checkEvents({promedio,delta:engDelta});
       }else{
-        checkEvents({promedio,elapsed:0});
+        checkEvents({promedio,delta:0});
       }
     }
 
