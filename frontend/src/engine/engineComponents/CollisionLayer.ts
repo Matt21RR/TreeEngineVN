@@ -1,6 +1,6 @@
 import { Dictionary } from "../../global.ts";
 import { TextLine } from "../logic/Misc.ts";
-import Shader from "../renderCore/Shaders.ts";
+import EngTexture from "../renderCore/EngTexture.ts";
 
 export type ObjectRenderingData = {
   x:number, 
@@ -20,7 +20,7 @@ export type ObjectRenderingData = {
   },
   id:string,
   repeatPattern:CanvasPattern,
-  solvedTexture:Shader,
+  solvedTexture:EngTexture,
   text?:{
     value?:Array<TextLine>,
     margin:{horizontal:number,vertical:number},
