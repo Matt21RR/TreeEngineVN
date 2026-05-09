@@ -127,7 +127,14 @@ class GraphObject extends GraphObjectDataType{
     sizeInDisplay: 0,
     width: 0, height: 0,
     rotation: 0,
-    text: null
+    text: {
+      fontSize: 0,
+      margin: {
+        horizontal: 0,
+        vertical: 0
+      },
+      value: null
+    }
   };
 
   _getAtribs(){// ? Could be a global function ?

@@ -21,7 +21,7 @@ export type ObjectRenderingData = {
   id:string,
   repeatPattern:CanvasPattern,
   solvedTexture:EngTexture,
-  text?:{
+  text:{
     value?:Array<TextLine>,
     margin:{horizontal:number,vertical:number},
     fontSize:number

@@ -464,7 +464,7 @@ export class RenderEngine extends React.Component<RenderEngineProps>{
               if(gObject.opacity != 1)
                 RenderMisc.setOpacity(canvas.context, gObject.opacity);
               let texts: Array<TextLine> = [];
-              if(renderingData.text){
+              if(renderingData.text.value || strRef){
                 const fontSize = renderingData.text.fontSize;
                 RenderDebug.setFont(fontSize, gObject.font, window.debugContext);
 
@@ -500,7 +500,7 @@ export class RenderEngine extends React.Component<RenderEngineProps>{
                 }
               }
 
-              if(renderingData.text){
+              if(renderingData.text.value || texts.length > 0){
                 RenderMisc.drawRectangle(renderingData, gObject.boxColor, canvas.context);
                 RenderDebug.drawText(
                   renderingData,
