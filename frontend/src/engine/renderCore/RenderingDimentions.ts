@@ -3,7 +3,7 @@ import RenList from "../engineComponents/RenList.ts";
 import { getStr, wrapText } from "../logic/Misc.ts";
 import { CameraData } from "./RenderEngine.d.tsx";
 import { RenderEngine } from "./RenderEngine.tsx";
-import Shader from "./Shaders.ts";
+import EngTexture from "./EngTexture.ts";
 
 import RenderMiscCanvas2D from "./RenderMiscCanvas2D.ts";
 const RenderDebug = RenderMiscCanvas2D;
@@ -56,7 +56,7 @@ export function generateObjectsDisplayDimentions(
 
     let parent: GraphObject;
 
-    let texRef: Shader;
+    let texRef: EngTexture;
 
     let analyzed = 0;
 
@@ -90,6 +90,11 @@ export function generateObjectsDisplayDimentions(
         finalArrayisedTree.push(gObject.id);
         //TODO: if text value is not null, jump to text attribs recalculation
       }else{
+        if(gObject.childsRefs.size > 0){
+          gObject.childsRefs.values().forEach(childRef => {
+            childRef.pendingRenderingRecalculation = true;
+          });
+        }
         if(objectZ + camCenter.z < 0){
           continue;
         }
@@ -99,8 +104,7 @@ export function generateObjectsDisplayDimentions(
 
         texRef = gObject.textureName ? engine.textureManager.getTexture(gObject.textureName) : null;
         
-
-        if(gObject.parentRef && sharedInstance.nDicoSet.has(gObject.parent)){
+        if(gObject.parentRef && sharedInstance.nDicoSet.has(gObject.parentRef.id)){
           parent = gObject.parentRef;
           origin.x = parent.dimentionsPack.base.x;
           origin.y = parent.dimentionsPack.base.y;
@@ -155,7 +159,7 @@ export function generateObjectsDisplayDimentions(
         objectHeight = canvasResolution.height*objectScale*gObject.heightScale;
 
         if(texRef){
-          // if(!dimentionsPack.solvedTexture)
+          if(!dimentionsPack.solvedTexture && !engine.textureManager.isATextureAnim(gObject.textureName!))
             dimentionsPack.solvedTexture = texRef;
           if(gObject.useEngineUnits){
             objectWidth = texRef.resolution.width*objectScale*gObject.widthScale*developmentRatio;

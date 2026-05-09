@@ -129,9 +129,9 @@ export default class WebGPUCanvas {
     let { x, y, width, height } = params;
 
     // Espejamos la lógica de Canvas2D — drawPattern:
-    //   repeat   → fillRect(0, 0, displayWidth, displayHeight)         ancho=canvas, alto=canvas
-    //   repeat-x → fillRect(0, corner.y, displayWidth, object.height)  ancho=canvas, alto=objeto
-    //   repeat-y → fillRect(corner.x, 0, object.width, displayHeight)  ancho=objeto, alto=canvas
+    //   repeat   => fillRect(0, 0, displayWidth, displayHeight)         ancho=canvas, alto=canvas
+    //   repeat-x => fillRect(0, corner.y, displayWidth, object.height)  ancho=canvas, alto=objeto
+    //   repeat-y => fillRect(corner.x, 0, object.width, displayHeight)  ancho=objeto, alto=canvas
     if (mode === "repeat") {
       width = canvas.width;
       height = canvas.height;
@@ -204,27 +204,42 @@ export default class WebGPUCanvas {
       groups.get(img.id!)!.push(img);
     }
 
+    // Primero escribimos TODAS las instancias en el buffer de forma contigua,
+    // cada grupo en su propio segmento. Así los draws posteriores no se pisan.
+    // Layout por instancia (32 floats = 128 bytes):
+    //   [0..15]  mat4x4f
+    //   [16..31] sin uso (el shader de imagen no necesita datos extra)
+    const FLOATS_PER_INSTANCE = 32;
+
+    const allData = new Float32Array(this.imageQueue.length * FLOATS_PER_INSTANCE);
+    let globalIndex = 0;
+
+    const drawCalls: { id: string; firstInstance: number; count: number }[] = [];
+
     groups.forEach((items, id) => {
-      const tex = this.textureCache.get(id);
-      if (!tex) return;
-
-      // Layout por instancia (32 floats = 128 bytes):
-      //   [0..15]  mat4x4f
-      //   [16..31] sin uso (el shader de imagen no necesita datos extra)
-      const data = new Float32Array(items.length * 32);
-      items.forEach((item, i) => {
-        data.set(
+      const firstInstance = globalIndex;
+      items.forEach(item => {
+        allData.set(
           this.calculateMatrix(item.x, item.y, item.width, item.height, item.rotation, canvas),
-          i * 32
+          globalIndex * FLOATS_PER_INSTANCE
         );
+        globalIndex++;
       });
-
-      this.device.queue.writeBuffer(this.imageInstanceBuffer, 0, data);
-      pass.setPipeline(this.texturePipeline);
-      pass.setBindGroup(0, this.createInstanceBindGroup(this.texturePipeline, this.imageInstanceBuffer));
-      pass.setBindGroup(1, tex.bindGroup);
-      pass.draw(6, items.length);
+      drawCalls.push({ id, firstInstance, count: items.length });
     });
+
+    // Una sola escritura al buffer cubre todos los grupos
+    this.device.queue.writeBuffer(this.imageInstanceBuffer, 0, allData);
+    pass.setPipeline(this.texturePipeline);
+    pass.setBindGroup(0, this.createInstanceBindGroup(this.texturePipeline, this.imageInstanceBuffer));
+
+    // Un draw call por grupo de textura, con firstInstance correcto
+    for (const { id, firstInstance, count } of drawCalls) {
+      const tex = this.textureCache.get(id);
+      if (!tex) continue;
+      pass.setBindGroup(1, tex.bindGroup);
+      pass.draw(6, count, 0, firstInstance);
+    }
   }
 
   private processPatternQueue(pass: GPURenderPassEncoder) {
@@ -237,32 +252,43 @@ export default class WebGPUCanvas {
       groups.get(p.id!)!.push(p);
     }
 
-    groups.forEach((items, id) => {
-      const tex = this.textureCache.get(id);
-      if (!tex) return;
+    // Layout por instancia (32 floats = 128 bytes):
+    //   [0..15]  mat4x4f
+    //   [16..17] uvScale  (vec2f)
+    //   [18..19] uvOffset (vec2f)
+    //   [20..31] sin uso
+    const FLOATS_PER_INSTANCE = 32;
 
-      // Layout por instancia (32 floats = 128 bytes):
-      //   [0..15]  mat4x4f
-      //   [16..17] uvScale  (vec2f)
-      //   [18..19] uvOffset (vec2f)
-      //   [20..31] sin uso
-      const data = new Float32Array(items.length * 32);
-      items.forEach((item, i) => {
-        const offset = i * 32;
-        data.set(
+    const allData = new Float32Array(this.patternQueue.length * FLOATS_PER_INSTANCE);
+    let globalIndex = 0;
+
+    const drawCalls: { id: string; firstInstance: number; count: number }[] = [];
+
+    groups.forEach((items, id) => {
+      const firstInstance = globalIndex;
+      items.forEach(item => {
+        const offset = globalIndex * FLOATS_PER_INSTANCE;
+        allData.set(
           this.calculateMatrix(item.x, item.y, item.width, item.height, item.rotation, canvas),
           offset
         );
         // fillColor aquí contiene [uvScaleX, uvScaleY, uvOffsetX, uvOffsetY]
-        data.set(item.fillColor!, offset + 16);
+        allData.set(item.fillColor!, offset + 16);
+        globalIndex++;
       });
-
-      this.device.queue.writeBuffer(this.patternInstanceBuffer, 0, data);
-      pass.setPipeline(this.patternPipeline);
-      pass.setBindGroup(0, this.createInstanceBindGroup(this.patternPipeline, this.patternInstanceBuffer));
-      pass.setBindGroup(1, tex.patternBindGroup);
-      pass.draw(6, items.length);
+      drawCalls.push({ id, firstInstance, count: items.length });
     });
+
+    this.device.queue.writeBuffer(this.patternInstanceBuffer, 0, allData);
+    pass.setPipeline(this.patternPipeline);
+    pass.setBindGroup(0, this.createInstanceBindGroup(this.patternPipeline, this.patternInstanceBuffer));
+
+    for (const { id, firstInstance, count } of drawCalls) {
+      const tex = this.textureCache.get(id);
+      if (!tex) continue;
+      pass.setBindGroup(1, tex.patternBindGroup);
+      pass.draw(6, count, 0, firstInstance);
+    }
   }
 
   private processRectQueue(pass: GPURenderPassEncoder) {

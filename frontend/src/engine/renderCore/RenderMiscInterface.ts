@@ -1,5 +1,6 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { TextLine } from "../logic/Misc.ts";
+import EngTexture from "./EngTexture.ts";
 
 export abstract class RenderMiscForDebugInterface<T extends CanvasRenderingContext2D|GPUCanvasContext>{
   abstract drawObjectLimits(ctx:T, object: ObjectRenderingData, canvasResolution: {width:number, height:number}, cameraZ:number) : void;
@@ -19,11 +20,11 @@ export default abstract class RenderMiscInterface<T extends CanvasRenderingConte
   abstract clearCanvas(ctx:T) : void;
   abstract setOpacity(ctx:T, opacity:number) : void;
   abstract setFilter(ctx:T, filter:string) : void;
-  abstract drawImage(texture: ImageBitmap, object:ObjectRenderingData, ctx:T) : void;
+  abstract drawImage(texture: EngTexture, object:ObjectRenderingData, ctx:T) : void;
   
-  abstract createRepeatPattern(texture: ImageBitmap, repeatOption: string, ctx:T) : any;
+  abstract createRepeatPattern(texture: ImageBitmap, repeatOption: string, ctx:T) : any; //TODO: RepeatPattern blocks AnimatedTextures and viceversa
   abstract applyPatternTransformation( object:ObjectRenderingData ): void;
-  abstract drawPattern(texture: ImageBitmap, object:ObjectRenderingData, displayWidth:number, displayHeight:number, repeatOption: string, ctx:T) : void;
+  abstract drawPattern(texture: EngTexture, object:ObjectRenderingData, displayWidth:number, displayHeight:number, repeatOption: string, ctx:T) : void;
 
   abstract drawRectangle(object:ObjectRenderingData, boxColor:string, ctx:T) : void;
   abstract setFont(fontSize:number, fontFamily:string, ctx:T) : void;

@@ -1,6 +1,4 @@
-import RenderMiscWebGPU from "./RenderMiscWebGPU.ts";
-
-export default class Shader{
+export default class EngTexture{
   #image: ImageBitmap;
   #resolution: {width:number,height:number, widthHeightRelation:number, heightWidthRelation:number};
   #id:string;
@@ -9,20 +7,17 @@ export default class Shader{
     return this;
   }
 
-  instanceIt(image: HTMLImageElement,id:string):Promise<Shader>{
+  instanceIt(image: HTMLImageElement,id:string):Promise<EngTexture>{
     return new Promise((response)=>{
       createImageBitmap(image).then((res)=>{
         this.#image = res;
 
         this.#id = id;
         
-        // const width = image.naturalWidth;
         const width = res.width;
-        // const height = image.naturalHeight;
         const height = res.height;
         const widthHeightRelation = width/height;
         const heightWidthRelation = height/width;
-
 
         this.#resolution = {width,height, widthHeightRelation, heightWidthRelation};
         response(this);

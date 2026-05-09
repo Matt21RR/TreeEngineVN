@@ -1,6 +1,7 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { colorToRGBA, TextLine } from "../logic/Misc.ts";
 import RenderMiscInterface, { RenderMiscForDebugInterface } from "./RenderMiscInterface.ts";
+import EngTexture from "./EngTextures.ts";
 import WebGPUCanvas, { RepeatMode } from "./WebGPUCanvas.ts";
 
 class RenderMiscForDebug extends RenderMiscForDebugInterface<GPUCanvasContext>{
@@ -67,9 +68,9 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
   setFilter(ctx: GPUCanvasContext, filter:string){
     
   }
-  drawImage(texture: ImageBitmap, object:ObjectRenderingData, ctx:GPUCanvasContext){
+  drawImage(texture: EngTexture, object:ObjectRenderingData, ctx:GPUCanvasContext){
     this.WebGPURendererInstance.queueImage({
-      id:object.solvedTexture.id,
+      id:texture.id,
       x:object.corner.x,
       y:object.corner.y,
       width:object.width,
@@ -84,9 +85,9 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
     
   }
 
-  drawPattern(texture: ImageBitmap, object: ObjectRenderingData, displayWidth: number, displayHeight: number, repeatOption: string, ctx: GPUCanvasContext){
+  drawPattern(texture: EngTexture, object: ObjectRenderingData, displayWidth: number, displayHeight: number, repeatOption: string, ctx: GPUCanvasContext){
     this.WebGPURendererInstance.queueRepeatPattern({
-      id: object.solvedTexture.id,
+      id: texture.id,
       x: object.corner.x,
       y: object.corner.y,
       width: displayWidth,   // área total que cubre el patrón (lo gestiona queueRepeatPattern según el modo)

@@ -17,7 +17,7 @@ import RenList from "../engineComponents/RenList.ts";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger.ts";
 
 import { getStr, lambdaConverter, TextLine } from "../logic/Misc.ts";
-import Shader from "./Shaders.ts";
+import EngTexture from "./EngTexture.ts";
 import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
 import { Chaos } from "../interpretators/ChaosInterpreter.ts";
@@ -48,7 +48,7 @@ interface RenderEngineProps {
   setEngine?: (engine: RenderEngine,ExtendedObjects?:ExtendedObjects) => void;
 }
 
-class RenderEngine extends React.Component<RenderEngineProps>{
+export class RenderEngine extends React.Component<RenderEngineProps>{
   id: string;
   isReady: boolean;
   aspectRatio: string;
@@ -318,9 +318,9 @@ class RenderEngine extends React.Component<RenderEngineProps>{
         height : this.engineDisplayRes.height + "px"
       } 
     ).then(()=>{
-      this.graphArray.objects.forEach(e=>{
-          e.pendingRenderingRecalculation = true;
-        });
+      // this.graphArray.objects.forEach(e=>{
+      //     e.pendingRenderingRecalculation = true;
+      //   });
     });
 
     this.forceUpdate();  
@@ -359,7 +359,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       set(target, prop:string, value:any) {
         target[prop] = value;
         self.graphArray.objects.forEach(e=>{
-          e.pendingRenderingRecalculation = true;
+          e.pendingRenderingRecalculation = true; //! Bug: Incorrect object position recalculation
         });
         return true;
       }
@@ -403,11 +403,12 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       showFps={this.showFps}
       engine={this}
       renderGraphics={(canvas)=>{
+        this.canvasRef = canvas;
         const startOrdA = performance.now();
         //TODO: Only recalculate order if some object have changed its parent
         this.calculationOrder = generateCalculationOrder(this.graphArray);
         
-        const orderingTime = performance.now()-startOrdA;
+        const orderingTime = performance.now() - startOrdA;
 
         const renderingOrdA = performance.now();
         const dimentionsPack = generateObjectsDisplayDimentions(this.graphArray, this.calculationOrder, canvas.resolution, this.camera);
@@ -448,7 +449,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
           const renderingData = gObject.dimentionsPack;
           
           // const texRef = ( gObject.textureName ? this.getTexture(gObject.textureName) : null ); //Null works as false / not assigned
-          const texRef = gObject.dimentionsPack.solvedTexture ?? ( gObject.textureName ? this.textureManager.getTexture(gObject.textureName) : null ); //Null works as false / not assigned
+          const texRef = gObject.dimentionsPack.solvedTexture ?? ( gObject.textureName ? this.textureManager.getTexture(gObject.textureName,this.engineTime) : null ); //Null works as false / not assigned
           const strRef = gObject.text == null ? null : getStr(gObject.text);
 
           infoAdjudicationTime += performance.now()-infoAdjudicationPre;
@@ -485,7 +486,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
               if(texRef){
                 if(gObject.repeatPattern){
                   RenderMisc.drawPattern(
-                    texRef.getTexture(),
+                    texRef,
                     renderingData,
                     canvas.resolution.width,
                     canvas.resolution.height,
@@ -493,7 +494,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
                     canvas.context);
                 }else{
                   RenderMisc.drawImage(
-                    texRef.getTexture(),
+                    texRef,
                     renderingData,
                     canvas.context);
                 }
@@ -579,7 +580,7 @@ class RenderEngine extends React.Component<RenderEngineProps>{
       }}
       events={()=>{this.inputManager.update(this)}}
       animateGraphics={(fps)=>{
-        this.engineTime += (fps.elapsed * (this.stopEngine ? 0 : this.engineSpeed));
+        this.engineTime += (fps.delta * (this.stopEngine ? 0 : this.engineSpeed));
         for (let index = 0; index < this.anims.objects.length; index++) {
           const anim = this.anims.objects[index];
           if(anim.relatedTo != null){
@@ -633,10 +634,10 @@ class RenderEngine extends React.Component<RenderEngineProps>{
 }
 
 class TextureManager{
-  texturesList: RenList<Shader>
+  texturesList: RenList<EngTexture>
   textureAnims: RenList<TextureAnim>
 
-  noImageTexture: Shader;
+  noImageTexture: EngTexture;
 
   constructor(){
     this.texturesList = new RenList();
@@ -654,7 +655,7 @@ class TextureManager{
     fallbackImage.crossOrigin = "Anonymous";
     fallbackImage.src = noImageTexture;
     fallbackImage.addEventListener('load',()=>{
-      (new Shader())
+      (new EngTexture())
         .instanceIt(fallbackImage,"engineNoImageTexture")
         .then((shader)=>{
           this.noImageTexture = shader;
@@ -675,7 +676,11 @@ class TextureManager{
     });
   }
 
-  getTexture(id: string, engineTime?: number):Shader{
+  isATextureAnim(id:string):boolean{
+    return this.textureAnims.exist(id);
+  }
+
+  getTexture(id: string, engineTime?: number):EngTexture{
     if(this.textureAnims.exist(id)){
       id = this.textureAnims.get(id).getTexture(engineTime || 0);
     }
@@ -686,7 +691,7 @@ class TextureManager{
     }
   }
 
-  getSolvedTexture(id: string):Shader{
+  getSolvedTexture(id: string):EngTexture{
     if(id) return this.texturesList.get(id);
     return this.noImageTexture;
   }
@@ -739,18 +744,19 @@ class InputManager{
   }
 
   onKeydown (e:KeyboardEvent){
-    const keyCode = e.code;  
+    const keyCode = e.code;
+    const engine = RenderEngine.getInstance();
     if(this.pressedKeys.indexOf(keyCode) == -1){
       this.pressedKeys.push(keyCode);
       const mix = this.pressedKeys.join(" ");
       if(this.keyboardTriggers.exist(mix)){
         // @ts-ignore
-        this.keyboardTriggers.get(mix).check(this,"onPress");
+        this.keyboardTriggers.get(mix).check(engine,"onPress");
       }
       if(this.pressedKeys.length > 1){//Si hay mas de una tecla oprimiendose, comprobar la ultima tecla
         if(this.keyboardTriggers.exist(keyCode)){
           // @ts-ignore
-          this.keyboardTriggers.get(keyCode).check(this,"onPress");
+          this.keyboardTriggers.get(keyCode).check(engine,"onPress");
         }
       }
     }
@@ -758,16 +764,17 @@ class InputManager{
 
   onKeyup(e:KeyboardEvent){
     const keyCode = e.code;
+    const engine = RenderEngine.getInstance();
     const mix = this.pressedKeys.join(" ");
     this.pressedKeys.splice(this.pressedKeys.indexOf(keyCode),1);
     if(this.keyboardTriggers.exist(mix)){
       // @ts-ignore
-      this.keyboardTriggers.get(mix).check(this,"onRelease");
+      this.keyboardTriggers.get(mix).check(engine,"onRelease");
     }
     if(this.pressedKeys.length > 0){//Si habia mas de una tecla oprimiendose, comprobar la tecla que se soltó
       if(this.keyboardTriggers.exist(keyCode)){
         // @ts-ignore
-        this.keyboardTriggers.get(keyCode).check(this,"onRelease");
+        this.keyboardTriggers.get(keyCode).check(engine,"onRelease");
       }
     } 
   }
@@ -856,5 +863,3 @@ class DialogManager {
     this.dialogs = [];
   }
 }
-
-export {RenderEngine}

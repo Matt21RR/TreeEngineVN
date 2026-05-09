@@ -1,5 +1,5 @@
 import { Howl } from "howler";
-import Shader from "./Shaders.ts";
+import EngTexture from "./EngTextures.ts";
 import { Dictionary } from "../../global.ts";
 import { RequestFile, RequestFileWithMime } from "../../../wailsjs/go/main/App.js";
 import RenderMiscWebGPU from "./RenderMiscWebGPU.ts";
@@ -70,7 +70,7 @@ class ResourceLoader{
                     image.crossOrigin = "Anonymous";
                     image.src = resK;
                     image.addEventListener('load',()=>{
-                      (new Shader())
+                      (new EngTexture())
                       .instanceIt(image,textureName)
                       .then((shader)=>{
                           RenderMisc.getInstance().preloadImage(shader.getTexture(), textureName).then(()=>{
