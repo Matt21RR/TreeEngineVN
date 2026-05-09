@@ -89,6 +89,8 @@ class GraphObject extends GraphObjectDataType{
   _sepia:number;
 
   _filterStrings:Array<string> = [];
+  private _cachedFilterString: string = "none";
+  private _filterCacheDirty: boolean = true;
 
   _opacity:number;
 
@@ -274,9 +276,12 @@ class GraphObject extends GraphObjectDataType{
     
     
   get texture() { return this._textureName; }
-  set texture(x) { 
-    this.dimentionsPack.solvedTexture = null;
-    this._textureName = x != undefined ? x : null;
+  set texture(x) {
+    const newName = (x != undefined) ? x : null;
+    if (this._textureName !== newName) {
+      this.dimentionsPack.solvedTexture = null;
+      this._textureName = newName;
+    }
   }
     
   get textureName() {return this._textureName;}
@@ -302,6 +307,7 @@ class GraphObject extends GraphObjectDataType{
         this._brightness = x;
         this._filterStrings[FiltersName.Brightness] = `brightness(${x})`;
       }
+      this._filterCacheDirty = true;
     }
   }
   
@@ -318,6 +324,7 @@ class GraphObject extends GraphObjectDataType{
         this._contrast = x;
         this._filterStrings[FiltersName.Contrast] = `contrast(${x})`;
       }
+      this._filterCacheDirty = true;
     }
   }
 
@@ -333,7 +340,8 @@ class GraphObject extends GraphObjectDataType{
       }else{
         this._grayscale = x;
         this._filterStrings[FiltersName.Grayscale] = `grayscale(${x})`;
-      }  
+      }
+      this._filterCacheDirty = true;
     }
   }
 
@@ -349,6 +357,7 @@ class GraphObject extends GraphObjectDataType{
     }else{
       this._filterStrings[FiltersName.HueRotate] = `hue-rotate(${x}deg)`;
     }
+    this._filterCacheDirty = true;
   }
 
   get blur() {return this._blur;}
@@ -360,6 +369,7 @@ class GraphObject extends GraphObjectDataType{
     }else{
       this._filterStrings[FiltersName.Blur] = `blur(${x}px)`;
     }
+    this._filterCacheDirty = true;
   }
 
   get invert() {return this._invert;}
@@ -374,7 +384,8 @@ class GraphObject extends GraphObjectDataType{
       }else{
         this._invert = x;
         this._filterStrings[FiltersName.Invert] = `invert(${x})`;
-      }  
+      }
+      this._filterCacheDirty = true;
     }
   }
 
@@ -390,7 +401,8 @@ class GraphObject extends GraphObjectDataType{
       }else{
         this._saturate = x;
         this._filterStrings[FiltersName.Saturate] = `saturate(${x})`;
-      }  
+      }
+      this._filterCacheDirty = true;
     }
   }
 
@@ -406,14 +418,17 @@ class GraphObject extends GraphObjectDataType{
       }else{
         this._sepia = x;
         this._filterStrings[FiltersName.Sepia] = `sepia(${x})`;
-      }  
+      }
+      this._filterCacheDirty = true;
     }
   }
     
   get filterString() {
-    const filterstr = this._filterStrings.join(" ").trim() || "none";
-
-    return filterstr;
+    if (this._filterCacheDirty) {
+      this._cachedFilterString = this._filterStrings.join(" ").trim() || "none";
+      this._filterCacheDirty = false;
+    }
+    return this._cachedFilterString;
   }
 
   get opacity() {return this._opacity;}
@@ -454,15 +469,21 @@ class GraphObject extends GraphObjectDataType{
   set rotateRad(x) {this._rotate = x}
   get rotateRad() {return this._rotate;}
 
+  private static readonly VALID_REPEAT_MODES = new Set(["repeat", "repeat-x", "repeat-y"]);
+
   get repeat(){ return this._repeat; }
   set repeat(x:string){
+    if (this._repeat === x) return; // Early exit if unchanged
     this._repeat = x;
-    let shader = RenderEngine.getInstance().textureManager.getTexture(this.textureName);
-    if(["repeat","repeat-x","repeat-y"].includes(x) && shader){
-      const RenderMisc = RenderEngine.getInstance().renderMisc;
-
-      this._repeatPattern = RenderMisc.createRepeatPattern(shader.getTexture(), x, RenderEngine.getInstance().canvasRef.context);
-    }else{
+    const engine = RenderEngine.getInstance();
+    const shader = engine.textureManager.getTexture(this.textureName);
+    if (GraphObject.VALID_REPEAT_MODES.has(x) && shader) {
+      this._repeatPattern = engine.renderMisc.createRepeatPattern(
+        shader.getTexture(),
+        x,
+        engine.canvasRef.context
+      );
+    } else {
       this._repeatPattern = null;
     }
   }
@@ -515,8 +536,6 @@ class GraphObject extends GraphObjectDataType{
         this._parentRef.childsRefs.delete(this.id);
       }
     }
-    console.log(engine.graphArray.fastGet("dialogbox"))
-    console.log("For "+this.id+" setting parent: "+ x+ " and the parent ref", this._parentRef)
     this._parent = x;
   }
 
