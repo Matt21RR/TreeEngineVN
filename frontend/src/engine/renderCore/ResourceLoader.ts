@@ -1,5 +1,5 @@
 import { Howl } from "howler";
-import EngTexture from "./EngTextures.ts";
+import EngTexture from "./EngTexture.ts";
 import { Dictionary } from "../../global.ts";
 import { RequestFile, RequestFileWithMime } from "../../../wailsjs/go/main/App.js";
 import RenderMiscWebGPU from "./RenderMiscWebGPU.ts";
