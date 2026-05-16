@@ -203,7 +203,7 @@ export function generateObjectsDisplayDimentions(
         dimentionsPack.sizeInDisplay  = perspectiveScale;
         dimentionsPack.width  = objectWidth;
         dimentionsPack.height  = objectHeight;
-        dimentionsPack.rotation = Math.trunc(gObject.rotate);
+        dimentionsPack.rotation = gObject.rotateRad;
 
         //TODO: texts requires continous recomputing
         if(gObject.text !== null && (strRef = getStr(gObject.text)) !== null){
