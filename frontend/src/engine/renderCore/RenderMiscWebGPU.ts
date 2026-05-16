@@ -1,7 +1,7 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { colorToRGBA, TextLine } from "../logic/Misc.ts";
 import RenderMiscInterface, { RenderMiscForDebugInterface } from "./RenderMiscInterface.ts";
-import EngTexture from "./EngTextures.ts";
+import EngTexture from "./EngTexture.ts";
 import WebGPUCanvas, { RepeatMode } from "./WebGPUCanvas.ts";
 
 class RenderMiscForDebug extends RenderMiscForDebugInterface<GPUCanvasContext>{
