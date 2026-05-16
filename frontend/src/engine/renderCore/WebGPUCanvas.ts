@@ -25,6 +25,7 @@ export default class WebGPUCanvas {
   private sampler!: GPUSampler;
 
   private vertexBuffer!: GPUBuffer;
+  
   private imageInstanceBuffer!: GPUBuffer;
   private patternInstanceBuffer!: GPUBuffer;
   private rectInstanceBuffer!: GPUBuffer;
@@ -34,12 +35,19 @@ export default class WebGPUCanvas {
   private rectQueue: DrawParams[] = [];
   private MAX_INSTANCES = 40000;
 
+  // Stride de 16 floats (64 bytes). 
+  // Bloque 1 (vec4f): [x, y, w, h]
+  // Bloque 2 (vec4f): [rot, canvasW, canvasH, opcional]
+  private readonly FLOATS_PER_INSTANCE = 16;
+
   async init(context: GPUCanvasContext) {
     this.context = context;
 
     const adapter = await navigator.gpu.requestAdapter();
     this.device = await adapter!.requestDevice();
     this.format = navigator.gpu.getPreferredCanvasFormat();
+
+    const canvas = this.context.canvas as HTMLCanvasElement;
 
     this.context.configure({
       device: this.device,
@@ -60,18 +68,21 @@ export default class WebGPUCanvas {
     const canvas = this.context.canvas as HTMLCanvasElement;
     canvas.width = width;
     canvas.height = height;
-    this.context.configure({ device: this.device, format: this.format, alphaMode: "premultiplied" });
+    this.context.configure({
+      device: this.device,
+      format: this.format,
+      alphaMode: "premultiplied"
+    });
   }
 
   private createBuffers() {
     const vertexData = new Float32Array([
-      // x, y, u, v
-      0, 0, 0, 0,  // Top-Left
-      1, 0, 1, 0,  // Top-Right
-      0, 1, 0, 1,  // Bottom-Left
-      0, 1, 0, 1,  // Bottom-Left
-      1, 0, 1, 0,  // Top-Right
-      1, 1, 1, 1,  // Bottom-Right
+      0, 0, 0, 0,
+      1, 0, 1, 0,
+      0, 1, 0, 1,
+      0, 1, 0, 1,
+      1, 0, 1, 0,
+      1, 1, 1, 1,
     ]);
 
     this.vertexBuffer = this.device.createBuffer({
@@ -82,7 +93,9 @@ export default class WebGPUCanvas {
     new Float32Array(this.vertexBuffer.getMappedRange()).set(vertexData);
     this.vertexBuffer.unmap();
 
-    const bufDesc = { size: this.MAX_INSTANCES * 128, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST };
+    const bufSize = this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE * 4;
+    const bufDesc = { size: bufSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST };
+    
     this.imageInstanceBuffer   = this.device.createBuffer(bufDesc);
     this.patternInstanceBuffer = this.device.createBuffer(bufDesc);
     this.rectInstanceBuffer    = this.device.createBuffer(bufDesc);
@@ -98,68 +111,41 @@ export default class WebGPUCanvas {
 
     const view = texture.createView();
 
-    // Bind group para el pipeline de imagen simple
-    const bindGroup = this.device.createBindGroup({
-      layout: this.texturePipeline.getBindGroupLayout(1),
-      entries: [{ binding: 0, resource: this.sampler }, { binding: 1, resource: view }],
+    this.textureCache.set(id, {
+      view,
+      bindGroup: this.device.createBindGroup({
+        layout: this.texturePipeline.getBindGroupLayout(1),
+        entries: [{ binding: 0, resource: this.sampler }, { binding: 1, resource: view }],
+      }),
+      patternBindGroup: this.device.createBindGroup({
+        layout: this.patternPipeline.getBindGroupLayout(1),
+        entries: [{ binding: 0, resource: this.sampler }, { binding: 1, resource: view }],
+      }),
     });
-
-    // Bind group dedicado para el pipeline de patrón
-    const patternBindGroup = this.device.createBindGroup({
-      layout: this.patternPipeline.getBindGroupLayout(1),
-      entries: [{ binding: 0, resource: this.sampler }, { binding: 1, resource: view }],
-    });
-
-    this.textureCache.set(id, { view, bindGroup, patternBindGroup });
   }
 
-  // --- Métodos de registro (CPU) ---
-
-  queueImage(params: DrawParams) {
-    this.imageQueue.push(params);
-  }
-
-  queueRect(params: DrawParams) {
-    this.rectQueue.push(params);
-  }
+  queueImage(params: DrawParams) { this.imageQueue.push(params); }
+  queueRect(params: DrawParams) { this.rectQueue.push(params); }
 
   queueRepeatPattern(params: DrawParams, mode: RepeatMode) {
     const canvas = this.context.canvas as HTMLCanvasElement;
-
     let { x, y, width, height } = params;
 
-    // Espejamos la lógica de Canvas2D — drawPattern:
-    //   repeat   => fillRect(0, 0, displayWidth, displayHeight)         ancho=canvas, alto=canvas
-    //   repeat-x => fillRect(0, corner.y, displayWidth, object.height)  ancho=canvas, alto=objeto
-    //   repeat-y => fillRect(corner.x, 0, object.width, displayHeight)  ancho=objeto, alto=canvas
     if (mode === "repeat") {
-      width = canvas.width;
-      height = canvas.height;
-      x = 0;
-      y = 0;
+      width = canvas.width; height = canvas.height;
+      x = 0; y = 0;
     }
     if (mode === "repeat-x") {
-      width = canvas.width;
-      height = params.tileHeight!;
-      x = 0;
-      params.y = 0; // Para que la fase del patrón se calcule desde el borde del canvas
+      width = canvas.width; height = params.tileHeight!;
+      x = 0; params.y = 0;
     }
     if (mode === "repeat-y") {
-      height = canvas.height;
-      width = params.tileWidth!;
-      y = 0;
-      params.x = 0; // Para que la fase del patrón se calcule desde el borde del canvas
+      height = canvas.height; width = params.tileWidth!;
+      y = 0; params.x = 0;
     }
 
-    // uvScale: cuántas repeticiones del tile caben en el quad
-    // El quad cubre `width` px; cada tile mide `tileWidth` px → width/tileWidth repeticiones
     const uvScaleX = width  / params.tileWidth!;
     const uvScaleY = height / params.tileHeight!;
-
-    // uvOffset: desplaza la fase del patrón para que el tile base aparezca en corner.x/corner.y.
-    // uv=0 corresponde al píxel (0,0) del canvas. El tile base debe comenzar en params.x/params.y.
-    // En unidades de tile: params.x / tileWidth. Negativo porque desplazamos la textura
-    // en sentido contrario al movimiento visual (igual que DOMMatrix con translateX=corner.x en Canvas2D).
     const uvOffsetX = -params.x / params.tileWidth!;
     const uvOffsetY = -params.y / params.tileHeight!;
 
@@ -171,6 +157,9 @@ export default class WebGPUCanvas {
   }
 
   render() {
+    const canvas = this.context.canvas as HTMLCanvasElement;
+    if (canvas.width === 0 || canvas.height === 0) return;
+
     const commandEncoder = this.device.createCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass({
       colorAttachments: [{
@@ -181,11 +170,13 @@ export default class WebGPUCanvas {
       }]
     });
 
+    // Fijar el viewport físicamente a las dimensiones actuales del canvas
+    passEncoder.setViewport(0, 0, canvas.width, canvas.height, 0, 1);
     passEncoder.setVertexBuffer(0, this.vertexBuffer);
 
-    this.processImageQueue(passEncoder);
-    this.processPatternQueue(passEncoder);
-    this.processRectQueue(passEncoder);
+    this.processImageQueue(passEncoder, canvas.width, canvas.height);
+    this.processPatternQueue(passEncoder, canvas.width, canvas.height);
+    this.processRectQueue(passEncoder, canvas.width, canvas.height);
 
     passEncoder.end();
     this.device.queue.submit([commandEncoder.finish()]);
@@ -195,8 +186,8 @@ export default class WebGPUCanvas {
     this.rectQueue    = [];
   }
 
-  private processImageQueue(pass: GPURenderPassEncoder) {
-    const canvas = this.context.canvas as HTMLCanvasElement;
+  private processImageQueue(pass: GPURenderPassEncoder, cw: number, ch: number) {
+    if (this.imageQueue.length === 0) return;
 
     const groups = new Map<string, DrawParams[]>();
     for (const img of this.imageQueue) {
@@ -204,36 +195,30 @@ export default class WebGPUCanvas {
       groups.get(img.id!)!.push(img);
     }
 
-    // Primero escribimos TODAS las instancias en el buffer de forma contigua,
-    // cada grupo en su propio segmento. Así los draws posteriores no se pisan.
-    // Layout por instancia (32 floats = 128 bytes):
-    //   [0..15]  mat4x4f
-    //   [16..31] sin uso (el shader de imagen no necesita datos extra)
-    const FLOATS_PER_INSTANCE = 32;
-
-    const allData = new Float32Array(this.imageQueue.length * FLOATS_PER_INSTANCE);
+    const allData = new Float32Array(this.imageQueue.length * this.FLOATS_PER_INSTANCE);
     let globalIndex = 0;
-
     const drawCalls: { id: string; firstInstance: number; count: number }[] = [];
 
     groups.forEach((items, id) => {
       const firstInstance = globalIndex;
       items.forEach(item => {
-        allData.set(
-          this.calculateMatrix(item.x, item.y, item.width, item.height, item.rotation, canvas),
-          globalIndex * FLOATS_PER_INSTANCE
-        );
+        const offset = globalIndex * this.FLOATS_PER_INSTANCE;
+        allData[offset + 0] = item.x;
+        allData[offset + 1] = item.y;
+        allData[offset + 2] = item.width;
+        allData[offset + 3] = item.height;
+        allData[offset + 4] = item.rotation;
+        allData[offset + 5] = cw; // Enviamos el ancho del canvas por instancia
+        allData[offset + 6] = ch; // Enviamos el alto del canvas por instancia
         globalIndex++;
       });
       drawCalls.push({ id, firstInstance, count: items.length });
     });
 
-    // Una sola escritura al buffer cubre todos los grupos
     this.device.queue.writeBuffer(this.imageInstanceBuffer, 0, allData);
     pass.setPipeline(this.texturePipeline);
-    pass.setBindGroup(0, this.createInstanceBindGroup(this.texturePipeline, this.imageInstanceBuffer));
+    pass.setBindGroup(0, this.createGlobalBindGroup(this.texturePipeline, this.imageInstanceBuffer));
 
-    // Un draw call por grupo de textura, con firstInstance correcto
     for (const { id, firstInstance, count } of drawCalls) {
       const tex = this.textureCache.get(id);
       if (!tex) continue;
@@ -242,9 +227,8 @@ export default class WebGPUCanvas {
     }
   }
 
-  private processPatternQueue(pass: GPURenderPassEncoder) {
+  private processPatternQueue(pass: GPURenderPassEncoder, cw: number, ch: number) {
     if (this.patternQueue.length === 0) return;
-    const canvas = this.context.canvas as HTMLCanvasElement;
 
     const groups = new Map<string, DrawParams[]>();
     for (const p of this.patternQueue) {
@@ -252,28 +236,26 @@ export default class WebGPUCanvas {
       groups.get(p.id!)!.push(p);
     }
 
-    // Layout por instancia (32 floats = 128 bytes):
-    //   [0..15]  mat4x4f
-    //   [16..17] uvScale  (vec2f)
-    //   [18..19] uvOffset (vec2f)
-    //   [20..31] sin uso
-    const FLOATS_PER_INSTANCE = 32;
-
-    const allData = new Float32Array(this.patternQueue.length * FLOATS_PER_INSTANCE);
+    const allData = new Float32Array(this.patternQueue.length * this.FLOATS_PER_INSTANCE);
     let globalIndex = 0;
-
     const drawCalls: { id: string; firstInstance: number; count: number }[] = [];
 
     groups.forEach((items, id) => {
       const firstInstance = globalIndex;
       items.forEach(item => {
-        const offset = globalIndex * FLOATS_PER_INSTANCE;
-        allData.set(
-          this.calculateMatrix(item.x, item.y, item.width, item.height, item.rotation, canvas),
-          offset
-        );
-        // fillColor aquí contiene [uvScaleX, uvScaleY, uvOffsetX, uvOffsetY]
-        allData.set(item.fillColor!, offset + 16);
+        const offset = globalIndex * this.FLOATS_PER_INSTANCE;
+        allData[offset + 0] = item.x;
+        allData[offset + 1] = item.y;
+        allData[offset + 2] = item.width;
+        allData[offset + 3] = item.height;
+        allData[offset + 4] = item.rotation;
+        allData[offset + 5] = cw;
+        allData[offset + 6] = ch;
+        
+        allData[offset + 8] = item.fillColor![0]; // uvScaleX
+        allData[offset + 9] = item.fillColor![1]; // uvScaleY
+        allData[offset + 10] = item.fillColor![2]; // uvOffsetX
+        allData[offset + 11] = item.fillColor![3]; // uvOffsetY
         globalIndex++;
       });
       drawCalls.push({ id, firstInstance, count: items.length });
@@ -281,7 +263,7 @@ export default class WebGPUCanvas {
 
     this.device.queue.writeBuffer(this.patternInstanceBuffer, 0, allData);
     pass.setPipeline(this.patternPipeline);
-    pass.setBindGroup(0, this.createInstanceBindGroup(this.patternPipeline, this.patternInstanceBuffer));
+    pass.setBindGroup(0, this.createGlobalBindGroup(this.patternPipeline, this.patternInstanceBuffer));
 
     for (const { id, firstInstance, count } of drawCalls) {
       const tex = this.textureCache.get(id);
@@ -291,140 +273,168 @@ export default class WebGPUCanvas {
     }
   }
 
-  private processRectQueue(pass: GPURenderPassEncoder) {
+  private processRectQueue(pass: GPURenderPassEncoder, cw: number, ch: number) {
     if (this.rectQueue.length === 0) return;
-    const canvas = this.context.canvas as HTMLCanvasElement;
 
-    // Layout por instancia (32 floats = 128 bytes):
-    //   [0..15]  mat4x4f
-    //   [16..19] sin uso (_pad vec4f en el struct)
-    //   [20..23] fill    (vec4f RGBA)
-    //   [24..27] border  (vec4f RGBA)
-    //   [28]     brdW    (f32)
-    //   [29..31] sin uso
-    const data = new Float32Array(this.rectQueue.length * 32);
+    const data = new Float32Array(this.rectQueue.length * this.FLOATS_PER_INSTANCE);
+    
     this.rectQueue.forEach((item, i) => {
-      const offset = i * 32;
-      data.set(this.calculateMatrix(item.x, item.y, item.width, item.height, item.rotation, canvas), offset);
-      data.set(item.fillColor!.map( v   => v / 255 ), offset + 20);
-      data.set(item.borderColor!.map( v => v / 255 ), offset + 24);
-      data.set([item.borderWidth! / Math.max(item.width, item.height)],       offset + 28);
+      const offset = i * this.FLOATS_PER_INSTANCE;
+      data[offset + 0] = item.x;
+      data[offset + 1] = item.y;
+      data[offset + 2] = item.width;
+      data[offset + 3] = item.height;
+      data[offset + 4] = item.rotation;
+      data[offset + 5] = item.borderWidth! / Math.max(item.width, item.height);
+      data[offset + 6] = cw;
+      data[offset + 7] = ch;
+
+      data[offset + 8] = item.fillColor![0] / 255;
+      data[offset + 9] = item.fillColor![1] / 255;
+      data[offset + 10] = item.fillColor![2] / 255;
+      data[offset + 11] = item.fillColor![3] / 255;
+
+      data[offset + 12] = item.borderColor![0] / 255;
+      data[offset + 13] = item.borderColor![1] / 255;
+      data[offset + 14] = item.borderColor![2] / 255;
+      data[offset + 15] = item.borderColor![3] / 255;
     });
 
     this.device.queue.writeBuffer(this.rectInstanceBuffer, 0, data);
     pass.setPipeline(this.shapePipeline);
-    pass.setBindGroup(0, this.createInstanceBindGroup(this.shapePipeline, this.rectInstanceBuffer));
+    pass.setBindGroup(0, this.createGlobalBindGroup(this.shapePipeline, this.rectInstanceBuffer));
     pass.draw(6, this.rectQueue.length);
   }
 
-  private calculateMatrix(x: number, y: number, w: number, h: number, rot: number, canvas: HTMLCanvasElement): Float32Array {
-    const tx = (x / canvas.width)  *  2 - 1;
-    const ty = (y / canvas.height) * -2 + 1;
-    const sx = (w / canvas.width)  *  2;
-    const sy = (h / canvas.height) * -2; // negativo: eje Y de pantalla apunta hacia abajo
-
-    const c = Math.cos(rot);
-    const s = Math.sin(rot);
-
-    // Column-major
-    return new Float32Array([
-      sx * c,  s * sy,  0, 0, // Col 0
-      -s * sx, c * sy,  0, 0, // Col 1
-      0,       0,       1, 0, // Col 2
-      tx,      ty,      0, 1  // Col 3
-    ]);
-  }
-
-  private createInstanceBindGroup(pipeline: GPURenderPipeline, buffer: GPUBuffer) {
+  private createGlobalBindGroup(pipeline: GPURenderPipeline, buffer: GPUBuffer) {
     return this.device.createBindGroup({
       layout: pipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: { buffer } }]
+      entries: [
+        { binding: 0, resource: { buffer } } // Eliminamos la dependencia del buffer de uniform global
+      ]
     });
   }
 
   private createPipelines() {
-    // -----------------------------------------------------------------------
-    // Shader de imagen simple — UVs directas 0→1, sin transformación extra
-    // El struct ocupa 128 bytes (32 floats) igual que el stride del instanceBuffer:
-    //   mat4x4f = 64 bytes, _pad = 64 bytes → total 128 bytes
-    // -----------------------------------------------------------------------
+    const commonWGSLTransforms = `
+      fn getNDCPosition(vertexPos: vec2f, pos: vec2f, size: vec2f, rotation: f32, canvasSize: vec2f) -> vec4f {
+        let localPixelPos = vertexPos * size;
+        let center = size * 0.5;
+        let translatedPos = localPixelPos - center;
+        
+        let c = cos(rotation);
+        let s = sin(rotation);
+        let rotatedPos = vec2f(
+          translatedPos.x * c - translatedPos.y * s,
+          translatedPos.x * s + translatedPos.y * c
+        );
+        
+        let worldPixelPos = rotatedPos + center + pos;
+        let ndcX = (worldPixelPos.x / canvasSize.x) * 2.0 - 1.0;
+        let ndcY = (worldPixelPos.y / canvasSize.y) * -2.0 + 1.0;
+        return vec4f(ndcX, ndcY, 0.0, 1.0);
+      }
+    `;
+
+    // 1. SHADER DE IMAGEN (Alineación limpia sin uniform separado)
     const imageShader = `
-      struct InstImage { mat: mat4x4f, _pad: array<vec4f, 4> };
+      struct InstImage {
+        transform1: vec4f, // [x, y, width, height]
+        transform2: vec4f, // [rotation, canvasWidth, canvasHeight, 0]
+        _pad: array<vec4f, 2>
+      };
       struct DataImage { instances: array<InstImage> };
       @group(0) @binding(0) var<storage, read> data: DataImage;
 
       struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f };
+      
+      ${commonWGSLTransforms}
 
-      @vertex fn vs(
-        @location(0) pos: vec2f,
-        @location(1) uv: vec2f,
-        @builtin(instance_index) i: u32
-      ) -> Out {
-        return Out(data.instances[i].mat * vec4f(pos, 0.0, 1.0), uv);
+      @vertex fn vs(@location(0) pos: vec2f, @location(1) uv: vec2f, @builtin(instance_index) i: u32) -> Out {
+        let inst = data.instances[i];
+        let p_pos = inst.transform1.xy;
+        let p_size = inst.transform1.zw;
+        let p_rot = inst.transform2.x;
+        let canvasSize = inst.transform2.yz;
+
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, canvasSize);
+        return Out(ndc, uv);
       }
 
       @group(1) @binding(0) var s: sampler;
       @group(1) @binding(1) var t: texture_2d<f32>;
-
-      @fragment fn fs(@builtin(position) p: vec4f, @location(0) uv: vec2f) -> @location(0) vec4f {
+      @fragment fn fs(@location(0) uv: vec2f) -> @location(0) vec4f {
         return textureSample(t, s, uv);
       }
     `;
 
-    // -----------------------------------------------------------------------
-    // Shader de patrón repetido — aplica uvScale y uvOffset para tiling
-    // El struct ocupa 128 bytes (32 floats):
-    //   mat4x4f = 64 bytes, uvScale = 8 bytes, uvOffset = 8 bytes, _pad = 48 bytes → total 128 bytes
-    // -----------------------------------------------------------------------
+    // 2. SHADER DE PATRÓN
     const patternShader = `
-      struct InstPattern { mat: mat4x4f, uvScale: vec2f, uvOffset: vec2f, _pad: array<vec4f, 3> };
+      struct InstPattern {
+        transform1: vec4f, // [x, y, width, height]
+        transform2: vec4f, // [rotation, canvasWidth, canvasHeight, 0]
+        tiling: vec4f,     // [uvScaleX, uvScaleY, uvOffsetX, uvOffsetY]
+        _pad: vec4f
+      };
       struct DataPattern { instances: array<InstPattern> };
       @group(0) @binding(0) var<storage, read> data: DataPattern;
 
       struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f };
 
-      @vertex fn vs(
-        @location(0) pos: vec2f,
-        @location(1) uv: vec2f,
-        @builtin(instance_index) i: u32
-      ) -> Out {
+      ${commonWGSLTransforms}
+
+      @vertex fn vs(@location(0) pos: vec2f, @location(1) uv: vec2f, @builtin(instance_index) i: u32) -> Out {
         let inst = data.instances[i];
-        // uv (0→1 sobre el quad) escalado al número de repeticiones + desplazamiento de fase
-        let tiledUV = uv * inst.uvScale + inst.uvOffset;
-        return Out(inst.mat * vec4f(pos, 0.0, 1.0), tiledUV);
+        let p_pos = inst.transform1.xy;
+        let p_size = inst.transform1.zw;
+        let p_rot = inst.transform2.x;
+        let canvasSize = inst.transform2.yz;
+
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, canvasSize);
+        let tiledUV = uv * inst.tiling.xy + inst.tiling.zw;
+        return Out(ndc, tiledUV);
       }
 
       @group(1) @binding(0) var s: sampler;
       @group(1) @binding(1) var t: texture_2d<f32>;
-
-      @fragment fn fs(@builtin(position) p: vec4f, @location(0) uv: vec2f) -> @location(0) vec4f {
+      @fragment fn fs(@location(0) uv: vec2f) -> @location(0) vec4f {
         return textureSample(t, s, uv);
       }
     `;
 
-    // -----------------------------------------------------------------------
-    // Shader de rectángulo — fill + border, sin textura
-    // -----------------------------------------------------------------------
+    // 3. SHADER DE RECTÁNGULO
     const rectShader = `
-      struct InstRect { mat: mat4x4f, _pad: vec4f, fill: vec4f, brdC: vec4f, brdW: f32 };
+      struct InstRect {
+        transform1: vec4f, // [x, y, width, height]
+        transform2: vec4f, // [rotation, borderWidth, canvasWidth, canvasHeight]
+        fill: vec4f,       // [r, g, b, a]
+        border: vec4f      // [r, g, b, a]
+      };
       struct DataRect { instances: array<InstRect> };
       @group(0) @binding(0) var<storage, read> data: DataRect;
 
       struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f, @location(1) @interpolate(flat) id: u32 };
 
-      @vertex fn vs(
-        @location(0) pos: vec2f,
-        @location(1) uv: vec2f,
-        @builtin(instance_index) i: u32
-      ) -> Out {
-        return Out(data.instances[i].mat * vec4f(pos, 0.0, 1.0), uv, i);
+      ${commonWGSLTransforms}
+
+      @vertex fn vs(@location(0) pos: vec2f, @location(1) uv: vec2f, @builtin(instance_index) i: u32) -> Out {
+        let inst = data.instances[i];
+        let p_pos = inst.transform1.xy;
+        let p_size = inst.transform1.zw;
+        let p_rot = inst.transform2.x;
+        let canvasSize = inst.transform2.zw;
+
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, canvasSize);
+        return Out(ndc, uv, i);
       }
 
       @fragment fn fs(in: Out) -> @location(0) vec4f {
         let inst = data.instances[in.id];
+        let brdW = inst.transform2.y;
+
         let d = max(abs(in.uv.x - 0.5), abs(in.uv.y - 0.5)) * 2.0;
         if (d > 1.0) { discard; }
-        if (d > (1.0 - inst.brdW * 2.0)) { return inst.brdC; }
+        if (d > (1.0 - brdW * 2.0)) { return inst.border; }
         return inst.fill;
       }
     `;
@@ -442,28 +452,24 @@ export default class WebGPUCanvas {
       alpha: { srcFactor: "one",       dstFactor: "one-minus-src-alpha", operation: "add" }
     } as GPUBlendState;
 
-    const imageModule   = this.device.createShaderModule({ code: imageShader });
-    const patternModule = this.device.createShaderModule({ code: patternShader });
-    const rectModule    = this.device.createShaderModule({ code: rectShader });
-
     this.texturePipeline = this.device.createRenderPipeline({
       layout: "auto",
-      vertex:   { module: imageModule,   entryPoint: "vs", buffers: [commonAttribs as any] },
-      fragment: { module: imageModule,   entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      vertex:   { module: this.device.createShaderModule({ code: imageShader }),   entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: this.device.createShaderModule({ code: imageShader }),   entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
       primitive: { topology: "triangle-list" }
     });
 
     this.patternPipeline = this.device.createRenderPipeline({
       layout: "auto",
-      vertex:   { module: patternModule, entryPoint: "vs", buffers: [commonAttribs as any] },
-      fragment: { module: patternModule, entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      vertex:   { module: this.device.createShaderModule({ code: patternShader }), entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: this.device.createShaderModule({ code: patternShader }), entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
       primitive: { topology: "triangle-list" }
     });
 
     this.shapePipeline = this.device.createRenderPipeline({
       layout: "auto",
-      vertex:   { module: rectModule,    entryPoint: "vs", buffers: [commonAttribs as any] },
-      fragment: { module: rectModule,    entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      vertex:   { module: this.device.createShaderModule({ code: rectShader }),    entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: this.device.createShaderModule({ code: rectShader }),    entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
       primitive: { topology: "triangle-list" }
     });
   }
