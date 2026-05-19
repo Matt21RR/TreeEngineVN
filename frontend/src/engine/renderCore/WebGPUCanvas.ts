@@ -208,8 +208,8 @@ export default class WebGPUCanvas {
         allData[offset + 2] = item.width;
         allData[offset + 3] = item.height;
         allData[offset + 4] = item.rotation;
-        allData[offset + 5] = cw; // Enviamos el ancho del canvas por instancia
-        allData[offset + 6] = ch; // Enviamos el alto del canvas por instancia
+        allData[offset + 5] = cw;
+        allData[offset + 6] = ch;
         globalIndex++;
       });
       drawCalls.push({ id, firstInstance, count: items.length });
