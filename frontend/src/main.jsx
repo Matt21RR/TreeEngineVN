@@ -3,7 +3,6 @@ import './index.css';
 import "./engine/resources/css/fonts.css";
 
 import { Test } from './windows/Test.jsx';
-import WebGpuTest from "./WebGpuTest";
 
 window.workRoute = "./";
 window.projectRoute = window.workRoute + "game/";
@@ -16,6 +15,5 @@ document.title = "TreeEngineVN";
 root.render(
   <>
   <Test/>
-  {/* <WebGpuTest/> */}
   </>
 );
