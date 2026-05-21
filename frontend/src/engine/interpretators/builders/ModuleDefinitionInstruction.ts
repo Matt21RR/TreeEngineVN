@@ -1,11 +1,12 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class ModuleDefinitionInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
-      0: {type:"word", wordMatch:"module"},
-      1: {type:"word", result:(tokens)=>{
+      0: {type:TokenType.word, wordMatch:"module"},
+      1: {type:TokenType.word, result:(tokens)=>{
         return {moduleId: tokens[1].value}
       }}
     });

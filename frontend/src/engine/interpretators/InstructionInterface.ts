@@ -2,10 +2,10 @@ import { Dictionary } from "../../global.ts";
 import { arrayFlatter } from "../logic/Misc.ts";
 import { Chaos } from "./ChaosInterpreter.ts";
 import Instruction from "./Instruction.ts";
-import Token from "./Token.ts";
+import Token, { TokenType } from "./Token.ts";
 
 interface TokenCondition{
-  type?: string | Array<string>,
+  type?: TokenType | Array<TokenType>,
 	isArray?: boolean,
 	wordMatch?:string,
 	instructionLength?: number,
@@ -55,7 +55,7 @@ abstract class InstructionInterface{
         }
         if(tokenCondition.type){
           if(Array.isArray(tokenCondition.type)){
-            if(!(tokenCondition.type as Array<string>).includes((token as Token).type)){
+            if(!(tokenCondition.type as Array<TokenType>).includes((token as Token).type)){
               break;
             }
           }else if((token as Token).type != tokenCondition.type){

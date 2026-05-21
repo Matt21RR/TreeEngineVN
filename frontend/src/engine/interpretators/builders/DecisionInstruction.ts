@@ -1,6 +1,7 @@
 import { Dictionary } from "../../../global.ts";
 import { arrayChuncker, arrayFlatter } from "../../logic/Misc.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class OptionInstruction extends InstructionInterface{
   isOfThisType(instruction){
@@ -12,16 +13,16 @@ class OptionInstruction extends InstructionInterface{
     let firstElement, firstExpresion;
     let secondElement, secondExpresion;
     return this.conditionsChecker(instruction, {
-      0: {type:"operator", wordMatch:"*"},
+      0: {type:TokenType.operator, wordMatch:"*"},
       1: [
         { 
-          1: {type:"text", instructionLength:2, result:(tokens)=>{
+          1: {type:TokenType.text, instructionLength:2, result:(tokens)=>{
             return {label: tokens[1].value};
           }}
         },
         {
-          1: {type:"text"},
-          2: {type:"word", condition:(token)=>{
+          1: {type:TokenType.text},
+          2: {type:TokenType.word, condition:(token)=>{
             firstElement = token.value;
             return ["if", "nextNode"].includes(token.value);
           }},
@@ -40,7 +41,7 @@ class OptionInstruction extends InstructionInterface{
               }}
             },{
               3: {instructionLength:6},
-              4: {type:"word", condition:(token)=>{
+              4: {type:TokenType.word, condition:(token)=>{
                 secondElement = token.value;
                 return ["if", "nextNode"].includes(token.value) && secondElement != firstElement;
               }},
@@ -86,8 +87,8 @@ class OptionInstruction extends InstructionInterface{
 export default class DecisionInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
-      0: {type:"word", wordMatch:"ask", instructionLength:3},
-      1: {type:"text"},
+      0: {type:TokenType.word, wordMatch:"ask", instructionLength:3},
+      1: {type:TokenType.text},
       2: {isArray:true, result:(tokens)=>{
         let tokArray = tokens[2] as unknown as Array<any>;
         tokArray.shift();

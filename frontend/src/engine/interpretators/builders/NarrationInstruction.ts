@@ -1,11 +1,12 @@
 import { Dictionary } from "../../../global.ts";
 import AgrupableInstructionInterface from "../AgrupableInstructionInterface.ts";
 import { Interpretation } from "../ChaosInterpreter.ts";
+import { TokenType } from "../Token.ts";
 
 class NarrationInstruction extends AgrupableInstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
-      0: {type:"text", instructionLength:1, result:(tokens)=>{
+      0: {type:TokenType.text, instructionLength:1, result:(tokens)=>{
         return {narration: tokens[0].value}
       }}
     });

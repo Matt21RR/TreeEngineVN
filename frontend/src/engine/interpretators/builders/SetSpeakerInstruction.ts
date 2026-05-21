@@ -1,11 +1,12 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class SetSpeakerInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
-      0: {type:"word"},
-      1: {type:"word", wordMatch:"says", result:(tokens)=>{
+      0: {type:TokenType.word},
+      1: {type:TokenType.word, wordMatch:"says", result:(tokens)=>{
         return {actor: tokens[0].value}
       }}
     });

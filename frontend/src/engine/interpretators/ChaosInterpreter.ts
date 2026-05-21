@@ -1,30 +1,11 @@
 import { arrayFlatter } from "../logic/Misc.ts";
-import CreateInstruction from "./builders/CreateInstruction.ts";
-import DialogInstruction from "./builders/DialogInstruction.ts";
-import IncludeInstruction from "./builders/IncludeInstruction.ts";
-import ModuleDefinitionInstruction from "./builders/ModuleDefinitionInstruction.ts";
-import NarrationInstruction from "./builders/NarrationInstruction.ts";
-import ResumeInstruction from "./builders/ResumeInstruction.ts";
-import RunInstruction from "./builders/RunInstruction.ts";
-import SceneDefinitionInstruction from "./builders/SceneDefinitionInstruction.ts";
-import SetInstruction from "./builders/SetInstruction.ts";
-import DeleteInstruction from "./builders/DeleteInstruction.ts";
-import WaitInstruction from "./builders/WaitInstruction.ts";
 import Token, { TokenType } from "./Token.ts";
 import Instruction from "./Instruction.ts";
-import NodeDefinitionInstruction from "./builders/NodeDefinitionInstruction.ts";
-import StructureEndInstruction from "./builders/StructureEndInstruction.ts";
 import AgrupableInstructionInterface from "./AgrupableInstructionInterface.ts";
-import JumpToInstruction from "./builders/JumpToInstruction.ts";
-import SetSpeakerInstruction from "./builders/SetSpeakerInstruction.ts";
 import { Dictionary } from "../../global.ts";
 import sequencedPromise from "./new.ts";
 import { RequestFile } from "../../../wailsjs/go/main/App.js";
-import MoveActorInstruction from "./builders/MoveActorInstruction.ts";
-import EmotionChangeInstruction from "./builders/EmotionChangeInstruction.ts";
-import ArriveInstruction from "./builders/ArriveInstruction.ts";
-import SoundInstruction from "./builders/SoundInstruction.ts";
-import DecisionInstruction from "./builders/DecisionInstruction.ts";
+import supportedInstructions from "./SupportedInstructions.ts";
 
 export type ScenesDictionary = Dictionary<{main:string,nodes:Dictionary<string>}>;
 type ModulesDictionary = Dictionary<string>;
@@ -43,31 +24,9 @@ class ChaosInterpreter {
     //@ts-ignore
     window.chaos = this;
   }
-  supportedInstructions = [
-    new CreateInstruction(),
-    new DecisionInstruction(),
-    new DialogInstruction(),
-    new IncludeInstruction(),
-    new ModuleDefinitionInstruction(),
-    new NodeDefinitionInstruction(),
-    new JumpToInstruction(),
-    new SetSpeakerInstruction(),
-    new StructureEndInstruction(),
-    new NarrationInstruction(),
-    new ResumeInstruction(),
-    new RunInstruction(),
-    new SceneDefinitionInstruction(),
-    new SetInstruction(),
-    new DeleteInstruction(),
-    new WaitInstruction(),
-    new MoveActorInstruction(),
-    new EmotionChangeInstruction(),
-    new ArriveInstruction(),
-    new SoundInstruction()
-  ];
 
   invokeSupportedInstruction(instructionType: string){
-    return this.supportedInstructions.find(inst => inst.constructor.name == instructionType); //TODO: check this
+    return supportedInstructions.find(inst => inst.constructor.name == instructionType); //TODO: check this
   }
 
   private getSound(){
@@ -163,7 +122,7 @@ class ChaosInterpreter {
   //Useful for tokenization script checking, to check if the script have syntax errors before trying to interpretate it
   tokenization(script:string){
     script += "\n"; //To avoid the last line to be ignored
-    let tokenList = this.lexer(script).filter(tk=>{return (Array.isArray(tk))||((tk as Token).type != "space")});
+    let tokenList = this.lexer(script).filter(tk=>{return (Array.isArray(tk))||((tk as Token).type != TokenType.space)});
     let abs = this.preParser(tokenList);
     return abs;
   }
@@ -174,7 +133,7 @@ class ChaosInterpreter {
 
     for (const instruction of abs) {
       if(Array.isArray(instruction)){
-        for (const supportedInstruction of this.supportedInstructions) {
+        for (const supportedInstruction of supportedInstructions) {
           //@ts-ignore
           const resCheck = (supportedInstruction).check(instruction as Instruction,this,true);
           // console.log(resCheck, supportedInstruction.constructor.name);
@@ -238,7 +197,7 @@ class ChaosInterpreter {
         } 
         continue;
       }else if(instruction instanceof Token){
-        if(instruction.type == "jsCode"){
+        if(instruction.type == TokenType.jsCode){
           collection.push({itWasAScriptInstruction:true,result:instruction.value,matchName:"",isAgrupable:false});
           continue;
         }
@@ -262,23 +221,23 @@ class ChaosInterpreter {
     const tokenList = (result as RegExpMatchArray).map((val,index)=>{
           let symbol: TokenType;
           if(val.match(/\n{1,}/)){
-            symbol="lineBreak";
+            symbol=TokenType.lineBreak;
           }else if(val.match(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/)){
-            symbol="text";
+            symbol=TokenType.text;
           }else if(val.match(/[+\-*/%^=!<>&|]/)){
-            symbol="operator";
+            symbol=TokenType.operator;
           }else if(val.match(/(\d+\.?\d*)|(\.\d*)/)){
-            symbol="number";
+            symbol=TokenType.number;
           }else if(val.match(/[\(\{\[]/)){
-            symbol="openBracket";
+            symbol=TokenType.openBracket;
           }else if(val.match(/[\)\}\]]/)){
-            symbol="closeBracket";
+            symbol=TokenType.closeBracket;
           }else if(val.match(/[\.,;:]/)){
-            symbol="separator";
+            symbol=TokenType.separator;
           }else if(val.match(/\s{1,}/)){
-            symbol="space";
+            symbol=TokenType.space;
           }else{
-            symbol="word";//Probably ;)
+            symbol=TokenType.word;//Probably ;)
           }
 
           return new Token(val,symbol,index);
@@ -290,53 +249,52 @@ class ChaosInterpreter {
     return arrayFlatter(tokenList).map(token=>{return token.value}).join("");
   }
 
-  private preParser(tokenList:Array<Token>, bracketsChain:Array<Token> = []):[Instruction,number]|Instruction{
+  private preParser(tokenList:Array<Token>, bracketsPile:Array<Token> = []) : [Instruction, number]|Instruction{
     let abs:Instruction = new Instruction();
-    let acum:Instruction = bracketsChain.map(a=>a) as Instruction;
+    let acum:Instruction = bracketsPile.map(a=>a) as Instruction;
     let isJsCode = false;
-    let loops = 0;
-    let bracketCounter = bracketsChain.length;
+    let loopsDone = 0;
+    let bracketCounter = bracketsPile.length;
     for (let idx = 0; idx < tokenList.length; idx++) {
-      loops++;
+      loopsDone++;
       const token = tokenList[idx];
-      if(token.type == "openBracket"){
-        let res:Instruction;
-        let checked:number;
-        [res, checked] = this.preParser(tokenList.slice(idx+1),[token]) as [Instruction,number];
-        loops += checked;
+      if(token.type == TokenType.openBracket){
+        // bracketCounter++;
+        let [res, checked] = this.preParser(tokenList.slice(idx+1), [token]) as [Instruction, number];
+        loopsDone += checked;
         idx += checked;
         acum.push(res);
         continue;
       }
-      if(token.type == "closeBracket"){
-        const latestBracketInChain =  bracketsChain.at(-1);
-        if(latestBracketInChain !== undefined){
+      if(token.type == TokenType.closeBracket){
+        const latestBracketInPile =  bracketsPile.at(-1);
+        if(latestBracketInPile !== undefined){
           if(
-            token.value == "]" && latestBracketInChain.value == "[" ||
-            token.value == "}" && latestBracketInChain.value == "{" ||
-            token.value == ")" && latestBracketInChain.value == "("
+            token.value == "]" && latestBracketInPile.value == "[" ||
+            token.value == "}" && latestBracketInPile.value == "{" ||
+            token.value == ")" && latestBracketInPile.value == "("
           ){
             acum.push(token);
-            bracketsChain.pop();
+            bracketsPile.pop();
             bracketCounter--;
             if(bracketCounter == 0){
               //TODO: Preventive check if the acum have script instructions
-              // console.log(acum,loops);
-              return [acum,loops];
+              return [acum,loopsDone];
             }
           }else{
-            console.error(`Syntax error: ${token.value} in token ${token.index}, expected ${latestBracketInChain.value}`);
-            // debugger;
+            console.error(`Syntax error: ${token.value} in token ${token.index}, expected ${latestBracketInPile.value}`);
             //TODO: Add a throw error
             break;
           }
         }
 
       }
-      if(token.type == "lineBreak" && bracketCounter == 0){
+      if(token.type == TokenType.lineBreak && bracketCounter == 0){ //Si hay un salto de linea y ttodos los brackets se han cerrado
         if(isJsCode){
           if(this.tokenListToText(acum).length != 0){
-            abs.push(new Token(this.tokenListToText(acum),"jsCode",acum[0].index));
+            abs.push(
+              new Token(this.tokenListToText(acum), TokenType.jsCode,acum[0].index)
+            );
           }
         }else{//* If is not a js code, then it is a script instruction
           abs.push(acum);
@@ -345,52 +303,57 @@ class ChaosInterpreter {
         acum = new Instruction();
         continue;
       }
-      if(acum.length == 0 && token.type == "word"){
-        if(token.value == "@"){
-          isJsCode = true;
-          continue
-        }
+      if(acum.length == 0 && token.type == TokenType.word && token.value == "@"){
+        isJsCode = true;
+        continue;
       }
-      if(isJsCode || token.type == "word" || token.type == "lineBreak" || token.type == "number" || token.type == "text" || token.type == "operator" || token.type == "separator" || (acum.length != 0 && token.type == "space")){
-        acum.push(token);
+      if(
+        isJsCode || 
+        token.type == TokenType.word || 
+        token.type == TokenType.lineBreak || 
+        token.type == TokenType.number || 
+        token.type == TokenType.text || 
+        token.type == TokenType.operator || 
+        token.type == TokenType.separator || 
+        (acum.length != 0 && token.type == TokenType.space)){
 
+        acum.push(token);
         //*Cuando un token de salto de linea sea agregado,comprobar si acum tiene saltos de linea anteriores    
         //*si es verdad, comprobar que el contenido presente entre saltos de linea sea una instruccion del motor    
         //*en caso de que sea verdad, se debe de convertir inmediatamente ese contenido de instruccion del motor
         //*a codigo de js: new Token(...,js,plausibleInstruction[0].index)
 
-        let plausibleInstruction = new Instruction();
-
-        if(token.type == "lineBreak"){
+        if(token.type == TokenType.lineBreak){
+          let plausibleInstruction = new Instruction();
           let prevLineBreakFound = false;
           
-          for(let idxB = acum.length-2; idxB > 0; idxB--){
-            const tokB = acum[idxB];
+          for(let idxInner = acum.length-2; idxInner > 0; idxInner--){
+            const tokenB = acum[idxInner];
 
-            if(tokB.constructor === Token && (tokB as Token).type == "lineBreak"){
+            if(tokenB.constructor === Token && (tokenB as Token).type == TokenType.lineBreak){
               prevLineBreakFound = true;
               break;
             }
-            plausibleInstruction.push(tokB);
+            plausibleInstruction.push(tokenB);
           }
           if(prevLineBreakFound){
             plausibleInstruction.reverse();
             //@ts-ignore
-            const interpretation = this.interpretateInstruction(plausibleInstruction,true);
+            const interpretation = this.interpretateInstruction(plausibleInstruction, true);
             if(interpretation.itWasAScriptInstruction){
-              acum.splice((acum.length-1)-plausibleInstruction.length);
+              acum.splice((acum.length-1)-plausibleInstruction.length); //Remover todos los tokens que conforman la posible instrucción
               acum.push(
-                new Token( interpretation.result, "jsCode", plausibleInstruction[0].index)
+                new Token( interpretation.result, TokenType.jsCode, plausibleInstruction[0].index)
               );
-              if(plausibleInstruction.length>1){
-                acum.push(
-                  new Token( "\n", "lineBreak", plausibleInstruction[1].index)
+
+              acum.push(
+                new Token( 
+                  "\n", 
+                  TokenType.lineBreak, 
+                  plausibleInstruction[ plausibleInstruction.length>1 ? 1 : 0 ].index
                 )
-              }else{
-                acum.push(
-                  new Token( "\n", "lineBreak", plausibleInstruction[0].index)
-                )
-              }
+              );
+
             }
           }
         }
@@ -408,11 +371,11 @@ class ChaosInterpreter {
     if(_instruction.length == 0){
       return {itWasAScriptInstruction,result,matchName,isAgrupable};
     }
-    const instruction = _instruction.filter(tk=>{return Array.isArray(tk)||((tk as Token).type != "space")});
+    const instruction = _instruction.filter(tk=>{return Array.isArray(tk)||((tk as Token).type != TokenType.space)});
 
-    for (const supportedInstruction of this.supportedInstructions) {
+    for (const supportedInstruction of supportedInstructions) {
       //@ts-ignore
-      const res = (supportedInstruction).check(instruction,this,!recursiveMode);
+      const res = (supportedInstruction).check(instruction, this, !recursiveMode);
       if(res.match){
         itWasAScriptInstruction = true;
         result = res.result as Interpretation;

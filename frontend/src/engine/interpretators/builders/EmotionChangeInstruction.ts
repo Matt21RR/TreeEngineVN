@@ -1,16 +1,17 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class EmotionChangeInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction,{
-      0: {type: "word"},
-      1: {type: "word", wordMatch: "gets"},
+      0: {type: TokenType.word},
+      1: {type: TokenType.word, wordMatch: "gets"},
       2: [
         {
-          2: {type: "word", instructionLength: 5},
-          3: {type: "word", wordMatch: "in"},
-          4: {type: "number", result:(tokens)=>{
+          2: {type: TokenType.word, instructionLength: 5},
+          3: {type: TokenType.word, wordMatch: "in"},
+          4: {type: TokenType.number, result:(tokens)=>{
             return {
               actorId: tokens[0].value, 
               emotionId: tokens[2].value,
@@ -18,7 +19,7 @@ class EmotionChangeInstruction extends InstructionInterface{
           }}
         },
         {
-          2: {type: "word", result:(tokens)=>{
+          2: {type: TokenType.word, result:(tokens)=>{
             return {
               actorId: tokens[0].value, 
               emotionId: tokens[2].value};

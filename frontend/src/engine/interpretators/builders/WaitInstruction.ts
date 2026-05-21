@@ -1,17 +1,18 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class WaitInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, [
       {
-        0:{type:"word", wordMatch:"wait"},
-        1:{type:"number", result:(tokens)=>{
+        0:{type:TokenType.word, wordMatch:"wait"},
+        1:{type:TokenType.number, result:(tokens)=>{
           return {waitTime: tokens[1].value};
         }}
       },
       {
-        0:{type:"word", wordMatch:"wait", result:()=>{
+        0:{type:TokenType.word, wordMatch:"wait", result:()=>{
           return {waitTime: null};
         }}
       }

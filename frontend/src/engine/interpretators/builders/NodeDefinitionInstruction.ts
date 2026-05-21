@@ -1,12 +1,13 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class NodeDefinitionInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
-      0: {instructionLength:3, type:"word", wordMatch:"node"},
-      1: {type:"separator", wordMatch:":"},
-      2: {type:"word", result:(tokens)=>{
+      0: {instructionLength:3, type:TokenType.word, wordMatch:"node"},
+      1: {type:TokenType.separator, wordMatch:":"},
+      2: {type:TokenType.word, result:(tokens)=>{
         return {nodeId: tokens[2].value}
       }}
     });

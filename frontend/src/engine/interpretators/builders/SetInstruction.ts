@@ -1,16 +1,17 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class SetInstruction extends InstructionInterface{
   isOfThisType(instruction){
     const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger","Engine"];
     return this.conditionsChecker(instruction,{
-      0: {type:"word", wordMatch:"set"},
-      1: {type:"word", condition:(token)=>{return creatableObjects.includes(token.value)}},
-      2: {type:["word","text"], result: (tokens)=>{
+      0: {type:TokenType.word, wordMatch:"set"},
+      1: {type:TokenType.word, condition:(token)=>{return creatableObjects.includes(token.value)}},
+      2: {type:[TokenType.word,TokenType.text], result: (tokens)=>{
         return {
           branch: tokens[1].value, 
-          id: tokens[2].type == "word" ? "'"+tokens[2].value+"'" : tokens[2].value};
+          id: tokens[2].type == TokenType.word ? "'"+tokens[2].value+"'" : tokens[2].value};
       }}
     });
   }

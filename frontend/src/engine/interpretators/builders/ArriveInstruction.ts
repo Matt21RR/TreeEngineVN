@@ -1,17 +1,18 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 export default class ArriveInstruction extends InstructionInterface{
   isOfThisType(instruction): Dictionary {
     let result = this.conditionsChecker(instruction,{
-      0: {type:"word"},
-      1: {type:"word", wordMatch:"arrives"},
-      2: {type:"word", wordMatch:"to"},
+      0: {type:TokenType.word},
+      1: {type:TokenType.word, wordMatch:"arrives"},
+      2: {type:TokenType.word, wordMatch:"to"},
       3: [
         {
-          3:{type:"word", instructionLength:6},
-          4:{type:"word", wordMatch:"in"},
-          5:{type:"number", result:(tokens)=>{
+          3:{type:TokenType.word, instructionLength:6},
+          4:{type:TokenType.word, wordMatch:"in"},
+          5:{type:TokenType.number, result:(tokens)=>{
             return {
               actorId: tokens[0].value, 
               markId: tokens[3].value, 
@@ -19,7 +20,7 @@ export default class ArriveInstruction extends InstructionInterface{
           }}
         },
         {
-          3:{type:"word", result:(tokens)=>{
+          3:{type:TokenType.word, result:(tokens)=>{
             return {
               actorId: tokens[0].value, 
               markId: tokens[3].value};

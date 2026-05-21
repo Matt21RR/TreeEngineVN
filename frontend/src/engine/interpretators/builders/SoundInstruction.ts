@@ -1,23 +1,24 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 export default class SoundInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
-      0: {type:"word", wordMatch:"sound"},
-      1: {type:["word","text"]},
+      0: {type:TokenType.word, wordMatch:"sound"},
+      1: {type:[TokenType.word,TokenType.text]},
       2: [
         {
-          2: {type:"word", result:(tokens)=>{
+          2: {type:TokenType.word, result:(tokens)=>{
             return {
               action: tokens[2].value,
-              id: tokens[1].type == "word" ? "'"+tokens[1].value+"'" : tokens[1].value};
+              id: tokens[1].type == TokenType.word ? "'"+tokens[1].value+"'" : tokens[1].value};
           }}
         },
         {
           2: {isArray:true, result:(tokens)=>{
             return {
-              id: tokens[1].type == "word" ? "'"+tokens[1].value+"'" : tokens[1].value};
+              id: tokens[1].type == TokenType.word ? "'"+tokens[1].value+"'" : tokens[1].value};
           }}
         }
       ]

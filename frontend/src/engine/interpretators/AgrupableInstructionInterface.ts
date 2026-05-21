@@ -1,4 +1,4 @@
-import { Chaos, Interpretation } from "./ChaosInterpreter.ts";
+import { Interpretation } from "./ChaosInterpreter.ts";
 import InstructionInterface from "./InstructionInterface.ts";
 
 abstract class AgrupableInstructionInterface extends InstructionInterface{

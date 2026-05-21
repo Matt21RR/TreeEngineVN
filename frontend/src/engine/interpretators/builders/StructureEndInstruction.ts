@@ -1,6 +1,7 @@
 import { Dictionary } from "../../../global.ts";
 import { ScriptStructure } from "../ChaosInterpreter.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class StructureEndInstruction extends InstructionInterface{
   isOfThisType(instruction){
@@ -11,8 +12,8 @@ class StructureEndInstruction extends InstructionInterface{
       .includes(value.toLowerCase());
     }
     return this.conditionsChecker(instruction, {
-      0: {type:"word", wordMatch:"end"},
-      1: {type:"word",  condition:(token)=>{
+      0: {type:TokenType.word, wordMatch:"end"},
+      1: {type:TokenType.word,  condition:(token)=>{
         return structTypeCheck(token.value.toLowerCase());
       }, result: (tokens)=>{
         return {end:tokens[1].value.toLowerCase()};

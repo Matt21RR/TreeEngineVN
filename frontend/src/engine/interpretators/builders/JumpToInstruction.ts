@@ -1,11 +1,12 @@
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class JumpToInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
-      0: {type:"word", wordMatch:"jumpto"},
+      0: {type:TokenType.word, wordMatch:"jumpto"},
       // 1: {type:"separator", wordMatch:":"},
-      1: {type:"word", result:(tokens)=>{
+      1: {type:TokenType.word, result:(tokens)=>{
         return {label: tokens[1].value}
       }}
     });

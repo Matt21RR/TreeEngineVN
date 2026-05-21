@@ -1,20 +1,21 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 
 class CreateInstruction extends InstructionInterface{
   isOfThisType(instruction): Dictionary {
     const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger", "Actor", "StageMark"];
     let result = this.conditionsChecker(instruction, {
-      0: {type: ["word", "text"]},
-      1: {type: "operator", wordMatch: "="},
-      2: {type: "word", wordMatch: "new"},
-      3: {type: "word", condition: (token)=>{return creatableObjects.includes(token.value)}},
+      0: {type: [TokenType.word, TokenType.text]},
+      1: {type: TokenType.operator, wordMatch: "="},
+      2: {type: TokenType.word, wordMatch: "new"},
+      3: {type: TokenType.word, condition: (token)=>{return creatableObjects.includes(token.value)}},
       4: {isArray: true, result: (tokens)=>{
         return {
           match:true, 
           branch: tokens[3].value, 
-          id: tokens[0].type == "word" ? '"'+tokens[0].value+'"' : tokens[0].value
+          id: tokens[0].type == TokenType.word ? '"'+tokens[0].value+'"' : tokens[0].value
         };
       }}
       
@@ -22,8 +23,8 @@ class CreateInstruction extends InstructionInterface{
 
     if(!result.match){
       result = this.conditionsChecker(instruction, {
-        0: {type: "word", wordMatch: "new"},
-        1: {type: "word", wordMatch: "KeyboardTrigger"},
+        0: {type: TokenType.word, wordMatch: "new"},
+        1: {type: TokenType.word, wordMatch: "KeyboardTrigger"},
         2: {isArray: true, result: (tokens)=>{
           return {
             match: true, 

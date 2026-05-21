@@ -2,7 +2,7 @@ import { Dictionary } from "../../../global.ts";
 import { isTemplateLiteral, templateLiteralSplitter } from "../../logic/Misc.ts";
 import AgrupableInstructionInterface from "../AgrupableInstructionInterface.ts";
 import { Interpretation } from "../ChaosInterpreter.ts";
-import Token from "../Token.ts";
+import Token, { TokenType } from "../Token.ts";
 
 class DialogInstruction extends AgrupableInstructionInterface{
   private specialInstructionReductor(instruction){
@@ -14,7 +14,7 @@ class DialogInstruction extends AgrupableInstructionInterface{
         dec.push(`{type:"config",value:${configDict}}`);
         continue;
       }
-      else if((token as Token).type == "text"){ //is token and must to be an text token
+      else if((token as Token).type == TokenType.text){ //is token and must to be an text token
         if(isTemplateLiteral(token.value)){
           const templateLit = templateLiteralSplitter(token.value);
           for (const element of templateLit) {
@@ -35,8 +35,8 @@ class DialogInstruction extends AgrupableInstructionInterface{
   }
   protected isOfThisType(instruction){
     return this.conditionsChecker(instruction,{
-      0: {type:"operator", wordMatch:"-"},
-      1: {type:"text", result:(tokens)=>{
+      0: {type:TokenType.operator, wordMatch:"-"},
+      1: {type:TokenType.text, result:(tokens)=>{
         tokens.shift();
         const dialog = this.specialInstructionReductor(tokens);
         return {dialog};

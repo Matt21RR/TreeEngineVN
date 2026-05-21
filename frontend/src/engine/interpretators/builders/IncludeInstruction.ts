@@ -1,12 +1,13 @@
 import { Dictionary } from "../../../global.ts";
 import { Chaos } from "../ChaosInterpreter.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 export default class IncludeInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
-      0: {type:"word", wordMatch:"include"},
-      1: {type:"text", result:(tokens)=>{ //id 
+      0: {type:TokenType.word, wordMatch:"include"},
+      1: {type:TokenType.text, result:(tokens)=>{ //id 
         return {
           loadId: tokens[1].value};
       }}

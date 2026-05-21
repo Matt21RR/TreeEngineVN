@@ -1,4 +1,15 @@
-export type TokenType = "lineBreak" | "text" | "operator" | "number" | "openBracket" | "closeBracket" | "separator" | "space" | "word" | "jsCode"
+export enum TokenType {
+  lineBreak,
+  text,
+  operator,
+  number,
+  openBracket,
+  closeBracket,
+  separator,
+  space,
+  word,
+  jsCode
+} 
 
 class Token{
   _value:any

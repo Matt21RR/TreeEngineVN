@@ -1,10 +1,11 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class ResumeInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction,{
-      0: {type:"word", wordMatch:"resume", result:()=>{return {}}}
+      0: {type:TokenType.word, wordMatch:"resume", result:()=>{return {}}}
     });
   }
   interpretate(isInRoutineMode: boolean,extractedData:Dictionary) {

@@ -1,17 +1,18 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 export default class MoveActorInstruction extends InstructionInterface{
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
-      0: {type:"word", wordMatch:"move"},
-      1: {type:"word"},
-      2: {type:"word", wordMatch:"to"},
+      0: {type:TokenType.word, wordMatch:"move"},
+      1: {type:TokenType.word},
+      2: {type:TokenType.word, wordMatch:"to"},
       3: [
         {
-          3: {type:"word", instructionLength:6},
-          4: {type:"word", wordMatch:"in"},
-          5: {type:"number", result:(tokens)=>{
+          3: {type:TokenType.word, instructionLength:6},
+          4: {type:TokenType.word, wordMatch:"in"},
+          5: {type:TokenType.number, result:(tokens)=>{
             return {
               actorId: tokens[1].value, 
               markId: tokens[3].value, 
@@ -19,7 +20,7 @@ export default class MoveActorInstruction extends InstructionInterface{
           }}
         },
         {
-          3: {type:"word", result:(tokens)=>{
+          3: {type:TokenType.word, result:(tokens)=>{
             return {
               actorId: tokens[1].value, 
               markId: tokens[3].value};
