@@ -19,8 +19,6 @@ import ArriveInstruction from "./builders/ArriveInstruction.ts";
 import SoundInstruction from "./builders/SoundInstruction.ts";
 import DecisionInstruction from "./builders/DecisionInstruction.ts";
 
-import Instruction from "./Instruction.ts";
-
 const supportedInstructions = [
   new CreateInstruction(),
   new DecisionInstruction(),
