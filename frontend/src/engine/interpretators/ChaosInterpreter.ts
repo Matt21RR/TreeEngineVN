@@ -8,7 +8,8 @@ import { RequestFile } from "../../../wailsjs/go/main/App.js";
 import supportedInstructions from "./SupportedInstructions.ts";
 
 export type ScenesDictionary = Dictionary<{main:string,nodes:Dictionary<string>}>;
-type ModulesDictionary = Dictionary<string>;
+export type ModulesDictionary = Dictionary<string>;
+export type InterpretedData = {scenes: ScenesDictionary, modules: ModulesDictionary}
 
 class ChaosInterpreter {
   scenes:Dictionary<{main:string,nodes:{}}>
@@ -59,7 +60,7 @@ class ChaosInterpreter {
     const self = this;
     const jsonPath = `${self.projectRoot}scripts/${scriptFileName}`;
 
-    console.log(`=> Trying to load ${scriptFileName}`);
+    // console.log(`=> Trying to load ${scriptFileName}`);
     return new Promise(resolve=>{
       RequestFile(jsonPath)
         .then(res=> atob(res))
@@ -99,7 +100,7 @@ class ChaosInterpreter {
       }
     })
   }
-  kreator(script:string,loadAudioVisual = true):Promise<{scenes:ScenesDictionary, modules:ModulesDictionary}>{
+  kreator(script:string,loadAudioVisual = true):Promise<InterpretedData>{
     return new Promise((resolve,reject)=>{ 
       this.loadScripts(!loadAudioVisual)
         .catch((err)=>{
@@ -107,7 +108,7 @@ class ChaosInterpreter {
           console.log("The scripts file couldn't be loaded. Ignoring!!!");
         })
         .finally(()=>{
-          let scenesAndNodes = this.instructionsDesintegrator(script) as {scenes:ScenesDictionary, modules:ModulesDictionary};
+          let scenesAndNodes = this.instructionsDesintegrator(script) as InterpretedData;
           Object.assign(this.scenes,scenesAndNodes.scenes);
           Object.assign(this.modules,scenesAndNodes.modules);
           resolve(scenesAndNodes);

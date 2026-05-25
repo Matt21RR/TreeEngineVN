@@ -7,6 +7,9 @@ import Swal from 'sweetalert2';
 import {SelectedFileProperties} from './FileExplorer.tsx';
 import { Request, RequestFile, RequestFileWithMime } from '../../wailsjs/go/main/App.js';
 import { Button1, IconButton } from './components/Buttons.tsx';
+import { RenderEngine } from '../engine/renderCore/RenderEngine.tsx';
+import { InterpretedData } from '../engine/interpretators/ChaosInterpreter.ts';
+import InterpretedDataViewer from './InterpretedDataViewer.tsx';
 
 type MultimediaProps = {
   setSelected: (indexFiles: number) => void;
@@ -22,7 +25,6 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
   const [mime, setMime] = useState("");
 
   useEffect(()=>{
-    console.log(editorId,info);
     setEditorId("multimediaTextEditor" + String(window.performance.now()).replaceAll(".",""))
     const src = info.src;
     const mime = src.split(".").at(-1) == "json" ? "text" : info.mime;
@@ -54,7 +56,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
   const text = ()=>{
     const name = info.name;
     return(
-      <>
+      <div className="flex flex-row w-full">
         <InputScript
           height={"h-full"} 
           fatherStyle={"bg-black bg-opacity-70"}
@@ -64,6 +66,9 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
             e.preventDefault(); 
           }}}
         />
+        
+        
+        
         <Button1 
           text="Save changes" 
           style="absolute bottom-0 right-5"
@@ -83,7 +88,14 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
               }
             });
           }}/>
-      </>
+        
+        <Button1 
+          text="Show Interpretation" 
+          style="absolute bottom-0 right-26"
+          action={()=>{
+            
+          }}/>
+      </div>
     );
   }
   
