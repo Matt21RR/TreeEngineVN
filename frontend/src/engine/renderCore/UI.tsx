@@ -63,7 +63,7 @@ class UI extends React.Component{
     return this.decisions
       .filter((el)=>{return el.condition ? el.condition(RenderEngine.getInstance()) : true})
       .map((element,index) => (
-      <span key={index} className="hover:invert-100 backdrop-opacity-50 cursor-pointer select-none" onClick={()=>{
+      <span key={index} className="hover:text-gray-400 backdrop-opacity-50 cursor-pointer text-white select-none" onClick={()=>{
         this.closeDecide(element);
       }}>
         {element.label}
