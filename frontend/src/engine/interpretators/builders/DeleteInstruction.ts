@@ -1,5 +1,6 @@
 import { Dictionary } from "../../../global.ts";
 import InstructionInterface from "../InstructionInterface.ts";
+import { TokenType } from "../Token.ts";
 
 class DeleteInstruction extends InstructionInterface{
   isOfThisType(instruction){

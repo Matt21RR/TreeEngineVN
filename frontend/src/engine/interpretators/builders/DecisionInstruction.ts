@@ -101,9 +101,9 @@ export default class DecisionInstruction extends InstructionInterface{
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const tokArray = extractedData.tokArray as Array<any>;
     const optionInstruction = new OptionInstruction();
-    const options = arrayChuncker(tokArray, (token)=>{return token.type == "lineBreak"})
+    const options = arrayChuncker(tokArray, (token)=>{return token.type == TokenType.lineBreak})
       .map((chunk)=>{
-        return optionInstruction.isOfThisType(chunk.filter((token)=>(token.type != "space")));
+        return optionInstruction.isOfThisType(chunk.filter((token)=>(token.type != TokenType.space)));
       })
       .filter(optionData=>optionData.match)
       .map(optionData=>{
@@ -115,6 +115,7 @@ export default class DecisionInstruction extends InstructionInterface{
       const optionsData = [${options}];
       engine.uiInstance.loadDecisions(optionsData);
     });`;
+    console.log(res);
 
     return res;
   }
