@@ -264,9 +264,14 @@ export function colorToRGBA(colorCode: string) : [number, number, number, number
   if(colorCode == "transparent"){
     return [0,0,0,0];
   }
-  const res = new ColorTranslator(colorCode);
-  
-  return [res.R, res.G, res.B, res.A*255] as [number, number, number, number];
+  try{
+    const res = new ColorTranslator(colorCode);
+    
+    return [res.R, res.G, res.B, res.A*255] as [number, number, number, number];
+  }catch(e){
+    console.error("Error converting color code: ", colorCode, e);
+    return [128,0,128,255];
+  }
 }
 export {
   mobileCheck,
