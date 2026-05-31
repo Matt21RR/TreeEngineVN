@@ -12,6 +12,11 @@ interface DrawParams {
   tileHeight?: number;
 }
 
+type QueuedItem = 
+  | { type: 'image'; params: DrawParams }
+  | { type: 'pattern'; params: DrawParams; mode: RepeatMode }
+  | { type: 'rect'; params: DrawParams };
+
 export default class WebGPUCanvas {
   private device!: GPUDevice;
   private context!: GPUCanvasContext;
@@ -30,9 +35,7 @@ export default class WebGPUCanvas {
   private patternInstanceBuffer!: GPUBuffer;
   private rectInstanceBuffer!: GPUBuffer;
 
-  private imageQueue: DrawParams[] = [];
-  private patternQueue: DrawParams[] = [];
-  private rectQueue: DrawParams[] = [];
+  private queue: QueuedItem[] = [];
   private MAX_INSTANCES = 40000;
 
   // Stride de 16 floats (64 bytes). 
@@ -124,8 +127,13 @@ export default class WebGPUCanvas {
     });
   }
 
-  queueImage(params: DrawParams) { this.imageQueue.push(params); }
-  queueRect(params: DrawParams) { this.rectQueue.push(params); }
+  queueImage(params: DrawParams) { 
+    this.queue.push({ type: 'image', params }); 
+  }
+
+  queueRect(params: DrawParams) { 
+    this.queue.push({ type: 'rect', params }); 
+  }
 
   queueRepeatPattern(params: DrawParams, mode: RepeatMode) {
     const canvas = this.context.canvas as HTMLCanvasElement;
@@ -149,10 +157,14 @@ export default class WebGPUCanvas {
     const uvOffsetX = -params.x / params.tileWidth!;
     const uvOffsetY = -params.y / params.tileHeight!;
 
-    this.patternQueue.push({
-      ...params,
-      x, y, width, height,
-      fillColor: [uvScaleX, uvScaleY, uvOffsetX, uvOffsetY]
+    this.queue.push({
+      type: 'pattern',
+      mode,
+      params: {
+        ...params,
+        x, y, width, height,
+        fillColor: [uvScaleX, uvScaleY, uvOffsetX, uvOffsetY]
+      }
     });
   }
 
@@ -164,44 +176,79 @@ export default class WebGPUCanvas {
     const passEncoder = commandEncoder.beginRenderPass({
       colorAttachments: [{
         view: this.context.getCurrentTexture().createView(),
-        clearValue: { r: 0, g: 0, b: 0, a: 1 },
+        clearValue: { r: 0, g: 0, b: 0, a: 0 },
         loadOp: "clear",
         storeOp: "store",
       }]
     });
 
-    // Fijar el viewport físicamente a las dimensiones actuales del canvas
     passEncoder.setViewport(0, 0, canvas.width, canvas.height, 0, 1);
     passEncoder.setVertexBuffer(0, this.vertexBuffer);
 
-    this.processImageQueue(passEncoder, canvas.width, canvas.height);
-    this.processPatternQueue(passEncoder, canvas.width, canvas.height);
-    this.processRectQueue(passEncoder, canvas.width, canvas.height);
+    this.processQueueInOrder(passEncoder, canvas.width, canvas.height);
 
     passEncoder.end();
     this.device.queue.submit([commandEncoder.finish()]);
 
-    this.imageQueue   = [];
-    this.patternQueue = [];
-    this.rectQueue    = [];
+    this.queue = [];
   }
 
-  private processImageQueue(pass: GPURenderPassEncoder, cw: number, ch: number) {
-    if (this.imageQueue.length === 0) return;
+  private processQueueInOrder(pass: GPURenderPassEncoder, cw: number, ch: number) {
+    if (this.queue.length === 0) return;
+
+    let currentType: string | null = null;
+    let batchItems: { item: QueuedItem; index: number }[] = [];
+
+    for (let i = 0; i < this.queue.length; i++) {
+      const item = this.queue[i];
+      
+      if (currentType !== null && currentType !== item.type) {
+        // Tipo cambió, procesar batch anterior
+        this.processBatch(pass, batchItems, cw, ch);
+        batchItems = [];
+      }
+      
+      currentType = item.type;
+      batchItems.push({ item, index: i });
+    }
+
+    // Procesar último batch
+    if (batchItems.length > 0) {
+      this.processBatch(pass, batchItems, cw, ch);
+    }
+  }
+
+  private processBatch(pass: GPURenderPassEncoder, batchItems: { item: QueuedItem; index: number }[], cw: number, ch: number) {
+    if (batchItems.length === 0) return;
+
+    const type = batchItems[0].item.type;
+
+    if (type === 'image') {
+      this.processImageBatch(pass, batchItems.map(b => b.item as Extract<QueuedItem, { type: 'image' }>), cw, ch);
+    } else if (type === 'pattern') {
+      this.processPatternBatch(pass, batchItems.map(b => b.item as Extract<QueuedItem, { type: 'pattern' }>), cw, ch);
+    } else if (type === 'rect') {
+      this.processRectBatch(pass, batchItems.map(b => b.item as Extract<QueuedItem, { type: 'rect' }>), cw, ch);
+    }
+  }
+
+  private processImageBatch(pass: GPURenderPassEncoder, items: Extract<QueuedItem, { type: 'image' }>[], cw: number, ch: number) {
+    const imageQueue = items.map(i => i.params);
+    if (imageQueue.length === 0) return;
 
     const groups = new Map<string, DrawParams[]>();
-    for (const img of this.imageQueue) {
+    for (const img of imageQueue) {
       if (!groups.has(img.id!)) groups.set(img.id!, []);
       groups.get(img.id!)!.push(img);
     }
 
-    const allData = new Float32Array(this.imageQueue.length * this.FLOATS_PER_INSTANCE);
+    const allData = new Float32Array(imageQueue.length * this.FLOATS_PER_INSTANCE);
     let globalIndex = 0;
     const drawCalls: { id: string; firstInstance: number; count: number }[] = [];
 
-    groups.forEach((items, id) => {
+    groups.forEach((groupItems, id) => {
       const firstInstance = globalIndex;
-      items.forEach(item => {
+      groupItems.forEach(item => {
         const offset = globalIndex * this.FLOATS_PER_INSTANCE;
         allData[offset + 0] = item.x;
         allData[offset + 1] = item.y;
@@ -212,7 +259,7 @@ export default class WebGPUCanvas {
         allData[offset + 6] = ch;
         globalIndex++;
       });
-      drawCalls.push({ id, firstInstance, count: items.length });
+      drawCalls.push({ id, firstInstance, count: groupItems.length });
     });
 
     this.device.queue.writeBuffer(this.imageInstanceBuffer, 0, allData);
@@ -227,22 +274,23 @@ export default class WebGPUCanvas {
     }
   }
 
-  private processPatternQueue(pass: GPURenderPassEncoder, cw: number, ch: number) {
-    if (this.patternQueue.length === 0) return;
+  private processPatternBatch(pass: GPURenderPassEncoder, items: Extract<QueuedItem, { type: 'pattern' }>[], cw: number, ch: number) {
+    const patternQueue = items.map(i => i.params);
+    if (patternQueue.length === 0) return;
 
     const groups = new Map<string, DrawParams[]>();
-    for (const p of this.patternQueue) {
+    for (const p of patternQueue) {
       if (!groups.has(p.id!)) groups.set(p.id!, []);
       groups.get(p.id!)!.push(p);
     }
 
-    const allData = new Float32Array(this.patternQueue.length * this.FLOATS_PER_INSTANCE);
+    const allData = new Float32Array(patternQueue.length * this.FLOATS_PER_INSTANCE);
     let globalIndex = 0;
     const drawCalls: { id: string; firstInstance: number; count: number }[] = [];
 
-    groups.forEach((items, id) => {
+    groups.forEach((groupItems, id) => {
       const firstInstance = globalIndex;
-      items.forEach(item => {
+      groupItems.forEach(item => {
         const offset = globalIndex * this.FLOATS_PER_INSTANCE;
         allData[offset + 0] = item.x;
         allData[offset + 1] = item.y;
@@ -258,7 +306,7 @@ export default class WebGPUCanvas {
         allData[offset + 11] = item.fillColor![3]; // uvOffsetY
         globalIndex++;
       });
-      drawCalls.push({ id, firstInstance, count: items.length });
+      drawCalls.push({ id, firstInstance, count: groupItems.length });
     });
 
     this.device.queue.writeBuffer(this.patternInstanceBuffer, 0, allData);
@@ -273,12 +321,13 @@ export default class WebGPUCanvas {
     }
   }
 
-  private processRectQueue(pass: GPURenderPassEncoder, cw: number, ch: number) {
-    if (this.rectQueue.length === 0) return;
+  private processRectBatch(pass: GPURenderPassEncoder, items: Extract<QueuedItem, { type: 'rect' }>[], cw: number, ch: number) {
+    const rectQueue = items.map(i => i.params);
+    if (rectQueue.length === 0) return;
 
-    const data = new Float32Array(this.rectQueue.length * this.FLOATS_PER_INSTANCE);
+    const data = new Float32Array(rectQueue.length * this.FLOATS_PER_INSTANCE);
     
-    this.rectQueue.forEach((item, i) => {
+    rectQueue.forEach((item, i) => {
       const offset = i * this.FLOATS_PER_INSTANCE;
       data[offset + 0] = item.x;
       data[offset + 1] = item.y;
@@ -303,7 +352,7 @@ export default class WebGPUCanvas {
     this.device.queue.writeBuffer(this.rectInstanceBuffer, 0, data);
     pass.setPipeline(this.shapePipeline);
     pass.setBindGroup(0, this.createGlobalBindGroup(this.shapePipeline, this.rectInstanceBuffer));
-    pass.draw(6, this.rectQueue.length);
+    pass.draw(6, rectQueue.length);
   }
 
   private createGlobalBindGroup(pipeline: GPURenderPipeline, buffer: GPUBuffer) {
@@ -452,6 +501,13 @@ export default class WebGPUCanvas {
       alpha: { srcFactor: "one",       dstFactor: "one-minus-src-alpha", operation: "add" }
     } as GPUBlendState;
 
+    
+    this.shapePipeline = this.device.createRenderPipeline({
+      layout: "auto",
+      vertex:   { module: this.device.createShaderModule({ code: rectShader }),    entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: this.device.createShaderModule({ code: rectShader }),    entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      primitive: { topology: "triangle-list" }
+    });
     this.texturePipeline = this.device.createRenderPipeline({
       layout: "auto",
       vertex:   { module: this.device.createShaderModule({ code: imageShader }),   entryPoint: "vs", buffers: [commonAttribs as any] },
@@ -463,13 +519,6 @@ export default class WebGPUCanvas {
       layout: "auto",
       vertex:   { module: this.device.createShaderModule({ code: patternShader }), entryPoint: "vs", buffers: [commonAttribs as any] },
       fragment: { module: this.device.createShaderModule({ code: patternShader }), entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
-      primitive: { topology: "triangle-list" }
-    });
-
-    this.shapePipeline = this.device.createRenderPipeline({
-      layout: "auto",
-      vertex:   { module: this.device.createShaderModule({ code: rectShader }),    entryPoint: "vs", buffers: [commonAttribs as any] },
-      fragment: { module: this.device.createShaderModule({ code: rectShader }),    entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
       primitive: { topology: "triangle-list" }
     });
   }
