@@ -23,7 +23,6 @@ class Test extends React.Component{
         refAssigner={(env)=>{this.windowsEnvironment = env;}}
         mainContent={
           <RenderEngine
-            showFps
             developmentDeviceHeight={1080}
             cyclesPerSecond={60}
             setEngine={(engine)=>{
