@@ -261,6 +261,9 @@ function templateLiteralSplitter(source:string){
 }
 // convert.hex.rgb(boxColor).concat(255) as [number, number, number, number],
 export function colorToRGBA(colorCode: string) : [number, number, number, number]{
+  if(colorCode == "transparent"){
+    return [0,0,0,0];
+  }
   const res = new ColorTranslator(colorCode);
   
   return [res.R, res.G, res.B, res.A*255] as [number, number, number, number];
