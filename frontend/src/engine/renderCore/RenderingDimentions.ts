@@ -128,7 +128,7 @@ export function generateObjectsDisplayDimentions(
           objectTop = gObject.y + originy + camCenter.y;
           objectZ += camCenter.z;
 
-          const lookupTableIndex = Math.trunc(objectZ*100)
+          const lookupTableIndex = Math.trunc(objectZ*1000)
           if(sharedInstance.lookupTable.has(lookupTableIndex)){
             perspectiveDiff = sharedInstance.lookupTable.get(lookupTableIndex);
           }else{
