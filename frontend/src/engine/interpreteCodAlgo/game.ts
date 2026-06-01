@@ -46,7 +46,7 @@ function ejecutarNivel(
         return new Promise(resolve => {
             setTimeout(() =>{ 
                 resolve()
-            }, 400); // Tarda 400ms en caminar
+            }, 500); // Tarda 400ms en caminar
         });
     }
 
@@ -65,11 +65,13 @@ function ejecutarNivel(
         const interpreter = new GameInterpreter(mapaNivel, spawnX, spawnY);
 
         interpreter.onLineChange = async (line, accion) => {
+            window.indiceActual = line; // Para resaltar la línea actual en el editor
+            window.lineaActual = accion;
             if (["move", "jump", "rotate"].includes(accion)) {
                 animationsEngineLambdas[accion as keyof AnimationsEngineLambdas]();
                 await animarJuego(accion);
             } else {
-                await new Promise(res => setTimeout(res, 200));
+                await new Promise(res => setTimeout(res, 500));
             }
         };
 
@@ -94,7 +96,6 @@ function ejecutarNivel(
             verificarMedallas(lexer.stats);
         };
         
-        // interpreter.onFail = (msg) => console.error(`\n❌ PERDISTE: ${msg}`);
         interpreter.onFail = (msg) => {
             Swal.fire({
                 title: '¡Nivel Fallido!',
@@ -109,7 +110,6 @@ function ejecutarNivel(
         interpreter.execute(ast);
 
     } catch (error) {
-        console.error("❌ Error Crítico:", (error as Error).message);
         Swal.fire({
             title: '¡Error en el Código!',
             text: (error as Error).message,
