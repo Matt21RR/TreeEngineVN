@@ -77,7 +77,7 @@ class UI extends React.Component{
     </div>
   }
   render(){
-    return <div ref={this.base} className="absolute w-full h-full top-0 left-0 flex">
+    return <div ref={this.base} className="absolute w-full h-full top-0 left-0 hidden">
       {this.decideComponent()}
 
     </div>
