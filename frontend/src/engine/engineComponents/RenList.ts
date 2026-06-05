@@ -46,6 +46,17 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     this.objects = new Array<T>();
   }
 
+  wipe(){
+    this.objects = new Array<T>();
+    this.#_ids = [];
+    this.#_elementsDict = {};
+    this.#_enabledIds = [];
+    this.#_enabledIdsIndexTable = {};
+    this.#_relatedToIds = {};
+    this.#_reversedRelatedToLists = {};
+    this.#_unRelatedToIds = [];
+  }
+
   get length(){
     if(this.objects.length > 0){
       if(this.dummy.hasId){
