@@ -183,7 +183,7 @@ class Animation{
   }
 
     private runOnCompleteAnimation(engine: RenderEngine){
-    if(typeof this.#onComplete == "function"){//add onComplete per keyframe
+    if(this.#onComplete){//add onComplete per keyframe
       try {
         this.#onComplete(engine);
       } catch (error) {
