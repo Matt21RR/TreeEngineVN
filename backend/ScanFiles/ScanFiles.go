@@ -47,7 +47,7 @@ func isFromFileType(filename string, typeFile string) bool {
 }
 
 func ScanFiles(rootPath string, typeFile string) (map[string]string, error) {
-	audioMap := make(map[string]string)
+	fileMap := make(map[string]string)
 
 	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -67,11 +67,11 @@ func ScanFiles(rootPath string, typeFile string) (map[string]string, error) {
 			// Cambiando las barras diagonales por raya al piso para la clave
 			keyWithoutExt = strings.ReplaceAll(keyWithoutExt, "/", "_")
 			
-			audioMap[keyWithoutExt] = rootPath + "/" + relativePath
+			fileMap[keyWithoutExt] = "./" + relativePath
 		}
 
 		return nil
 	})
 
-	return audioMap, err
+	return fileMap, err
 }
