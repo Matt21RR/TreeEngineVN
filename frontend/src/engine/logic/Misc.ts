@@ -259,7 +259,7 @@ function templateLiteralSplitter(source:string){
 
   return parts;
 }
-// convert.hex.rgb(boxColor).concat(255) as [number, number, number, number],
+
 export function colorToRGBA(colorCode: string) : [number, number, number, number]{
   if(colorCode == "transparent"){
     return [0,0,0,0];
@@ -272,6 +272,12 @@ export function colorToRGBA(colorCode: string) : [number, number, number, number
     console.error("Error converting color code: ", colorCode, e);
     return [128,0,128,255]; // Magenta
   }
+}
+
+export function getClassAttribs<T>(classInstance:T, propertyNames: Array<string>){
+  const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(classInstance)));
+  const atributesNames = propertyNames.filter(key =>{return "get" in propertyDescriptors[key]});
+  return atributesNames;
 }
 export {
   mobileCheck,
