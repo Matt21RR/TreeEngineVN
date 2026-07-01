@@ -4,12 +4,25 @@ import Instruction from "./Instruction.ts";
 import AgrupableInstructionInterface from "./AgrupableInstructionInterface.ts";
 import { Dictionary } from "../../global.ts";
 import sequencedPromise from "./new.ts";
-import { RequestFile } from "../../../wailsjs/go/main/App.js";
+import { RequestFile, ScanFiles } from "../../../wailsjs/go/main/App.js";
 import supportedInstructions from "./SupportedInstructions.ts";
+
+const MAX_NESTED_DEPENDENCY_REPROCESS = 3;
 
 export type ScenesDictionary = Dictionary<{main:string,nodes:Dictionary<string>}>;
 export type ModulesDictionary = Dictionary<string>;
-export type InterpretedData = {scenes: ScenesDictionary, modules: ModulesDictionary}
+export enum InterpretationDropReason {
+  NoSceneOrModuleDefined,
+  ModuleDependencyUnfulfilled,
+  SceneDependencyUnfulfilled,
+  Other
+}
+type InterpretationError = {
+  message: string;
+  reason: InterpretationDropReason;
+  detail?: string;
+}
+export type InterpretedData = {scenes: ScenesDictionary, modules: ModulesDictionary, dropped?: InterpretationError};
 
 class ChaosInterpreter {
   scenes:Dictionary<{main:string,nodes:{}}>
@@ -25,6 +38,11 @@ class ChaosInterpreter {
     //@ts-ignore
     window.chaos = this;
   }
+  wipeData(){
+    this.scenes = {};
+    this.modules = {};
+    this.scriptsUrls = {};
+  }
 
   invokeSupportedInstruction(instructionType: string){
     return supportedInstructions.find(inst => inst.constructor.name == instructionType); //TODO: check this
@@ -39,10 +57,9 @@ class ChaosInterpreter {
   listScripts(): Promise<Dictionary>{
     const self = this;
     return new Promise((resolve)=>{
-      RequestFile(self.projectRoot + "scripts/scripts.json")
-        .then(res => atob(res))
-        .then(res => JSON.parse(res))
+      ScanFiles(self.projectRoot + "scripts", "script")
         .then((scriptsData:Dictionary) =>{
+          console.log("Scripts found in the scripts folder:", scriptsData);
           Object.keys(scriptsData).forEach((scriptId)=>{
             scriptsData[scriptId] = self.projectRoot + "scripts/" + scriptsData[scriptId].replace("./","");
           })
@@ -56,50 +73,91 @@ class ChaosInterpreter {
         });
     })
   }
-  private interpretateFile(scriptFileName:string): Promise<null>{
-    const self = this;
-    const jsonPath = `${self.projectRoot}scripts/${scriptFileName}`;
-
-    // console.log(`=> Trying to load ${scriptFileName}`);
-    return new Promise(resolve=>{
-      RequestFile(jsonPath)
-        .then(res=> atob(res))
-        .then(scriptData=>{
-          self.kreator(scriptData, false).then(
-          (processedScenesAndModules)=>{
-            resolve(null);
-          }
-        )}
-      )
-    })
-  }
   loadScripts(doNothing:boolean):Promise<null>{
     const self = this;
     return new Promise( (resolve, reject) =>{
       if(doNothing){
         resolve(null);
       }else{ 
-        RequestFile(self.projectRoot + "scripts/scripts.json")
-          .then(res => atob(res))
-          .then(res => JSON.parse(res) )
+        ScanFiles(self.projectRoot + "scripts", "script")
           .then(scriptsData=>{
+            console.log(scriptsData);
+            // debugger;
             const h = Object.keys(scriptsData).map(scriptId => 
               ()=>{
-                return new Promise(resolveInner=>{
-                  const scriptFileName = scriptsData[scriptId].replace("./","");
-                  self.interpretateFile(scriptFileName)
-                    .then( 
-                      ()=>{resolveInner(null)} 
-                    );
-                })
+                const scriptFileName = scriptsData[scriptId].replace("./","");
+
+                return self.buildProcessPromise(scriptFileName)
               }
             );
-          sequencedPromise(h).then( ()=>resolve(null) );
+          self.processWithRetry(h, MAX_NESTED_DEPENDENCY_REPROCESS).then(()=>{
+            resolve(null);
+          })
         })
         .catch((err)=>{reject(err)})
       }
     })
   }
+  private buildProcessPromise(scriptFileName:string):Promise<null>{
+    const self = this;
+    return new Promise((resolve,reject)=>{
+      self.interpretateFile(scriptFileName)
+        .then( 
+          ()=>{
+            console.log(`=> ${scriptFileName} loaded successfully!!`);
+            resolve(null)} 
+        )
+        .catch(err=>{
+          console.error(`Error while loading the script ${scriptFileName}: `, err);
+          reject({...err, scriptFileName});
+        });
+    })
+  }
+
+  processWithRetry(
+    promiseFactories: (() => Promise<any>)[],
+    maxRetries: number
+  ): Promise<void> {
+    return sequencedPromise(promiseFactories).then((result) => {
+      const reprocessPile = result.rejects
+        .filter(
+          (reject: {promise:()=>Promise<any>, details: InterpretationError}) =>
+            reject.details.reason === InterpretationDropReason.ModuleDependencyUnfulfilled ||
+            reject.details.reason === InterpretationDropReason.SceneDependencyUnfulfilled
+        )
+        //@ts-ignore
+        .map((reject: {promise:()=>Promise<any>, details: InterpretationError}) => reject.promise);
+
+      if (reprocessPile.length > 0 && maxRetries > 0) {
+        return this.processWithRetry(
+          reprocessPile,
+          maxRetries - 1
+        );
+      }
+    });
+  }
+
+  private interpretateFile(scriptFileName:string): Promise<null>{
+    console.log(scriptFileName);
+    const self = this;
+    const jsonPath = `${self.projectRoot}scripts/${scriptFileName}`;
+
+    return new Promise((resolve, reject)=>{
+      RequestFile(jsonPath)
+        .then(res=> atob(res))
+        .then(scriptData=>{
+          self.kreator(scriptData, false)
+            .then( (processedScenesAndModules)=>{
+              resolve(null);
+            })
+            .catch(err=>{
+              console.error(`Error while interpreting the script ${scriptFileName}: `, err);
+              reject(err);
+            })
+      })
+    })
+  }
+
   kreator(script:string,loadAudioVisual = true):Promise<InterpretedData>{
     return new Promise((resolve,reject)=>{ 
       this.loadScripts(!loadAudioVisual)
@@ -108,10 +166,16 @@ class ChaosInterpreter {
           console.log("The scripts file couldn't be loaded. Ignoring!!!");
         })
         .finally(()=>{
-          let scenesAndNodes = this.instructionsDesintegrator(script) as InterpretedData;
-          Object.assign(this.scenes,scenesAndNodes.scenes);
-          Object.assign(this.modules,scenesAndNodes.modules);
-          resolve(scenesAndNodes);
+          try {
+            let scenesAndNodes = this.instructionsDesintegrator(script) as InterpretedData;
+            console.log("Scenes and modules processed: ", scenesAndNodes);
+            Object.assign(this.scenes,scenesAndNodes.scenes);
+            Object.assign(this.modules,scenesAndNodes.modules);
+            resolve(scenesAndNodes);
+          } catch (error) {
+            console.error("Error while interpreting the script: ", error);
+            reject(error as InterpretationError);
+          }
         })
     });
   }

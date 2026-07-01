@@ -1,5 +1,5 @@
 import { Dictionary } from "../../../global.ts";
-import { Chaos } from "../ChaosInterpreter.ts";
+import { Chaos, InterpretationDropReason } from "../ChaosInterpreter.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 import { TokenType } from "../Token.ts";
 
@@ -23,7 +23,12 @@ export default class IncludeInstruction extends InstructionInterface{
     if(!(sceneOrModuleId in chaosReference.modules)){
       console.error("List of scripts and modules:",Object.keys(chaosReference.modules));
       console.log(chaosReference);  
-      throw new Error("Module "+sceneOrModuleId+" not found or don't exists.");
+      
+      console.log("Module "+sceneOrModuleId+" not found or don't exists.");
+      throw {
+              message: `Module ${sceneOrModuleId} not found or don't exists.`,
+              reason: InterpretationDropReason.ModuleDependencyUnfulfilled
+            };
     }
     res = chaosReference.modules[sceneOrModuleId];
 
