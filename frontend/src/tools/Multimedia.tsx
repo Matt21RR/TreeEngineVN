@@ -7,9 +7,6 @@ import Swal from 'sweetalert2';
 import {SelectedFileProperties} from './FileExplorer.tsx';
 import { Request, RequestFile, RequestFileWithMime } from '../../wailsjs/go/main/App.js';
 import { Button1, IconButton } from './components/Buttons.tsx';
-import { RenderEngine } from '../engine/renderCore/RenderEngine.tsx';
-import { InterpretedData } from '../engine/interpretators/ChaosInterpreter.ts';
-import InterpretedDataViewer from './InterpretedDataViewer.tsx';
 
 type MultimediaProps = {
   setSelected: (indexFiles: number) => void;
@@ -90,7 +87,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
           }}/>
         
         <Button1 
-          text="Show Interpretation" 
+          text="Show Guide" 
           style="absolute bottom-0 right-26"
           action={()=>{
             

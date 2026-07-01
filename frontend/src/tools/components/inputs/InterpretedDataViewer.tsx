@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { InterpretedData } from "../engine/interpretators/ChaosInterpreter.ts";
+import { InterpretedData } from "../../../engine/interpretators/ChaosInterpreter.ts";
 import Prism from 'prismjs';
 
 import * as prettier from 'prettier/standalone';

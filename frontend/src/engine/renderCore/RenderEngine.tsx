@@ -48,9 +48,13 @@ interface RenderEngineProps {
   setEngine?: (engine: RenderEngine,ExtendedObjects?:ExtendedObjects) => void;
 }
 
-export class RenderEngine extends React.Component<RenderEngineProps>{
-  id: string;
+interface RenderEngineState {
+  engineDisplayRes: { width: number; height: number };
   isReady: boolean;
+}
+
+export class RenderEngine extends React.Component<RenderEngineProps, RenderEngineState>{
+  id: string;
   aspectRatio: string;
   showFps: boolean;
   resizeTimeout: number;
@@ -99,7 +103,6 @@ export class RenderEngine extends React.Component<RenderEngineProps>{
   scenicPositions: RenList<any>;
   //*Rendering stuff
   developmentDeviceHeight: number;
-  engineDisplayRes: { width: number; height: number };
   camera: CameraData;
   calculationOrder: Array<string>;
   dimentionsPack: Set<string>;
@@ -139,12 +142,14 @@ export class RenderEngine extends React.Component<RenderEngineProps>{
 
     this.id = "rengine" + String(window.performance.now()).replaceAll(".","");
     if(props){
-      this.isReady = false;
       this.aspectRatio = props.aspectRatio ?? "16:9";
       this.showFps = props.showFps ?? false;
       this.developmentDeviceHeight = props.developmentDeviceHeight ?? window.screen.height*window.devicePixelRatio;
     }
-    this.engineDisplayRes = {width:0,height:0};
+    this.state = {
+      engineDisplayRes: { width: 0, height: 0 },
+      isReady: false
+    };
     this.resizeTimeout = 0;
     this.mounted = false; //internal check
 
@@ -243,12 +248,19 @@ export class RenderEngine extends React.Component<RenderEngineProps>{
             this.runScript(sceneId);
         })
     })
-    .catch(err=>{
+    .catch(err=>{ 
       console.error(err);
       console.warn("Running engine without main script");
-      this.isReady = true;
-      this.forceUpdate();
+      this.setState({ isReady: true });
     })
+  }
+  refreshChaosAndRunScene(sceneId:string){
+    this.chaosInstance.wipeData();
+    this.chaosInstance.listScripts().then(_=>{
+      this.chaosInstance.loadScripts(false).then(_=>{
+          this.runScript(sceneId);
+      });
+    });
   }
   runScript(sceneId:string,nodeId:string = ""){
     this.dataCleaner();
@@ -265,8 +277,7 @@ export class RenderEngine extends React.Component<RenderEngineProps>{
         const commandsF = new Function ("engine","ExtendedObjects",commands);
         commandsF(this,ExtendedObjects);
       }
-      this.isReady = true;
-      this.forceUpdate();
+      this.setState({ isReady: true });
     } catch (error) {
       let timerInterval: number;
       Swal.fire({
@@ -306,16 +317,16 @@ export class RenderEngine extends React.Component<RenderEngineProps>{
     const w = document.getElementById("display"+this.id) as HTMLElement;
     const engDisplay = document.getElementById("engineDisplay"+this.id) as HTMLElement;
 
-    this.engineDisplayRes = displayResolutionCalc(aspectRatio,w);
+    const engineDisplayRes = displayResolutionCalc(aspectRatio,w);
 
-    window.debugContext.canvas.width = this.engineDisplayRes.width;
-    window.debugContext.canvas.height = this.engineDisplayRes.height;
+    window.debugContext.canvas.width = engineDisplayRes.width;
+    window.debugContext.canvas.height = engineDisplayRes.height;
 
     gsap.to(engDisplay, 
       { 
         duration: 0,
-        width : this.engineDisplayRes.width + "px", 
-        height : this.engineDisplayRes.height + "px"
+        width : engineDisplayRes.width + "px", 
+        height : engineDisplayRes.height + "px"
       } 
     ).then(()=>{
       // this.graphArray.objects.forEach(e=>{
@@ -323,7 +334,7 @@ export class RenderEngine extends React.Component<RenderEngineProps>{
       //   });
     });
 
-    this.forceUpdate();  
+    this.setState({ engineDisplayRes });
   }
 
   getObject(id: string): GraphObject{
@@ -398,7 +409,7 @@ export class RenderEngine extends React.Component<RenderEngineProps>{
   renderScene(){
     return(
       <Canvas 
-      displayResolution={this.engineDisplayRes}
+      displayResolution={this.state.engineDisplayRes}
       scale={1} 
       showFps={this.showFps}
       engine={this}

@@ -6,7 +6,7 @@ import gsap from "gsap";
 import '../highlight-within-textarea/jquery.highlight-within-textarea.js';
 //@ts-ignore
 import '../highlight-within-textarea/jquery.highlight-within-textarea.css';
-import InterpretedDataViewer from "../../InterpretedDataViewer.tsx";
+import InterpretedDataViewer from "./InterpretedDataViewer.tsx";
 import { InterpretedData } from "../../../engine/interpretators/ChaosInterpreter.ts";
 import { RenderEngine } from "../../../engine/renderCore/RenderEngine.tsx";
 
@@ -268,5 +268,6 @@ export default function InputScript(props: InputScriptProps) {
     <div className="w-1/2 h-full">
       <InterpretedDataViewer interpretedData={interpretedData} />
     </div>
+
   </div>
 }
