@@ -197,7 +197,7 @@ class ObjectEditor  extends React.Component<ObjectEditorProps> {
       const engine = this.props.engine;
       let types;
       try {
-        types = engine.graphArray.get(this.props.selectedObject).dataType;  
+        types = GraphObject.dataTypes;  
       } catch (error) {
         this.props.setSelectedObject("");
         return;
@@ -357,7 +357,7 @@ class ObjectsE extends React.Component<ObjectsEProps> {
       const engine = this.props.engine;
       let types;
       try {
-        types = engine.graphArray.get(this.selectedObject).dataType;  
+        types = GraphObject.dataTypes;  
       } catch (error) {
         this.selectedObject = "";
         return;

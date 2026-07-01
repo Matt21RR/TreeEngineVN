@@ -6,11 +6,14 @@ import EngineTools from "../tools/EngineTools";
 import { FileExplorer } from "../tools/FileExplorer";
 import TexturesE from "../tools/TexturesE.tsx";
 import TriggersE from "../tools/TriggersE.tsx";
+import Guide from "../tools/Guide.tsx";
 
 class Test extends React.Component{
   constructor(props){
     super(props);
-    this.engine = null;
+    this.state = {
+      engine: null
+    };
     this.hide = false;
 
     this.ObjectsERef = {};
@@ -18,6 +21,7 @@ class Test extends React.Component{
     this.mounted = false;
   }
   render(){
+    const engine = this.state.engine;
     return(<>
       <WindowsEnvironment 
         refAssigner={(env)=>{this.windowsEnvironment = env;}}
@@ -27,48 +31,48 @@ class Test extends React.Component{
             developmentDeviceHeight={1080}
             cyclesPerSecond={60}
             setEngine={(engine)=>{
-              this.engine = engine; 
-              this.windowsEnvironment.renderSecondaryContent = true; 
-              this.windowsEnvironment.forceUpdate(); 
-              this.forceUpdate(); }}/>
+              this.setState({ engine }, () => {
+                this.windowsEnvironment?.showSecondaryContent();
+              });
+            }}/>
         }
         windows={{
           fileExplorer:{
             title:"File Explorer",
             content:<FileExplorer/>,
-            minimized:false,
-            disabled:this.engine == null
+            disabled:engine == null
           },
           triggers:{
             title:"In-scene Triggers",
-            content:<TriggersE  engine={this.engine} objectsERef={this.ObjectsERef} reRender={()=>{this.windowsEnvironment.forceUpdate();}} />,
-            minimized:true,
-            disabled:this.engine == null
+            content: engine ? <TriggersE engine={engine} objectsERef={this.ObjectsERef} reRender={()=>{this.windowsEnvironment?.forceUpdate();}} /> : <div className="text-white p-4">Waiting for engine...</div>,
+            disabled:engine == null
           },
           objectsInfo:{
             title:"In-scene GraphObjects",
-            content:<ObjectsE 
-              engine={this.engine} 
-              reRender={()=>{this.windowsEnvironment.forceUpdate()}} 
+            content: engine ? <ObjectsE 
+              engine={engine} 
+              reRender={()=>{this.windowsEnvironment?.forceUpdate()}} 
               selfRef={(ref)=>{
                 this.ObjectsERef = ref; 
-                this.windowsEnvironment.forceUpdate();
-              }}/>,
-            minimized:true,
-            disabled:this.engine == null
+                this.windowsEnvironment?.forceUpdate();
+              }}/>
+              : <div className="text-white p-4">Waiting for engine...</div>,
+            disabled:engine == null
           },
           engTools:{
             title:"EngineTools",
-            content:<EngineTools engine={this.engine} reRender={()=>{this.windowsEnvironment.forceUpdate()}}/>,
-            minimized:true,
-            disabled:this.engine == null
+            content: engine ? <EngineTools engine={engine} reRender={()=>{this.windowsEnvironment?.forceUpdate()}}/> : <div className="text-white p-4">Waiting for engine...</div>,
+            disabled:engine == null
           },
           textures:{
             title:"Textures",
             content:<TexturesE/>,
-            minimized:false,
-            disabled:this.engine == null
+            disabled:engine == null
           },
+          guide:{
+            title:"Guide",
+            content:<Guide/>,
+          }
         }}
       
       />

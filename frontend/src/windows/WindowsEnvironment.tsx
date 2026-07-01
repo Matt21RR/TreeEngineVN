@@ -8,7 +8,6 @@ type WindowContent = {
   title: string,
   content: React.JSX.Element
   minimized: boolean,
-  disabled: boolean,
 
   onResize?: ()=> void,
   minRes?: {width:number, height:number}
@@ -21,10 +20,11 @@ interface WindowsEnvironmentProps extends ConnectedComponent{
   mainContent: React.JSX.Element
 }
 
-class WindowsEnvironment extends React.Component<WindowsEnvironmentProps>{
+interface WindowsEnvironmentState {
   renderSecondaryContent: boolean;
-  windowsContent: Dictionary<WindowContent>;
-  executionDict: Dictionary<boolean>;
+}
+
+class WindowsEnvironment extends React.Component<WindowsEnvironmentProps, WindowsEnvironmentState>{
   minimizedTable: Array<string>
   previewTable: Array<string>
   renderingOrder: Array<string>
@@ -34,23 +34,28 @@ class WindowsEnvironment extends React.Component<WindowsEnvironmentProps>{
       props.refAssigner(this);
     }
     if(!(props)){return;}
-    this.renderSecondaryContent = false;
-    this.windowsContent = "windows" in props ? props.windows : {};
-    this.executionDict = {};
-    this.minimizedTable = [];
+    this.state = {
+      renderSecondaryContent: false
+    };
+    this.minimizedTable = Object.keys(this.props.windows);
     this.previewTable = [];
-    Object.keys(this.windowsContent).map(windowId=>{
-      Object.assign(this.executionDict, 
-        {[windowId]:!(this.windowsContent[windowId].disabled ?? true)}
-      );
-    });
-    Object.keys(this.windowsContent).map(windowId=>{
-      if("minimized" in this.windowsContent[windowId]){
-        this.minimizedTable.push(windowId);
-      }
-    });
-    this.renderingOrder = Object.keys(this.windowsContent);
+    this.renderingOrder = Object.keys(this.props.windows);
   }
+  componentDidUpdate(prevProps: WindowsEnvironmentProps){
+    if(prevProps.windows !== this.props.windows){
+      const newKeys = Object.keys(this.props.windows);
+      this.minimizedTable = this.minimizedTable.filter(key => newKeys.includes(key));
+      this.previewTable = this.previewTable.filter(key => newKeys.includes(key));
+      this.renderingOrder = newKeys;
+    }
+  }
+
+  public showSecondaryContent(){
+    if(!this.state.renderSecondaryContent){
+      this.setState({ renderSecondaryContent: true });
+    }
+  }
+
   clickWindow(windowId: string){
     if(this.renderingOrder.indexOf(windowId) == (this.renderingOrder.length-1)){
       return;
@@ -62,12 +67,10 @@ class WindowsEnvironment extends React.Component<WindowsEnvironmentProps>{
     this.forceUpdate();
   }
   renderWindows(){
-    if(!this.renderSecondaryContent){return;}
+    if(!this.state.renderSecondaryContent){return;}
     const windowsContent = this.props.windows;
     return(
-      Object.keys(windowsContent).filter(
-        windowId=>{return !(windowsContent[windowId].disabled ?? true)}
-      ).map((contentId)=>{
+      Object.keys(windowsContent).map((contentId)=>{
         const windowAtTop = this.renderingOrder.indexOf(contentId)+1 == this.renderingOrder.length
         return (
         <div 

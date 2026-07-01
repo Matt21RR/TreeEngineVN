@@ -1,9 +1,6 @@
 import React, { useEffect, useReducer, useState } from "react";
 import { InputList} from "./components/InputList.tsx";
-import { Chaos } from "../engine/interpretators/ChaosInterpreter.ts";
-import { Dictionary } from "../global.ts";
 import { RenderEngine } from "../engine/renderCore/RenderEngine.tsx";
-import InputText from "./components/inputs/InputText.tsx";
 import InputCheck from "./components/inputs/InputCheck.tsx";
 import { FileExists, ScanFiles, ToggleFullscreen } from "../../wailsjs/go/main/App.js";
 import { Button1, IconButton } from "./components/Buttons.tsx";
@@ -13,7 +10,6 @@ import Swal from "sweetalert2";
 function KeyFilesControls(){
     const [filesExist, setFilesExist] = useState<Map<string,KeyFileInfo>>( new Map ( [
     ["./game/main.txt", {exist:false, scanable:false, scanType:null}],
-    ["./game/scripts/scripts.json", {exist:false, scanable:true, scanType:"script"}],
     ["./game/textures/textures.json", {exist:false, scanable:true, scanType:"texture"}],
     ["./game/sounds/sounds.json", {exist:false, scanable:true, scanType:"sound"}]
   ] ) );
@@ -48,8 +44,10 @@ function KeyFilesControls(){
               action={()=>{
                 const route = key.split("/");
                 const basePath = route.slice(0,route.length -1).join("/");
+                console.log("Scanning files in: ", basePath, " of type: ", value.scanType);
 
                 ScanFiles(basePath, value.scanType).then(e=>{
+                  console.log(e);
                   Swal.fire({
                     title: `Scan result for ${value.scanType}s`,
                     html: `
@@ -82,7 +80,7 @@ function KeyFilesControls(){
 }
 
 interface EngineToolsProps {
-  engine: RenderEngine
+  engine?: RenderEngine | null
 }
 
 interface KeyFileInfo {
@@ -92,37 +90,41 @@ interface KeyFileInfo {
 }
 
 export default function EngineTools(props:EngineToolsProps){
-  const [scripts, setScripts] = useState<Dictionary<string>>({});
+  const [scenes, setScenes] = useState<Array<string>>([]);
   const [sceneName, setSceneName] = useState("gameEntrypoint");
   const [selectedScript, setSelectedScript] = useState(0);
 
   const [_, forceUpdate] = useReducer(x => x + 1, 0);
 
-  useEffect(()=>{
-    checkAvailableScripts();
-  },[]);
-
-  const checkAvailableScripts = ()=>{
-    const chaos = new Chaos();
-    chaos.listScripts().then(scriptsId=>{
-      setScripts(scriptsId);
-    });
+  const checkAvailableScenes = ()=>{
+    if(!props.engine) {
+      setScenes([]);
+      return;
+    }
+    setScenes(Object.keys(props.engine.chaosInstance.scenes));
   }
+
+  useEffect(()=>{
+    checkAvailableScenes();
+  },[props.engine]);
 
   const scriptSelector = () => {
     const engine = props.engine;
+    if(!engine){
+      return <div className="text-white">Engine not ready yet.</div>;
+    }
     return (
       <div className="flex align-middle">
         <InputList 
-          options={Object.keys(scripts)}
-          action={(e)=>{setSelectedScript(e);}}
+          options={scenes}
+          action={(e)=>{setSceneName(scenes[e]);}}
           value={0}
         />
-        <InputText style="bg-white text-black h-7" defaultValue={"gameEntrypoint"} action={(value)=>{
-            setSceneName(value != "" ? value : "gameEntrypoint");
-          }}/>
         <Button1 text={"Run!!"} action={()=>{
-          engine.loadScript(scripts[Object.keys(scripts)[selectedScript]], sceneName);
+          engine.refreshChaosAndRunScene(sceneName);
+        }}/>
+        <Button1 text={"Check available scenes"} action={()=>{
+          checkAvailableScenes();
         }}/>
       </div>
     );
@@ -130,6 +132,9 @@ export default function EngineTools(props:EngineToolsProps){
 
   const speedControls = () => {
     const engine = props.engine;
+    if(!engine){
+      return <div className="text-white">Engine not ready.</div>;
+    }
     return (
       <div className="flex flex-row text-white">
         <IconButton icon="minus" action={()=>{engine.engineSpeed-= 0.1; forceUpdate();}}/>
@@ -144,7 +149,10 @@ export default function EngineTools(props:EngineToolsProps){
   }
 
   const cameraControls = () => {
-    const camera = props.engine.camera;
+    const camera = props.engine?.camera;
+    if(!camera){
+      return <div className="text-white">Engine not ready.</div>;
+    }
 
     return (
       <div className="flex flex-col text-white">
@@ -171,12 +179,34 @@ export default function EngineTools(props:EngineToolsProps){
           {camera.position.z} 
         </div>
 
+        <div className="flex gap-2">
+          Pitch:
+          <IconButton icon="minus" action={()=>{camera.position.pitch = (camera.position.pitch ?? 0) - Math.PI/180 * 5; forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{camera.position.pitch = (camera.position.pitch ?? 0) + Math.PI/180 * 5; forceUpdate();}}/>
+          {( (camera.position.pitch ?? 0) * 180 / Math.PI ).toFixed(1)}°
+        </div>
+        <div className="flex gap-2">
+          Yaw:
+          <IconButton icon="minus" action={()=>{camera.position.yaw = (camera.position.yaw ?? 0) - Math.PI/180 * 5; forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{camera.position.yaw = (camera.position.yaw ?? 0) + Math.PI/180 * 5; forceUpdate();}}/>
+          {( (camera.position.yaw ?? 0) * 180 / Math.PI ).toFixed(1)}°
+        </div>
+        <div className="flex gap-2">
+          Roll:
+          <IconButton icon="minus" action={()=>{camera.position.roll = (camera.position.roll ?? 0) - Math.PI/180 * 5; forceUpdate();}}/>
+          <IconButton icon="plus" action={()=>{camera.position.roll = (camera.position.roll ?? 0) + Math.PI/180 * 5; forceUpdate();}}/>
+          {( (camera.position.roll ?? 0) * 180 / Math.PI ).toFixed(1)}°
+        </div>
+
       </div>
     );
   }
 
   const buttons = () => {
     const engine = props.engine;
+    if(!engine){
+      return <div className="text-white">Engine not ready.</div>;
+    }
     const canvasObject = engine.canvasRef.object;
     return <div className="flex">
       <div>
