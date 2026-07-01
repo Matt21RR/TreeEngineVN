@@ -1,5 +1,6 @@
 import { Dictionary } from "../../global.ts";
 import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
+import { CameraData } from "../renderCore/RenderEngine.d.tsx";
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 import GraphObject from "./GraphObject.ts";
 
@@ -35,9 +36,14 @@ class Animation{
   #actualKeyFrameNumber:number
   #timeline
 
+  private targetReference: CameraData|GraphObject|null;
+  private alteringCamera: boolean = false;
   constructor(aInfo: Dictionary){
     this.#id = aInfo.id;
     this.#relatedTo = aInfo.relatedTo; //the gO related to the animation
+    this.setTargetRef(aInfo.relatedTo);
+
+
     this.#ease = aInfo.ease ? ease[aInfo.ease] : ease["linear"];
     this.#done = aInfo.done ?? false;
     this.#loops = "loops" in aInfo ? aInfo.loops*(aInfo.loopback?2:1) : 1;//by default 1 loop
@@ -62,6 +68,15 @@ class Animation{
     this.#timestamps = Object.keys(this.#keyframes).map(e=>parseFloat(e));
     this.#actualKeyFrameNumber =  -1;
     this.#timeline = [];//controla los tiempos de cada frame de forma independiente
+  }
+
+  private setTargetRef(id:string){
+    const engine = RenderEngine.getInstance();
+    this.targetReference = id != "engineCamera" ? 
+      engine.getObject(this.#relatedTo):
+      engine.camera;
+
+    this.alteringCamera = id == "engineCamera";
   }
 
   print() {
@@ -97,7 +112,10 @@ class Animation{
   get id (){return this.#id;}
   
   get relatedTo(){return this.#relatedTo;}
-  set relatedTo(x){this.#relatedTo = x;}
+  set relatedTo(x){
+    this.#relatedTo = x;
+    this.setTargetRef(x);
+  }
   
   get ease() {return this.#ease;}
   set ease(x) {
@@ -151,15 +169,11 @@ class Animation{
 
 
   updateState(engineTime:number,engine:RenderEngine){//engine time
-    const gObject = this.#relatedTo != "engineCamera" ? 
-      engine.getObject(this.#relatedTo):
-      engine.camera;
-
     if(this.#enabled && !this.#done){
       if(this.#delay > 0){
         this.updateDelay(engineTime);
       }else{
-        this.updateAnimation(gObject,engineTime,engine);
+        this.updateAnimation(this.targetReference,engineTime,engine);
       }
       return false;
     }else{
@@ -193,7 +207,7 @@ class Animation{
   }
 
   private runOnCompleteKeyframe(engine:RenderEngine){
-    if(typeof this.#to.onComplete == "function"){//add onComplete per keyframe
+    if(this.#to.onComplete){//add onComplete per keyframe
       try {
         this.#to.onComplete(engine);
       } catch (error) {
@@ -211,25 +225,25 @@ class Animation{
   }
 
   //forced = false; no keyframes
-  private setAnimationVars(gObject: GraphObject|Dictionary, elapsed: number, forced = false){
-    if(isNaN(this.#startedAt) || forced){
+  private setAnimationVars(gObject: GraphObject|Dictionary, elapsed: number, usingKeyframes = false){
+    if(isNaN(this.#startedAt) || usingKeyframes){
       //Esta instanciacion se debe de realizar justo antes de iniciar la animacion
-      let gOD: Dictionary;
+      let initialValues: Dictionary;
 
       //Si se trata de la camara
-      if(gObject.id == "engineCamera"){
-        gOD = ExtendedObjects.buildObjectsWithRoutes(gObject);
+      if(this.alteringCamera){
+        initialValues = ExtendedObjects.buildObjectsWithRoutes(gObject);
         this.#to = ExtendedObjects.buildObjectsWithRoutes(this.#to);
       }else{
-        gOD = (gObject as GraphObject).dump();
+        initialValues = (gObject as GraphObject).dump();
       }
 
       this.#toKeys = Object.keys(this.#to);
 
-      this.#from =  gOD;//estado inicial del objeto
+      this.#from =  initialValues;//estado inicial del objeto
       
       //ajustar el tiempo de inicio de la animacion,solo cuando no se trate de una animacion con varios keyframes
-      if(!forced)
+      if(!usingKeyframes)
         this.#startedAt = elapsed;
     }
   }
@@ -239,8 +253,7 @@ class Animation{
     this.#toKeys.forEach(toKey =>{
       if(toKey != "onComplete"){
         const newValue = this.#from[toKey] + (this.#to[toKey] - this.#from[toKey])*proportion;
-        // console.log(newValue);
-        if(gObject.id == "engineCamera"){
+        if(this.alteringCamera){
           ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
         }else{
           gObject[toKey] = newValue;
@@ -249,26 +262,22 @@ class Animation{
     });
   }
 
-  private instantaneousAttributeSetter(gObject:GraphObject|Dictionary,elapsed:number,engine:RenderEngine){
-    console.warn("animacion de tipo instantanea");
+  private instantaneousAttributeSetter(gObject:GraphObject|Dictionary, engine:RenderEngine){
+    // console.warn("animacion de tipo instantanea");
     this.basicAttributesSetter(gObject,1);
     if(this.#timestamps.length != 0 && this.#actualKeyFrameNumber <(this.#timestamps.length-1)){
       //?onComplete
       this.runOnCompleteKeyframe(engine);
-      this.setKeyFrame(this.#actualKeyFrameNumber+1);
-      this.setAnimationVars(gObject ,elapsed, true);
     }else{
       this.#done = true;
     }
 
     this.#pendingTimersFix = true;
-
-    this.runOnCompleteKeyframe(engine);
   }
 
-  private updateAnimation (gObject:GraphObject|Dictionary,elapsed:number,engine:RenderEngine) {
+  private updateAnimation (gObject:GraphObject|Dictionary,engineTime:number,engine:RenderEngine) {
     // console.log(this.#actualKeyFrameNumber, this.#duration == 0);
-    const engineTime = elapsed;
+    const engineTimeBackup = engineTime;
 
     //TODO: this stupid shit isnt checking if the second parameter of the creation are a timestamps dictionary or a changes dictionary,
     //TODO: it's just specting that a "to" parameter is suministered via the Animation parameters if there is no a timestamp (and that case is imposible)
@@ -276,34 +285,36 @@ class Animation{
     if(this.#timestamps.length > 0){
       if(this.#actualKeyFrameNumber == -1){ //Default value
         this.setKeyFrame(0);
-        // if(this.#timestamps.length == 1){ //? Check this shit
-          this.setAnimationVars(gObject ,elapsed);
-        // }
+        this.setAnimationVars(gObject ,engineTime);
       }
     }
     
     //*NO KEYFRAMES=============================================================
     if(this.#timestamps.length == 0){
-      this.setAnimationVars(gObject ,elapsed);
+      this.setAnimationVars(gObject ,engineTime);
     }
     if(this.#pendingTimersFix){
-      this.#startedAt = elapsed-(this.#tElapsed%this.#duration);
+      this.#startedAt = engineTime-(this.#tElapsed%this.#duration);
       this.#pendingTimersFix = false;
     }
-    elapsed-=this.#startedAt;
+    engineTime-=this.#startedAt;
 
     //? Aqui adelante hay un problema de logica con las animaciones instantaneas
     //? Con respecto a la ejecucion de las funciones onComplete a nivel de animación (no de keyframe)
     if(!this.#done && this.#duration == 0){//Si es una animacion instantanea
-      this.instantaneousAttributeSetter(gObject,elapsed,engine);
+      this.instantaneousAttributeSetter(gObject, engine);
+      if(this.#timestamps.length>1){
+        this.setKeyFrame(1);
+        this.setAnimationVars(gObject ,0, true);
+      }
       //?Que pasaría en el caso de que el ultimo keyframe sea una animación instantanea?
       //*No se esta ejecutando el onComplete a nivel de Animacion en ese caso
       return;
 
     }else if(!this.#done){//Si no se ha terminado de animar / llegar al proximo keyframe
 
-      this.#tElapsed += elapsed-this.#elapsed;
-      this.#elapsed += elapsed-this.#elapsed;
+      this.#tElapsed += engineTime-this.#elapsed;
+      this.#elapsed += engineTime-this.#elapsed;
 
       const progress = this.#reversing ? 1-(this.#elapsed/this.#duration):(this.#elapsed/this.#duration);
 
@@ -316,34 +327,55 @@ class Animation{
         if(this.#looped < this.#loops || this.#infinite){
           this.runOnCompleteKeyframe(engine);
           if(this.#timestamps.length != 0 && this.#actualKeyFrameNumber < (this.#timestamps.length-1)){
+            //reset timers
+            const frameNumber = this.#actualKeyFrameNumber+1;
+            this.#elapsed = this.#elapsed%( this.#timestamps[frameNumber] - this.#timestamps[frameNumber-1]);
+            this.#tElapsed = this.#elapsed;
+            this.#startedAt = engineTimeBackup - this.#elapsed;
             //?onComplete
-            this.setKeyFrame(this.#actualKeyFrameNumber+1);
-            this.setAnimationVars(gObject ,elapsed, true);
+            this.setKeyFrame(frameNumber);
+            this.setAnimationVars(gObject ,engineTime , true);
+
 
           }else{
             // console.warn("restarting");
             if(this.#timestamps.length > 0){
               this.setKeyFrame(0);
-              this.setAnimationVars(gObject ,elapsed, true);
+              this.setAnimationVars(gObject ,engineTime , true);
+              if(this.#timestamps[0] == 0){
+                this.instantaneousAttributeSetter(gObject,engine);
+                if(this.#timestamps.length > 1){
+                  this.#elapsed = this.#elapsed%( this.#timestamps[1] - this.#timestamps[0]);
+                  this.#tElapsed = this.#elapsed;
+                  this.#startedAt = engineTimeBackup - this.#elapsed;
+
+                  this.setKeyFrame(1);
+                  this.setAnimationVars(gObject ,engineTime , true);
+                }else{
+                  //reset timers
+                  this.#startedAt = engineTimeBackup;
+                  this.#tElapsed = 0;
+                  this.#elapsed = 0;
+                }
+              }
             }
             this.#looped++;
             if(this.#loopback)//Loopback wasn't tested with loopback
               this.#reversing = !this.#reversing;
           }
 
-          //reset timers
-          this.#startedAt = engineTime;
-          this.#tElapsed = 0;
-          this.#elapsed = 0;
+
+          this.updateAnimation(gObject,engineTimeBackup,engine)
 
         }else{
           if(this.#timestamps.length != 0 && this.#actualKeyFrameNumber < (this.#timestamps.length-1)){
-            this.#startedAt = engineTime;
-            this.#elapsed = 0;
+            const frameNumber = this.#actualKeyFrameNumber+1;
+            this.#elapsed = this.#elapsed%( this.#timestamps[frameNumber] - this.#timestamps[frameNumber]);
+            this.#startedAt = engineTimeBackup - this.#elapsed;
             //?onComplete
             this.runOnCompleteKeyframe(engine);
-            this.setKeyFrame(this.#actualKeyFrameNumber+1);
-            this.setAnimationVars(gObject ,elapsed, true);
+            this.setKeyFrame(frameNumber);
+            this.setAnimationVars(gObject ,engineTime, true);
           }else{
             this.#done = true;
             this.#startedAt = NaN;

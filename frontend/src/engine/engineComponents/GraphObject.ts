@@ -1,5 +1,5 @@
 import { Dictionary } from "../../global.ts"
-import { lambdaConverter } from "../logic/Misc.ts"
+import { getClassAttribs, lambdaConverter } from "../logic/Misc.ts"
 import { RenderEngine } from "../renderCore/RenderEngine.tsx";
 import { ObjectRenderingData } from "./CollisionLayer.ts";
 import Proxificator from "./EventProxy.ts"
@@ -17,7 +17,7 @@ enum FiltersName {
 
 
 class GraphObjectDataType{
-  dataType = {
+  static readonly dataTypes = {
     id: "string",
     enabled : "boolean",
 
@@ -58,6 +58,9 @@ class GraphObjectDataType{
     widthScale : "number",
     heightScale : "number",
     rotate : "number",
+    pitch : "number",
+    yaw : "number",
+    roll : "number",
   }
 }
 
@@ -102,6 +105,8 @@ class GraphObject extends GraphObjectDataType{
   _widthScale:number;
   _heightScale:number;
   _rotate:number;
+  _pitch:number;
+  _yaw:number;
   _repeat:string;
   _repeatPattern:CanvasPattern|boolean = null;
 
@@ -119,7 +124,7 @@ class GraphObject extends GraphObjectDataType{
 
   dimentionsPack:ObjectRenderingData = {
     id: "",
-    solvedTexture:null,
+    solvedTexture: null,
     x: 0, y: 0, z: 0,
     corner: { x: 0, y: 0 },
     base: { x: 0, y: 0, z: 0 },
@@ -127,27 +132,23 @@ class GraphObject extends GraphObjectDataType{
     sizeInDisplay: 0,
     width: 0, height: 0,
     rotation: 0,
+    pitch: 0,
+    yaw: 0,
+    roll: 0,
     text: {
       fontSize: 0,
-      margin: {
-        horizontal: 0,
-        vertical: 0
-      },
+      margin: { horizontal: 0, vertical: 0 },
       value: null
     }
   };
 
-  _getAtribs(){// ? Could be a global function ?
-    const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(this)));
-    const propertyNames = Object.keys(this.dataType);
-    const atributesNames = propertyNames.filter(key =>{return "get" in propertyDescriptors[key]});
-    return atributesNames;
-  }
+  static atribsNames = [];
 
   _updateEnabled:(id:string,enabled:boolean)=>void; //semi-observer for enabled list update
 
   constructor(graphInfo: Dictionary = {}){
     super();
+    GraphObject.atribsNames = getClassAttribs(this,Object.keys(GraphObject.dataTypes));//Todo: Consider do this once
     this._id =              graphInfo.id ?? "error";
     this._enabled =         graphInfo.enabled ?? false;//exclude from calculation and renderin
 
@@ -187,6 +188,8 @@ class GraphObject extends GraphObjectDataType{
     this._scale =           graphInfo.scale ?? 1;
     //imageRotation
     this._rotate =          "rotate" in graphInfo ? parseFloat(graphInfo.rotate)*Math.PI/180 : 0;
+    this._pitch =           "pitch" in graphInfo ? parseFloat(graphInfo.pitch)*Math.PI/180 : 0;
+    this._yaw =             "yaw" in graphInfo ? parseFloat(graphInfo.yaw)*Math.PI/180 : 0;
 
     this.repeat =          graphInfo.repeat ?? "";
 
@@ -476,6 +479,21 @@ class GraphObject extends GraphObjectDataType{
   set rotateRad(x) {this._rotate = x}
   get rotateRad() {return this._rotate;}
 
+  get roll() {return this.rotate;}
+  set roll(x:any) {this.rotate = x;}
+  set rollRad(x:number) {this._rotate = x;}
+  get rollRad() {return this._rotate;}
+
+  get pitch() {return (this._pitch*180)/Math.PI;}
+  set pitch(x:number) {this._pitch = (x*Math.PI/180) || 0;}
+  set pitchRad(x:number) {this._pitch = x;}
+  get pitchRad() {return this._pitch;}
+
+  get yaw() {return (this._yaw*180)/Math.PI;}
+  set yaw(x:number) {this._yaw = (x*Math.PI/180) || 0;}
+  set yawRad(x:number) {this._yaw = x;}
+  get yawRad() {return this._yaw;}
+
   private static readonly VALID_REPEAT_MODES = new Set(["repeat", "repeat-x", "repeat-y"]);
 
   get repeat(){ return this._repeat; }
@@ -561,10 +579,8 @@ class GraphObject extends GraphObjectDataType{
     if(!cloneId)
       throw new Error("the id for the clonning operation that uses the object with id '"+this._id+"' is not defined");
 
-    const atributesNames = this._getAtribs();
-
     let graphData = new Object();
-    atributesNames.forEach(element => {
+    GraphObject.atribsNames.forEach(element => {
         Object.assign(graphData,{[element] : this[element]});
     });
     Object.assign(graphData,{id:cloneId});
@@ -575,7 +591,7 @@ class GraphObject extends GraphObjectDataType{
    */
   dump(): Dictionary{
     let d:Dictionary = {};
-    this._getAtribs().forEach(key => {
+    GraphObject.atribsNames.forEach(key => {
 
       d[key] = this[key];
     });

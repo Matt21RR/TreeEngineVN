@@ -3,12 +3,15 @@ import { TextLine } from "../logic/Misc.ts";
 import EngTexture from "../renderCore/EngTexture.ts";
 
 export type ObjectRenderingData = {
-  x:number, 
-  y:number, 
-  z:number, 
-  width:number, 
-  height:number, 
+  x:number,
+  y:number,
+  z:number,
+  width:number,
+  height:number,
   rotation:number,
+  pitch:number,
+  yaw:number,
+  roll:number,
   sizeInDisplay:number,
   /** corner is the top left coords of the rendered object */
   corner:{x:number, y:number},
@@ -19,8 +22,8 @@ export type ObjectRenderingData = {
     z: any;
   },
   id:string,
-  repeatPattern:CanvasPattern,
-  solvedTexture:EngTexture,
+  repeatPattern:CanvasPattern|null,
+  solvedTexture:EngTexture|null,
   text:{
     value?:Array<TextLine>,
     margin:{horizontal:number,vertical:number},
