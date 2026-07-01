@@ -1,14 +1,31 @@
 //recibe un array de funciones que retornan promesas
-export default function sequencedPromise(promisesArray: Array<()=>Promise<any>>){
+
+import { Dictionary } from "../../global.ts";
+
+export default function sequencedPromise<T>(promisesArray: Array<()=>Promise<T>>){
+  return sequencedPromiseImpl(promisesArray);
+}
+
+function sequencedPromiseImpl<T>(promisesArray: Array<()=>Promise<T>>, resultsArray:Array<T> = [], rejectsArray:Array<{promise:()=>Promise<T>, details:any}> = []):Promise<{results:Array<T>, rejects:Array<{promise:()=>Promise<T>, details:any}>}>{
   return new Promise(finalResolve=>{
     const promise = promisesArray.shift();
-    promise().then(()=>{
-      if(promisesArray.length > 0){
-        sequencedPromise(promisesArray).then(()=>finalResolve(null));
-      }else{
-        finalResolve(null);
-      }
-    });
+    promise()
+      .then((resolved:T)=>{
+        resultsArray.push(resolved);
+        if(promisesArray.length > 0){
+          sequencedPromiseImpl(promisesArray, resultsArray, rejectsArray).then(()=>finalResolve({results: resultsArray, rejects: rejectsArray}));
+        }else{
+          finalResolve({results: resultsArray, rejects: rejectsArray});
+        }
+      })
+      .catch((err)=>{
+        rejectsArray.push({promise,details:err});
+        if(promisesArray.length > 0){
+          sequencedPromiseImpl(promisesArray, resultsArray, rejectsArray).then(()=>finalResolve({results: resultsArray, rejects: rejectsArray}));
+        }else{
+          finalResolve({results: resultsArray, rejects: rejectsArray});
+        }
+      });
   });
 }
 

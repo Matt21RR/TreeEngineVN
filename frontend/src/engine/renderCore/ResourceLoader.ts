@@ -4,8 +4,6 @@ import { Dictionary } from "../../global.ts";
 import { RequestFile, RequestFileWithMime } from "../../../wailsjs/go/main/App.js";
 import RenderMiscWebGPU from "./RenderMiscWebGPU.ts";
 const RenderMisc = RenderMiscWebGPU;
-// import RenderMiscCanvas2D from "./RenderMiscCanvas2D.ts";
-// const RenderMisc = RenderMiscCanvas2D;
 
 class ResourceLoader{
   static loadSound(indexPath:string){
