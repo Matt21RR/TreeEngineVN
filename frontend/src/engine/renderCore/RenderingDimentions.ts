@@ -203,7 +203,37 @@ export function generateObjectsDisplayDimentions(
         dimentionsPack.sizeInDisplay  = perspectiveScale;
         dimentionsPack.width  = objectWidth;
         dimentionsPack.height  = objectHeight;
-        dimentionsPack.rotation = gObject.rotateRad;
+
+        // Compute orientation so the texture faces the camera when using perspective
+        if (camera.usePerspective) {
+          const objWorldX = originx + gObject.x;
+          const objWorldY = originy + gObject.y;
+          const objWorldZ = gObject.accomulatedZ;
+
+          const dx = camera.position.x - objWorldX;
+          const dy = camera.position.y - objWorldY;
+          const dz = camera.position.z - objWorldZ;
+
+          const horiz = Math.hypot(dx, dz) || 1e-6;
+          const facingPitch = Math.atan2(dy, horiz); // radians
+          const facingYaw = Math.atan2(dx, dz); // radians around Y axis
+
+          // store computed orientation in render packet (radians)
+          dimentionsPack.pitch = facingPitch;
+          dimentionsPack.yaw = facingYaw;
+          // keep roll/2D rotation as object's rotateRad
+          dimentionsPack.roll = gObject.rotateRad;
+          dimentionsPack.rotation = gObject.rotateRad;
+        } else {
+          // Non-perspective: preserve explicit object orientation
+          dimentionsPack.rotation = gObject.rotateRad;
+          dimentionsPack.pitch = gObject.pitchRad;
+          dimentionsPack.yaw = gObject.yawRad;
+          dimentionsPack.roll = gObject.rollRad;
+        }
+        dimentionsPack.pitch = gObject.pitchRad;
+        dimentionsPack.yaw = gObject.yawRad;
+        dimentionsPack.roll = gObject.rollRad;
 
         //TODO: texts requires continous recomputing
         if(gObject.text !== null && (strRef = getStr(gObject.text)) !== null){

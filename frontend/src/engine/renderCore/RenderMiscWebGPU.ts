@@ -75,7 +75,10 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
       y:object.corner.y,
       width:object.width,
       height:object.height,
-      rotation: object.rotation});
+      rotation: object.rotation,
+      pitch: object.pitch,
+      yaw: object.yaw,
+      roll: object.roll});
   }
 
   createRepeatPattern(texture: ImageBitmap, repeatOption: string, ctx: GPUCanvasContext) {
@@ -93,6 +96,9 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
       width: displayWidth,   // área total que cubre el patrón (lo gestiona queueRepeatPattern según el modo)
       height: displayHeight, // área total que cubre el patrón (lo gestiona queueRepeatPattern según el modo)
       rotation: object.rotation,
+      pitch: object.pitch,
+      yaw: object.yaw,
+      roll: object.roll,
       tileWidth: object.width,   // tamaño de un tile en pantalla (equivale a la escala de applyPatternTransformation en Canvas2D)
       tileHeight: object.height  // tamaño de un tile en pantalla
     }, repeatOption as RepeatMode);

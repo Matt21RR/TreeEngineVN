@@ -5,6 +5,9 @@ interface DrawParams {
   x: number; y: number;
   width: number; height: number;
   rotation: number;
+  pitch?: number;
+  yaw?: number;
+  roll?: number;
   fillColor?: [number, number, number, number];
   borderColor?: [number, number, number, number];
   borderWidth?: number;
@@ -254,9 +257,11 @@ export default class WebGPUCanvas {
         allData[offset + 1] = item.y;
         allData[offset + 2] = item.width;
         allData[offset + 3] = item.height;
-        allData[offset + 4] = item.rotation;
-        allData[offset + 5] = cw;
-        allData[offset + 6] = ch;
+        allData[offset + 4] = item.roll ?? item.rotation;
+        allData[offset + 5] = item.pitch ?? 0;
+        allData[offset + 6] = item.yaw ?? 0;
+        allData[offset + 7] = cw;
+        allData[offset + 8] = ch;
         globalIndex++;
       });
       drawCalls.push({ id, firstInstance, count: groupItems.length });
@@ -296,14 +301,16 @@ export default class WebGPUCanvas {
         allData[offset + 1] = item.y;
         allData[offset + 2] = item.width;
         allData[offset + 3] = item.height;
-        allData[offset + 4] = item.rotation;
-        allData[offset + 5] = cw;
-        allData[offset + 6] = ch;
-        
-        allData[offset + 8] = item.fillColor![0]; // uvScaleX
-        allData[offset + 9] = item.fillColor![1]; // uvScaleY
-        allData[offset + 10] = item.fillColor![2]; // uvOffsetX
-        allData[offset + 11] = item.fillColor![3]; // uvOffsetY
+        allData[offset + 4] = item.roll ?? item.rotation;
+        allData[offset + 5] = item.pitch ?? 0;
+        allData[offset + 6] = item.yaw ?? 0;
+        allData[offset + 7] = cw;
+
+        allData[offset + 8] = ch;
+        allData[offset + 9] = item.fillColor![0]; // uvScaleX
+        allData[offset + 10] = item.fillColor![1]; // uvScaleY
+        allData[offset + 11] = item.fillColor![2]; // uvOffsetX
+        allData[offset + 12] = item.fillColor![3]; // uvOffsetY
         globalIndex++;
       });
       drawCalls.push({ id, firstInstance, count: groupItems.length });
@@ -366,19 +373,37 @@ export default class WebGPUCanvas {
 
   private createPipelines() {
     const commonWGSLTransforms = `
-      fn getNDCPosition(vertexPos: vec2f, pos: vec2f, size: vec2f, rotation: f32, canvasSize: vec2f) -> vec4f {
+      fn rotate3D(point: vec3f, roll: f32, pitch: f32, yaw: f32) -> vec3f {
+        let cr = cos(roll);
+        let sr = sin(roll);
+        let cp = cos(pitch);
+        let sp = sin(pitch);
+        let cy = cos(yaw);
+        let sy = sin(yaw);
+
+        let x1 = point.x * cy + point.z * sy;
+        let z1 = -point.x * sy + point.z * cy;
+        let y1 = point.y;
+
+        let y2 = y1 * cp - z1 * sp;
+        let z2 = y1 * sp + z1 * cp;
+
+        let x3 = x1 * cr - y2 * sr;
+        let y3 = x1 * sr + y2 * cr;
+        return vec3f(x3, y3, z2);
+      }
+
+      fn getNDCPosition(vertexPos: vec2f, pos: vec2f, size: vec2f, roll: f32, pitch: f32, yaw: f32, canvasSize: vec2f) -> vec4f {
         let localPixelPos = vertexPos * size;
         let center = size * 0.5;
         let translatedPos = localPixelPos - center;
-        
-        let c = cos(rotation);
-        let s = sin(rotation);
-        let rotatedPos = vec2f(
-          translatedPos.x * c - translatedPos.y * s,
-          translatedPos.x * s + translatedPos.y * c
-        );
-        
-        let worldPixelPos = rotatedPos + center + pos;
+        let local3D = vec3f(translatedPos.x, translatedPos.y, 0.0);
+
+        let rotated3D = rotate3D(local3D, roll, pitch, yaw);
+        let cameraDist = max(canvasSize.x, canvasSize.y) * 1.2;
+        let perspectiveScale = cameraDist / (cameraDist + rotated3D.z);
+        let worldPixelPos = vec2f(rotated3D.x, rotated3D.y) * perspectiveScale + center + pos;
+
         let ndcX = (worldPixelPos.x / canvasSize.x) * 2.0 - 1.0;
         let ndcY = (worldPixelPos.y / canvasSize.y) * -2.0 + 1.0;
         return vec4f(ndcX, ndcY, 0.0, 1.0);
@@ -389,8 +414,9 @@ export default class WebGPUCanvas {
     const imageShader = `
       struct InstImage {
         transform1: vec4f, // [x, y, width, height]
-        transform2: vec4f, // [rotation, canvasWidth, canvasHeight, 0]
-        _pad: array<vec4f, 2>
+        transform2: vec4f, // [roll, pitch, yaw, canvasWidth]
+        transform3: vec4f, // [canvasHeight, 0, 0, 0]
+        _pad: vec4f
       };
       struct DataImage { instances: array<InstImage> };
       @group(0) @binding(0) var<storage, read> data: DataImage;
@@ -404,9 +430,11 @@ export default class WebGPUCanvas {
         let p_pos = inst.transform1.xy;
         let p_size = inst.transform1.zw;
         let p_rot = inst.transform2.x;
-        let canvasSize = inst.transform2.yz;
+        let p_pitch = inst.transform2.y;
+        let p_yaw = inst.transform2.z;
+        let canvasSize = vec2f(inst.transform2.w, inst.transform3.x);
 
-        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, canvasSize);
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize);
         return Out(ndc, uv);
       }
 
@@ -421,9 +449,9 @@ export default class WebGPUCanvas {
     const patternShader = `
       struct InstPattern {
         transform1: vec4f, // [x, y, width, height]
-        transform2: vec4f, // [rotation, canvasWidth, canvasHeight, 0]
-        tiling: vec4f,     // [uvScaleX, uvScaleY, uvOffsetX, uvOffsetY]
-        _pad: vec4f
+        transform2: vec4f, // [roll, pitch, yaw, canvasWidth]
+        tiling: vec4f,     // [canvasHeight, uvScaleX, uvScaleY, uvOffsetX]
+        offset: vec4f      // [uvOffsetY, 0,0,0]
       };
       struct DataPattern { instances: array<InstPattern> };
       @group(0) @binding(0) var<storage, read> data: DataPattern;
@@ -437,10 +465,12 @@ export default class WebGPUCanvas {
         let p_pos = inst.transform1.xy;
         let p_size = inst.transform1.zw;
         let p_rot = inst.transform2.x;
-        let canvasSize = inst.transform2.yz;
+        let p_pitch = inst.transform2.y;
+        let p_yaw = inst.transform2.z;
+        let canvasSize = vec2f(inst.transform2.w, inst.tiling.x);
 
-        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, canvasSize);
-        let tiledUV = uv * inst.tiling.xy + inst.tiling.zw;
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize);
+        let tiledUV = uv * inst.tiling.yz + vec2f(inst.tiling.w, inst.offset.x);
         return Out(ndc, tiledUV);
       }
 
