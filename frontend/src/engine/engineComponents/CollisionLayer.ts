@@ -17,12 +17,12 @@ export type ObjectRenderingData = {
   corner:{x:number, y:number},
   /** base data is unused by the collision system */
   base:{
-    x: any;
-    y: any;
-    z: any;
+    x: number;
+    y: number;
+    z: number;
   },
   id:string,
-  repeatPattern:CanvasPattern|null,
+  repeatPattern:boolean,
   solvedTexture:EngTexture|null,
   text:{
     value?:Array<TextLine>,

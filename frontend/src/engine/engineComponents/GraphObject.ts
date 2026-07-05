@@ -19,7 +19,7 @@ enum FiltersName {
 class GraphObjectDataType{
   static readonly dataTypes = {
     id: "string",
-    enabled : "boolean",
+    enabled : "boolean",//requires recalculation
 
     text : ["function","string","null"],
     fitContent: "boolean",
@@ -48,15 +48,15 @@ class GraphObjectDataType{
 
     parent : "string",
 
-    ignoreParallax : "boolean",
-    useEngineUnits : "boolean",
-    x : "number",
-    y : "number",
-    z : "number",
-    scale : "number",
-    repeat : "string",
-    widthScale : "number",
-    heightScale : "number",
+    ignoreParallax : "boolean",//Requires recalculation
+    useEngineUnits : "boolean",//Requires recalculation
+    x : "number",//Requires recalculation
+    y : "number",//Requires recalculation
+    z : "number",//Requires recalculation
+    scale : "number",//Requires recalculation
+    repeat : "string",//Requires recalculation
+    widthScale : "number",//Requires recalculation
+    heightScale : "number",//Requires recalculation
     rotate : "number",
     pitch : "number",
     yaw : "number",
@@ -108,7 +108,7 @@ class GraphObject extends GraphObjectDataType{
   _pitch:number;
   _yaw:number;
   _repeat:string;
-  _repeatPattern:CanvasPattern|boolean = null;
+  _repeatPattern:boolean = false;
 
   _ignoreParallax:boolean;
 
@@ -128,7 +128,7 @@ class GraphObject extends GraphObjectDataType{
     x: 0, y: 0, z: 0,
     corner: { x: 0, y: 0 },
     base: { x: 0, y: 0, z: 0 },
-    repeatPattern: null,
+    repeatPattern: false,
     sizeInDisplay: 0,
     width: 0, height: 0,
     rotation: 0,
@@ -503,20 +503,13 @@ class GraphObject extends GraphObjectDataType{
     const engine = RenderEngine.getInstance();
     const shader = engine.textureManager.getTexture(this.textureName);
     if (GraphObject.VALID_REPEAT_MODES.has(x) && shader) {
-      this._repeatPattern = engine.renderMisc.createRepeatPattern(
-        shader.getTexture(),
-        x,
-        engine.canvasRef.context
-      );
+      this._repeatPattern = true
     } else {
-      this._repeatPattern = null;
+      this._repeatPattern = false;
     }
   }
 
   get repeatPattern(){ return this._repeatPattern; }
-  set repeatPattern(x:CanvasPattern|boolean) {
-    this._repeatPattern = x;
-  }
 
   get ignoreParallax() {return this._ignoreParallax;}
   set ignoreParallax(x) {
@@ -586,17 +579,16 @@ class GraphObject extends GraphObjectDataType{
     Object.assign(graphData,{id:cloneId});
     return new GraphObject(graphData);
   }
-  /**
-   * Create a dictionary with the object params
-   */
-  dump(): Dictionary{
+
+  dump(){
     let d:Dictionary = {};
-    GraphObject.atribsNames.forEach(key => {
+    GraphObject.atribsNames.map(key => {
 
       d[key] = this[key];
     });
     return d;
   }
+
 }
 
 

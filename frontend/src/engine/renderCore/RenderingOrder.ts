@@ -33,48 +33,46 @@ function _deepRootSearch(
   }
 }
 
-function generateCalculationOrder(graphArray: RenList<GraphObject>) {
-  let final: Array<string> = [];
-  let processedCount = 0;
-  // const orderMap = new Map<string, number>(); // id -> index in order array
-  
-  // Get all IDs once
+function generateCalculationOrder(graphArray: RenList<GraphObject>): CalculationOrder {
   const allIds = graphArray.enabledIds;
-  // console.log("All IDs to process:", allIds.length);
   const totalItems = allIds.length;
-  
-  // Use Set for O(1) lookups instead of Array with indexOf/splice
-  let unprocessedIds = new Set(allIds);
-  let finalIdSet = new Set<string>();
 
-  let graphObject: GraphObject;
-  
-  while (processedCount < totalItems) {
-    // Get first unprocessed id
-    const firstId = unprocessedIds.values().next().value;
-    graphObject = graphArray.fastGet(firstId);
+  // Pre-size the output array instead of growing it with push()
+  const final: CalculationOrder = new Array(totalItems);
+  let writeIndex = 0;
 
-    if(graphObject.parentRef){
-      const branchToParentRoot = _deepRootSearch(graphObject, finalIdSet);
-      //*Process branch to root, adding elements to order if they haven't been processed yet
-      branchToParentRoot.forEach(element => {
-        if (!finalIdSet.has(element)) {
-          final.push(element);
-          finalIdSet.add(element);
-          processedCount++;
-          unprocessedIds.delete(element);
-        }
+  // Single Set instead of finalIdSet + unprocessedIds
+  const processed = new Set<string>();
 
-        //Note: The accomulatedZ of each element is calculated in the _deepRootSearch function,
-        // so update that value in that function to avoid having to recalculate it here, since 
-        // we already accesing to the element in that function
-      });
-    }else{
-      final.push(graphObject.id);
-      finalIdSet.add(graphObject.id);
-      processedCount++;
-      unprocessedIds.delete(graphObject.id);
-      graphObject.accomulatedZ = graphObject.z;
+  // Reused scratch stack, avoids per-branch array allocation
+  const stack: GraphObject[] = [];
+
+  for (let i = 0; i < totalItems; i++) {
+    const startId = allIds[i];
+    if (processed.has(startId)) continue;
+
+    // Walk up the parent chain iteratively (no recursion, no stack-depth limit)
+    stack.length = 0;
+    let current: GraphObject | undefined = graphArray.fastGet(startId);
+
+    while (current && !processed.has(current.id)) {
+      stack.push(current);
+      current = current.parentRef as GraphObject | undefined;
+    }
+
+    // `current` is either undefined (we bottomed out at a root) or an
+    // already-processed ancestor whose accomulatedZ is already final.
+    let parentZ = current ? current.accomulatedZ : 0;
+
+    // Unwind from closest-to-root down to startId so each node can use
+    // its parent's just-computed accomulatedZ.
+    for (let j = stack.length - 1; j >= 0; j--) {
+      const node = stack[j];
+      node.accomulatedZ = node.z + parentZ;
+      parentZ = node.accomulatedZ;
+
+      processed.add(node.id);
+      final[writeIndex++] = node.id;
     }
   }
 
