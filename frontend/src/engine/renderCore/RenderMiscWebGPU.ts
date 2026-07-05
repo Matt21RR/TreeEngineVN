@@ -80,10 +80,11 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
       yaw: object.yaw,
       roll: object.roll});
   }
-
+  //*************************** DOES NOTHING *****************************************/
   createRepeatPattern(texture: ImageBitmap, repeatOption: string, ctx: GPUCanvasContext) {
     return true;
   }
+  //*************************** ALSO DOES NOTHING *****************************************/
   applyPatternTransformation(object: ObjectRenderingData): void {
     
   }
