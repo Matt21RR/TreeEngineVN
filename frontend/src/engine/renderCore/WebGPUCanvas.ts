@@ -53,8 +53,6 @@ export default class WebGPUCanvas {
     this.device = await adapter!.requestDevice();
     this.format = navigator.gpu.getPreferredCanvasFormat();
 
-    const canvas = this.context.canvas as HTMLCanvasElement;
-
     this.context.configure({
       device: this.device,
       format: this.format,
