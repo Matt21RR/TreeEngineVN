@@ -362,16 +362,13 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
     this.inputManager.cleaner();
 
     //Rendering-related stuff
-    const self = this;
     const handler = {
       get(target, prop:string) {
         return target[prop];
       },
       set(target, prop:string, value:any) {
         target[prop] = value;
-        self.graphArray.objects.forEach(e=>{
-          e.pendingRenderingRecalculation = true; //! Bug: Incorrect object position recalculation
-        });
+        SharedDisplayCalcs.getInstance().recalculateAll = true;
         return true;
       }
     };
@@ -585,9 +582,7 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
         //disable image smoothing
 
         //prevents reescaling glitches
-        this.graphArray.objects.forEach(e=>{
-          e.pendingRenderingRecalculation = true;
-        });
+        SharedDisplayCalcs.getInstance().recalculateAll = true;
       }}
       events={()=>{this.inputManager.update(this)}}
       animateGraphics={(fps)=>{
