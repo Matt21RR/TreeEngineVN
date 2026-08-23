@@ -29,6 +29,9 @@ class Animation{
   #to: Dictionary
   #toKeys: Array<string>
   #from: Dictionary
+  //estado final del ultimo segmento animado, para reconstruir #from en los wraps sin releer el objeto
+  #settled: Dictionary
+  #fromCaptured: boolean
   #onComplete: Function|null
 
   #keyframes:  Dictionary
@@ -62,6 +65,8 @@ class Animation{
     this.#delay = aInfo.delay || NaN;
     this.#to = {};
     this.#toKeys = [];
+    this.#settled = {};
+    this.#fromCaptured = false;
     this.#onComplete = aInfo.onComplete || null;
     
     this.#keyframes = aInfo.keyframes || {};
@@ -71,6 +76,10 @@ class Animation{
   }
 
   private setTargetRef(id:string){
+    //si cambia el objetivo, la captura previa del estado inicial deja de ser valida
+    this.#fromCaptured = false;
+    this.#settled = {};
+
     const engine = RenderEngine.getInstance();
     this.targetReference = id != "engineCamera" ? 
       engine.getObject(this.#relatedTo):
@@ -226,6 +235,13 @@ class Animation{
 
   //forced = false; no keyframes
   private setAnimationVars(gObject: GraphObject|Dictionary, elapsed: number, usingKeyframes = false){
+    if(usingKeyframes && this.#fromCaptured){
+      //Wrap de loop/keyframe: derivar el estado inicial del segmento desde la
+      //captura previa en lugar de releer todas las propiedades del objeto (dump),
+      //evita miles de dumps sincronizados en un mismo frame con muchos objetos
+      Object.assign(this.#from, this.#settled);
+      return;
+    }
     if(isNaN(this.#startedAt) || usingKeyframes){
       //Esta instanciacion se debe de realizar justo antes de iniciar la animacion
       let initialValues: Dictionary;
@@ -235,36 +251,49 @@ class Animation{
         initialValues = ExtendedObjects.buildObjectsWithRoutes(gObject);
         this.#to = ExtendedObjects.buildObjectsWithRoutes(this.#to);
       }else{
-        initialValues = (gObject as GraphObject).dump();
+        //leer via _rawSelf evita las trampas del Proxy en cada propiedad
+        const rawRef = ((gObject as GraphObject)._rawSelf ?? gObject) as GraphObject;
+        initialValues = rawRef.dump();
       }
 
-      this.#toKeys = Object.keys(this.#to);
+      //filtrar claves no animables una sola vez por segmento
+      this.#toKeys = Object.keys(this.#to).filter(toKey => toKey != "onComplete");
 
       this.#from =  initialValues;//estado inicial del objeto
-      
+      this.#settled = {};
+      this.#fromCaptured = true;
+
       //ajustar el tiempo de inicio de la animacion,solo cuando no se trate de una animacion con varios keyframes
       if(!usingKeyframes)
         this.#startedAt = elapsed;
     }
   }
 
+  //guarda el valor final del segmento para cada clave animada,
+  //permitiendo reconstruir #from en los wraps sin releer el objeto
+  private cacheSettledValues(settledAtStart:boolean){
+    for(let i = 0;i < this.#toKeys.length;i++){
+      const toKey = this.#toKeys[i];
+      this.#settled[toKey] = settledAtStart ? this.#from[toKey] : this.#to[toKey];
+    }
+  }
+
   private basicAttributesSetter(gObject:GraphObject|Dictionary, proportion: number){
-    // console.log(this.#id, this.#to, this.#from, proportion);
-    this.#toKeys.forEach(toKey =>{
-      if(toKey != "onComplete"){
-        const newValue = this.#from[toKey] + (this.#to[toKey] - this.#from[toKey])*proportion;
-        if(this.alteringCamera){
-          ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
-        }else{
-          gObject[toKey] = newValue;
-        }
+    for(let i = 0;i < this.#toKeys.length;i++){
+      const toKey = this.#toKeys[i];
+      const newValue = this.#from[toKey] + (this.#to[toKey] - this.#from[toKey])*proportion;
+      if(this.alteringCamera){
+        ExtendedObjects.setValueWithRoute(toKey,gObject,newValue);
+      }else{
+        gObject[toKey] = newValue;
       }
-    });
+    }
   }
 
   private instantaneousAttributeSetter(gObject:GraphObject|Dictionary, engine:RenderEngine){
     // console.warn("animacion de tipo instantanea");
     this.basicAttributesSetter(gObject,1);
+    this.cacheSettledValues(false);//un segmento instantaneo tambien termina en los valores 'to'
     if(this.#timestamps.length != 0 && this.#actualKeyFrameNumber <(this.#timestamps.length-1)){
       //?onComplete
       this.runOnCompleteKeyframe(engine);
@@ -277,7 +306,6 @@ class Animation{
 
   private updateAnimation (gObject:GraphObject|Dictionary,engineTime:number,engine:RenderEngine) {
     // console.log(this.#actualKeyFrameNumber, this.#duration == 0);
-    const engineTimeBackup = engineTime;
 
     //TODO: this stupid shit isnt checking if the second parameter of the creation are a timestamps dictionary or a changes dictionary,
     //TODO: it's just specting that a "to" parameter is suministered via the Animation parameters if there is no a timestamp (and that case is imposible)
@@ -288,103 +316,118 @@ class Animation{
         this.setAnimationVars(gObject ,engineTime);
       }
     }
-    
+
     //*NO KEYFRAMES=============================================================
     if(this.#timestamps.length == 0){
       this.setAnimationVars(gObject ,engineTime);
     }
-    if(this.#pendingTimersFix){
-      this.#startedAt = engineTime-(this.#tElapsed%this.#duration);
-      this.#pendingTimersFix = false;
-    }
-    engineTime-=this.#startedAt;
 
-    //? Aqui adelante hay un problema de logica con las animaciones instantaneas
-    //? Con respecto a la ejecucion de las funciones onComplete a nivel de animación (no de keyframe)
-    if(!this.#done && this.#duration == 0){//Si es una animacion instantanea
-      this.instantaneousAttributeSetter(gObject, engine);
-      if(this.#timestamps.length>1){
-        this.setKeyFrame(1);
-        this.setAnimationVars(gObject ,0, true);
+    //Bucle iterativo acotado: reemplaza la llamada recursiva que se ejecutaba
+    //al envolver un loop/keyframe (mismo resultado, sin re-trabajo ni stack overflow)
+    let pendingWraps = this.#timestamps.length + 2;
+    let wrapped = true;
+    while(wrapped && !this.#done && pendingWraps-- > 0){
+      wrapped = false;
+
+      if(this.#pendingTimersFix){
+        this.#startedAt = engineTime-(this.#tElapsed%this.#duration);
+        this.#pendingTimersFix = false;
       }
-      //?Que pasaría en el caso de que el ultimo keyframe sea una animación instantanea?
-      //*No se esta ejecutando el onComplete a nivel de Animacion en ese caso
-      return;
+      const t = engineTime-this.#startedAt;
 
-    }else if(!this.#done){//Si no se ha terminado de animar / llegar al proximo keyframe
+      //? Aqui adelante hay un problema de logica con las animaciones instantaneas
+      //? Con respecto a la ejecucion de las funciones onComplete a nivel de animación (no de keyframe)
+      if(!this.#done && this.#duration == 0){//Si es una animacion instantanea
+        this.instantaneousAttributeSetter(gObject, engine);
+        if(this.#timestamps.length>1){
+          this.setKeyFrame(1);
+          this.setAnimationVars(gObject ,0, true);
+        }
+        //?Que pasaría en el caso de que el ultimo keyframe sea una animación instantanea?
+        //*No se esta ejecutando el onComplete a nivel de Animacion en ese caso
+        return;
 
-      this.#tElapsed += engineTime-this.#elapsed;
-      this.#elapsed += engineTime-this.#elapsed;
+      }else if(!this.#done){//Si no se ha terminado de animar / llegar al proximo keyframe
 
-      const progress = this.#reversing ? 1-(this.#elapsed/this.#duration):(this.#elapsed/this.#duration);
+        const delta = t-this.#elapsed;
+        this.#tElapsed += delta;
+        this.#elapsed += delta;
 
-      if(progress < 1 || (this.#reversing && (progress>0))){
-        const easingConstant = this.#ease(progress);//easing constant
-        this.basicAttributesSetter(gObject,easingConstant);
-      }else if(progress >= 1 || (this.#reversing && (progress <= 0))){
-        this.basicAttributesSetter(gObject, this.#reversing ? 0 : 1);
-        //si no se han hecho todos los loops o está en loop infinito
-        if(this.#looped < this.#loops || this.#infinite){
-          this.runOnCompleteKeyframe(engine);
-          if(this.#timestamps.length != 0 && this.#actualKeyFrameNumber < (this.#timestamps.length-1)){
-            //reset timers
-            const frameNumber = this.#actualKeyFrameNumber+1;
-            this.#elapsed = this.#elapsed%( this.#timestamps[frameNumber] - this.#timestamps[frameNumber-1]);
-            this.#tElapsed = this.#elapsed;
-            this.#startedAt = engineTimeBackup - this.#elapsed;
-            //?onComplete
-            this.setKeyFrame(frameNumber);
-            this.setAnimationVars(gObject ,engineTime , true);
+        const progress = this.#reversing ? 1-(this.#elapsed/this.#duration):(this.#elapsed/this.#duration);
 
-
-          }else{
-            // console.warn("restarting");
-            if(this.#timestamps.length > 0){
-              this.setKeyFrame(0);
+        if(progress < 1 || (this.#reversing && (progress>0))){
+          const easingConstant = this.#ease(progress);//easing constant
+          this.basicAttributesSetter(gObject,easingConstant);
+        }else{ //progress >= 1 || (reversing && progress <= 0)
+          this.basicAttributesSetter(gObject, this.#reversing ? 0 : 1);
+          this.cacheSettledValues(this.#reversing);
+          //si no se han hecho todos los loops o está en loop infinito
+          if(this.#looped < this.#loops || this.#infinite){
+            this.runOnCompleteKeyframe(engine);
+            if(this.#timestamps.length != 0 && this.#actualKeyFrameNumber < (this.#timestamps.length-1)){
+              //reset timers
+              const frameNumber = this.#actualKeyFrameNumber+1;
+              this.#elapsed = this.#elapsed%( this.#timestamps[frameNumber] - this.#timestamps[frameNumber-1]);
+              this.#tElapsed = this.#elapsed;
+              this.#startedAt = engineTime - this.#elapsed;
+              //?onComplete
+              this.setKeyFrame(frameNumber);
               this.setAnimationVars(gObject ,engineTime , true);
-              if(this.#timestamps[0] == 0){
-                this.instantaneousAttributeSetter(gObject,engine);
-                if(this.#timestamps.length > 1){
-                  this.#elapsed = this.#elapsed%( this.#timestamps[1] - this.#timestamps[0]);
-                  this.#tElapsed = this.#elapsed;
-                  this.#startedAt = engineTimeBackup - this.#elapsed;
 
-                  this.setKeyFrame(1);
-                  this.setAnimationVars(gObject ,engineTime , true);
-                }else{
-                  //reset timers
-                  this.#startedAt = engineTimeBackup;
-                  this.#tElapsed = 0;
-                  this.#elapsed = 0;
+            }else{
+              // console.warn("restarting");
+              if(this.#timestamps.length > 0){
+                this.setKeyFrame(0);
+                this.setAnimationVars(gObject ,engineTime , true);
+                if(this.#timestamps[0] == 0){
+                  this.instantaneousAttributeSetter(gObject,engine);
+                  if(this.#timestamps.length > 1){
+                    this.#elapsed = this.#elapsed%( this.#timestamps[1] - this.#timestamps[0]);
+                    this.#tElapsed = this.#elapsed;
+                    this.#startedAt = engineTime - this.#elapsed;
+
+                    this.setKeyFrame(1);
+                    this.setAnimationVars(gObject ,engineTime , true);
+                  }else{
+                    //reset timers
+                    this.#startedAt = engineTime;
+                    this.#tElapsed = 0;
+                    this.#elapsed = 0;
+                  }
                 }
+              }else{
+                //FIX loops sin keyframes: envolver los timers, antes progress quedaba >=1
+                //y esta rama se volvia a ejecutar en todos los frames siguientes
+                this.#elapsed = this.#elapsed%this.#duration;
+                this.#tElapsed = this.#elapsed;
+                this.#startedAt = engineTime - this.#elapsed;
               }
+              this.#looped++;
+              if(this.#loopback)//Loopback wasn't tested with loopback
+                this.#reversing = !this.#reversing;
             }
-            this.#looped++;
-            if(this.#loopback)//Loopback wasn't tested with loopback
-              this.#reversing = !this.#reversing;
-          }
 
+            wrapped = true;
 
-          this.updateAnimation(gObject,engineTimeBackup,engine)
-
-        }else{
-          if(this.#timestamps.length != 0 && this.#actualKeyFrameNumber < (this.#timestamps.length-1)){
-            const frameNumber = this.#actualKeyFrameNumber+1;
-            this.#elapsed = this.#elapsed%( this.#timestamps[frameNumber] - this.#timestamps[frameNumber]);
-            this.#startedAt = engineTimeBackup - this.#elapsed;
-            //?onComplete
-            this.runOnCompleteKeyframe(engine);
-            this.setKeyFrame(frameNumber);
-            this.setAnimationVars(gObject ,engineTime, true);
           }else{
-            this.#done = true;
-            this.#startedAt = NaN;
-            this.#tElapsed = 0;
-            this.#looped = 1;
-            this.#reversing = Math.round(this.#reverse) == 1;
-            this.runOnCompleteKeyframe(engine);
-            this.runOnCompleteAnimation(engine)
-            return;
+            if(this.#timestamps.length != 0 && this.#actualKeyFrameNumber < (this.#timestamps.length-1)){
+              const frameNumber = this.#actualKeyFrameNumber+1;
+              this.#elapsed = this.#elapsed%( this.#timestamps[frameNumber] - this.#timestamps[frameNumber]);
+              this.#startedAt = engineTime - this.#elapsed;
+              //?onComplete
+              this.runOnCompleteKeyframe(engine);
+              this.setKeyFrame(frameNumber);
+              this.setAnimationVars(gObject ,engineTime, true);
+            }else{
+              this.#done = true;
+              this.#startedAt = NaN;
+              this.#tElapsed = 0;
+              this.#looped = 1;
+              this.#reversing = Math.round(this.#reverse) == 1;
+              this.runOnCompleteKeyframe(engine);
+              this.runOnCompleteAnimation(engine)
+              return;
+            }
           }
         }
       }
