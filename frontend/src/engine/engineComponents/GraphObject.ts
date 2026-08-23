@@ -122,6 +122,10 @@ class GraphObject extends GraphObjectDataType{
   
   _accomulatedZ:number; //Engine related var, dont changeit through a gamescript
 
+  _rawSelf:GraphObject; //unproxied reference assigned by Proxificator
+  _renHandle:number = -1; //dense handle assigned by RenList
+  _behindStamp:number = NaN; //last accumulatedZ that discarded this object behind the camera
+
   dimentionsPack:ObjectRenderingData = {
     id: "",
     solvedTexture: null,
@@ -467,6 +471,14 @@ class GraphObject extends GraphObjectDataType{
   get z() {return this._z;}
   set z(x:any) {
     this._z = parseFloat(x) || 0;
+    this.bumpStructureVersion();
+  }
+
+  private bumpStructureVersion(){
+    const engine = RenderEngine.getInstance();
+    if(engine && engine.graphArray){
+      engine.graphArray.bumpStructureVersion();
+    }
   }
 
   get scale() {return this._scale;}
@@ -555,6 +567,7 @@ class GraphObject extends GraphObjectDataType{
       }
     }
     this._parent = x;
+    this.bumpStructureVersion();
   }
 
   get parentRef() {return this._parentRef;}

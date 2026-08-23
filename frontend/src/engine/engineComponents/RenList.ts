@@ -41,6 +41,8 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
   #_relatedToIds: Dictionary<string> = {};
   #_reversedRelatedToLists: Dictionary<Array<string>> = {};
   #_unRelatedToIds: Array<string> = []; //*For elements with relatedTo field but aren't related to anything
+  #_structureVersion:number = 0;
+  #_nextHandle:number = 0;
 
   constructor() {
     this.objects = new Array<T>();
@@ -55,6 +57,14 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     this.#_relatedToIds = {};
     this.#_reversedRelatedToLists = {};
     this.#_unRelatedToIds = [];
+    this.bumpStructureVersion();
+  }
+
+  get structureVersion(){
+    return this.#_structureVersion;
+  }
+  bumpStructureVersion(){
+    this.#_structureVersion++;
   }
 
   get length(){
@@ -102,9 +112,11 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
           if(enabled && !this.#_enabledIds.includes(id)){
             this.#_enabledIds.push(id);
             this.updateEnabledIdsIndexTable();
+            this.bumpStructureVersion();
           }else if(!enabled && this.#_enabledIds.includes(id)){
             this.#_enabledIds.splice( this.#_enabledIdsIndexTable[id], 1 );
             this.updateEnabledIdsIndexTable();
+            this.bumpStructureVersion();
           }
         }
       }
@@ -126,6 +138,9 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
     this.#_ids.push(element.id);
     this.#_elementsDict[element.id] = element;
     this.objects.push(element);
+    const raw = (element as any)._rawSelf ?? element;
+    raw._renHandle = this.#_nextHandle++;
+    this.bumpStructureVersion();
   }
   remove(objectId:string){
     let element: T;
@@ -150,6 +165,7 @@ class RenList <T extends RenElement|UnrelatedRenElement>{
       this.objects.splice(numId,1);
       this.#_ids.splice(numId,1);
       delete this.#_elementsDict[objectId];
+      this.bumpStructureVersion();
     }
   }
   get(objectId:string): T|null{

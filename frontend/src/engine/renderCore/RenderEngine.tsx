@@ -21,11 +21,11 @@ import EngTexture from "./EngTexture.ts";
 import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
 import { Chaos } from "../interpretators/ChaosInterpreter.ts";
-import { generateCalculationOrder, generateRenderingOrder } from "./RenderingOrder.ts";
+import { generateCalculationOrder, generateRenderingOrderFromRefs } from "./RenderingOrder.ts";
 
 import noImageTexture from "../resources/no-image.png";
 
-import CollisionLayer from "../engineComponents/CollisionLayer.ts";
+import CollisionLayer, { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { ExtendedObjects } from "../logic/ExtendedObjects.ts";
 import ResourceLoader from "./ResourceLoader.ts";
 import PointerCalculation from "./PointerCalculation.tsx";
@@ -104,9 +104,10 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
   //*Rendering stuff
   developmentDeviceHeight: number;
   camera: CameraData;
-  calculationOrder: Array<string>;
+  calculationOrder: Array<GraphObject>;
   dimentionsPack: Set<string>;
   renderingOrderById: Array<string>;
+  renderingOrderRefs: Array<GraphObject>;
   
   mouse: { x: number; y: number; origin: any };
   //*Debug stuff
@@ -391,6 +392,7 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
 
     this.dimentionsPack = new Set();
     this.renderingOrderById = [];
+    this.renderingOrderRefs = [];
 
     this.objectsToDebug = new Set();//id of the object
  
@@ -423,12 +425,15 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
 
         this.dimentionsPack = dimentionsPack;
 
-        let dimentionsObject = {};
-        dimentionsPack.forEach(key => {
-          dimentionsObject[key] = this.graphArray.fastGet(key).dimentionsPack;
-        });
+        let dimentionsObject:Dictionary<ObjectRenderingData> = {};
+        const visibleRefs = SharedDisplayCalcs.getInstance().visibleRefs;
+        for (let i = 0; i < visibleRefs.length; i++) {
+          const ref = visibleRefs[i];
+          dimentionsObject[ref.id] = ref.dimentionsPack;
+        }
 
-        this.renderingOrderById = generateRenderingOrder(dimentionsObject);
+        this.renderingOrderById = generateRenderingOrderFromRefs(visibleRefs);
+        this.renderingOrderRefs = visibleRefs;
 
 
         const renderingOrdTime = performance.now()-renderingOrdA;
@@ -444,37 +449,35 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
         let drawingTime = 0;
         let debugTime = 0;
 
-        const availableIdsToRender = this.renderingOrderById; 
+        const availableIdsToRender = this.renderingOrderById;
 
         const objectsToRender = availableIdsToRender.length;
 
         let excludedIds:Dictionary<boolean> = {};
 
+        const drawLoopPre = performance.now();
+        const textureManager = this.textureManager;
         for (let index = 0; index < objectsToRender; index++) {
-          let infoAdjudicationPre = performance.now();
-          const gObject = this.graphArray.fastGet(availableIdsToRender[index]); //!Non-confirmed bottleneck
-          
+          const gObjectProxy = this.renderingOrderRefs[index];
+          const gObject: any = (gObjectProxy as any)._rawSelf ?? gObjectProxy;
+
           const renderingData = gObject.dimentionsPack;
-          
-          // const texRef = ( gObject.textureName ? this.getTexture(gObject.textureName) : null ); //Null works as false / not assigned
-          const texRef = gObject.dimentionsPack.solvedTexture ?? ( gObject.textureName ? this.textureManager.getTexture(gObject.textureName,this.engineTime) : null ); //Null works as false / not assigned
-          const strRef = gObject.text == null ? null : getStr(gObject.text);
 
-          infoAdjudicationTime += performance.now()-infoAdjudicationPre;
+          const texRef = renderingData.solvedTexture ?? ( gObject._textureName ? textureManager.getTexture(gObject._textureName,this.engineTime) : null ); //Null works as false / not assigned
+          const strRef = gObject._text == null ? null : getStr(gObject._text);
 
-          let drawingTimePre = performance.now();
-          if(gObject.opacity == 0){
+          if(gObject._opacity == 0){
             this.noRenderedItemsCount++;
-            excludedIds[gObject.id] = true;
+            excludedIds[gObject._id] = true;
           }else{
               //*part one: global alpha
               //TODO: RenderMisc refactor
-              if(gObject.opacity != 1)
-                RenderMisc.setOpacity(canvas.context, gObject.opacity);
+              if(gObject._opacity != 1)
+                RenderMisc.setOpacity(canvas.context, gObject._opacity);
               let texts: Array<TextLine> = [];
               if(renderingData.text.value || strRef){
                 const fontSize = renderingData.text.fontSize;
-                RenderDebug.setFont(fontSize, gObject.font, window.debugContext);
+                RenderDebug.setFont(fontSize, gObject._font, window.debugContext);
 
                 if(renderingData.text?.value){
                   texts = renderingData.text.value;
@@ -482,23 +485,23 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
                   texts = RenderDebug.wrapText(
                     strRef as string,
                     renderingData,
-                    gObject.center,
-                    gObject.verticalCenter,
+                    gObject._center,
+                    gObject._verticalCenter,
                     window.debugContext);
                 }
               }
 
               if(gObject.filterString != "none")
                 RenderMisc.setFilter(canvas.context, gObject.filterString);//if the element to render have filtering values != of the previous element
-              
+
               if(texRef){
-                if(gObject.repeatPattern){
+                if(gObject._repeatPattern){
                   RenderMisc.drawPattern(
                     texRef,
                     renderingData,
                     canvas.resolution.width,
                     canvas.resolution.height,
-                    gObject.repeat,
+                    gObject._repeat,
                     canvas.context);
                 }else{
                   RenderMisc.drawImage(
@@ -509,26 +512,24 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
               }
 
               if(renderingData.text.value || texts.length > 0){
-                RenderMisc.drawRectangle(renderingData, gObject.boxColor, canvas.context);
+                RenderMisc.drawRectangle(renderingData, gObject._boxColor, canvas.context);
                 RenderDebug.drawText(
                   renderingData,
                   texts,
-                  gObject.color,
-                  gObject.boxColor,
+                  gObject._color,
+                  gObject._boxColor,
                   window.debugContext);
               }
 
               //*part four: anullate globalalpha and filters
               if(gObject.filterString != "none")
                 RenderMisc.setFilter(canvas.context, "none");
-              if(gObject.opacity != 1)
+              if(gObject._opacity != 1)
                 RenderMisc.setOpacity(canvas.context, 1);
           }
-          drawingTime += performance.now()-drawingTimePre;
 
           //*DEBUG INFO
-          let debugTimePre = performance.now();
-          if(this.objectsToDebug.has(gObject.id)){
+          if(this.objectsToDebug.has(gObject._id)){
             //*part five: draw object info
             if(this.drawObjectLimits){
               RenderDebug.drawObjectLimits(window.debugContext, renderingData, resolution, this.camera.position.z);
@@ -539,12 +540,12 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
           }
           //* DRAW TRIGGERS
           if(this.drawTriggers){
-            if(this.triggers.objects.filter(e => e.enabled).map(e=>e.relatedTo).indexOf(gObject.id) != -1){
+            if(this.triggers.objects.filter(e => e.enabled).map(e=>e.relatedTo).indexOf(gObject._id) != -1){
               RenderDebug.drawTrigger(window.debugContext, renderingData);
             }
           }
-          debugTime += performance.now()-debugTimePre;
         }
+        drawingTime += performance.now()-drawLoopPre;
         //* DRAW COLLISION LAYER
         if(this.drawCollisionsMatrix){
           RenderDebug.drawCollisionsMatrix(window.debugContext, resolution);

@@ -4,27 +4,10 @@ import { getStr, wrapText } from "../logic/Misc.ts";
 import { CameraData } from "./RenderEngine.d.tsx";
 import { RenderEngine } from "./RenderEngine.tsx";
 import EngTexture from "./EngTexture.ts";
+import { CalculationOrder } from "./RenderingOrder.ts";
 
 import RenderMiscCanvas2D from "./RenderMiscCanvas2D.ts";
 const RenderDebug = RenderMiscCanvas2D;
-
-enum DisplayDimensionIndex {
-  OriginX = 0,
-  OriginY,
-  AdditionX,
-  AdditionY,
-  ObjectScale,
-  ObjectLeft,
-  ObjectTop,
-  ObjectZ,
-  PerspectiveLayer,
-  ObjectWidth,
-  ObjectHeight,
-  PerspectiveScale,
-  PerspectiveDiff,
-  CornerX,
-  CornerY,
-}
 
 export class SharedDisplayCalcs{
   private static instance: SharedDisplayCalcs;
@@ -32,6 +15,7 @@ export class SharedDisplayCalcs{
   public lookupTable: Map<number,number>;
   public nDicoSet: Set<string> = new Set();
   public recalculateAll: boolean = false;
+  public visibleRefs: Array<GraphObject> = [];
 
   static getInstance(){
     return SharedDisplayCalcs.instance;
@@ -44,182 +28,246 @@ export class SharedDisplayCalcs{
 
 
 /**
- * Genera las dimensions y ubicacion de los objetos a renderizar
+ * Genera dimensions y ubicacion de los objetos a renderizar
  * Se recalcula un objeto cuando su información o la información de la camara cambia
  * @returns 
  */
 export function generateObjectsDisplayDimentions(
   graphArray: RenList<GraphObject>, 
-  calculationOrder: Array<string>,
+  calculationOrder: CalculationOrder,
   canvasResolution: {width:number, height:number,scale:number},
   camera: CameraData): Set<string> {
     const canvasResolutionWidth = canvasResolution.width;
     const canvasResolutionHeight = canvasResolution.height;
+    const canvasResolutionScale = canvasResolution.scale;
 
     const engine = RenderEngine.getInstance();
     const sharedInstance = SharedDisplayCalcs.getInstance();
+    const textureManager = engine.textureManager;
+    const lookupTable = sharedInstance.lookupTable;
+    const cameraUsePerspective = camera.usePerspective;
+    const cameraOriginY = camera.origin.y;
 
     sharedInstance.nDicoSet.clear();
+    sharedInstance.visibleRefs = [];
+    const visibleRefsOut = sharedInstance.visibleRefs;
+    const nDicoSet = sharedInstance.nDicoSet;
 
-    const camCenter = {
-      x: -camera.position.x + 0.5,
-      y: -camera.position.y + 0.5,
-      z: -camera.position.z + 0.56
-    };
+    const camCenterX = -camera.position.x + 0.5;
+    const camCenterY = -camera.position.y + 0.5;
+    const camCenterZ = -camera.position.z + 0.56;
 
     const developmentRatio = canvasResolutionHeight/engine.developmentDeviceHeight;
     const perspectiveDiffHelper = (1/camera.maxZ) - 1;
     const toAddSizeHelper = (camera.position.angle*canvasResolutionHeight*camera.maxZ) / canvasResolutionHeight;
-
-
-    let gObject: GraphObject;
-
-    let parent: GraphObject;
-
-    let texRef: EngTexture;
-    let strRef: any;
-
-    let analyzed = 0;
-
-    const displayValues = new Float64Array(DisplayDimensionIndex.CornerY + 1);
-
+    const cameraOriginYDelta = (cameraOriginY-0.5)*canvasResolutionHeight;
     const finalCameraHorizontalPixelOrigin = (camera.origin.x-0.5)*canvasResolutionWidth;
 
-    let dimentionsPack = null;
+    let strRef: any;
+    const recalculateAll = sharedInstance.recalculateAll;
 
+    //*Historical bound: the original engine truncated the calculation order to
+    //enabledIds.length (RenList.length), never processing its tail entries.
     for (let index = 0; index < graphArray.length; index++) {
-      gObject = graphArray.fastGet(calculationOrder[index]);
-      displayValues[DisplayDimensionIndex.ObjectZ] = gObject.accomulatedZ;
-      if(!gObject.pendingRenderingRecalculation && !sharedInstance.recalculateAll){
-        sharedInstance.nDicoSet.add(gObject.id);
+      const anyObj: any = calculationOrder[index];
+      const gObject: GraphObject = anyObj._rawSelf ?? anyObj;
+      const accumZ = gObject._accomulatedZ;
+      if(!gObject._pendingRenderingRecalculation && !recalculateAll){
+        nDicoSet.add(gObject._id);
+        visibleRefsOut.push(gObject);
         //TODO: if text value is not null, jump to text attribs recalculation
       }else{
-        if(gObject.childsRefs.size > 0){
-          for (const childRef of gObject.childsRefs.values()){
-            childRef.pendingRenderingRecalculation = true;
+        const isBehindCamera = accumZ + camCenterZ < 0;
+        //*Equivalence-safe fast path: repeating the behind-camera check with the
+        //same accumulated z and an unchanged camera yields the same discard.
+        if(isBehindCamera && !recalculateAll && gObject._behindStamp === accumZ){
+          continue;
+        }
+        const childsRefs = gObject._childsRefs;
+        if(childsRefs.size > 0){
+          for (const childRef of childsRefs.values()){
+            const rawChild: any = childRef._rawSelf ?? childRef;
+            rawChild._pendingRenderingRecalculation = true;
           }
         }
-        if(displayValues[DisplayDimensionIndex.ObjectZ] + camCenter.z < 0){
+        if(isBehindCamera){
+          gObject._behindStamp = accumZ;
           continue;
         }
 
-        analyzed++;
-        dimentionsPack = gObject.dimentionsPack;
+        const dimentionsPack = gObject.dimentionsPack;
 
-        texRef = gObject.textureName ? engine.textureManager.getTexture(gObject.textureName) : null;
-        
-        if(gObject.parentRef && sharedInstance.nDicoSet.has(gObject.parentRef.id)){
-          parent = gObject.parentRef;
-          displayValues[DisplayDimensionIndex.OriginX] = parent.dimentionsPack.base.x;
-          displayValues[DisplayDimensionIndex.OriginY] = parent.dimentionsPack.base.y;
+       //*Sanitization: neutral defaults each iteration so results never depend on unrelated objects
+        let originX = 0;
+        let originY = 0;
+        let additionX = 0;
+        let additionY = 0;
+
+        const solvedTexture = dimentionsPack.solvedTexture;
+        const textureName = gObject._textureName;
+        const texRef: EngTexture|null = solvedTexture ?? (textureName ? textureManager.getTexture(textureName) : null);
+
+        const parentRef = gObject._parentRef;
+        if(parentRef){
+          const parentRaw: GraphObject = parentRef._rawSelf ?? parentRef;
+          if(nDicoSet.has(parentRaw._id)){
+            const parentPack = parentRaw.dimentionsPack;
+            originX = parentPack.base.x;
+            originY = parentPack.base.y;
+          }
         }
 
-        if (!camera.usePerspective && gObject.ignoreParallax){
-          displayValues[DisplayDimensionIndex.AdditionX] = camCenter.x;
-          displayValues[DisplayDimensionIndex.AdditionY] = camCenter.y;
+        if (!cameraUsePerspective && gObject._ignoreParallax){
+          additionX = camCenterX;
+          additionY = camCenterY;
         }
 
-        displayValues[DisplayDimensionIndex.ObjectScale] = gObject.scale;
+        let objectScale = gObject._scale;
 
-        displayValues[DisplayDimensionIndex.PerspectiveScale] = 0.99;
+        let perspectiveScale = 0.99;
 
-        if(!camera.usePerspective || gObject.ignoreParallax){
-          displayValues[DisplayDimensionIndex.ObjectLeft] = ((gObject.x + displayValues[DisplayDimensionIndex.OriginX] + displayValues[DisplayDimensionIndex.AdditionX])*canvasResolutionHeight) + finalCameraHorizontalPixelOrigin;
-          displayValues[DisplayDimensionIndex.ObjectTop] = (gObject.y + displayValues[DisplayDimensionIndex.OriginY] + displayValues[DisplayDimensionIndex.AdditionY] + (camera.origin.y-0.5))*canvasResolutionHeight;
-        }else{
-          displayValues[DisplayDimensionIndex.ObjectLeft] = gObject.x + displayValues[DisplayDimensionIndex.OriginX] + camCenter.x;
-          displayValues[DisplayDimensionIndex.ObjectTop] = gObject.y + displayValues[DisplayDimensionIndex.OriginY] + camCenter.y;
-          displayValues[DisplayDimensionIndex.ObjectZ] += camCenter.z;
+        if(!cameraUsePerspective || gObject._ignoreParallax){
+          const objectLeft = ((gObject._x + originX + additionX)*canvasResolutionHeight) + finalCameraHorizontalPixelOrigin;
+          const objectTop = (gObject._y + originY + additionY + cameraOriginYDelta)*canvasResolutionHeight;
 
-          const lookupTableIndex = Math.trunc(displayValues[DisplayDimensionIndex.ObjectZ]*1000)
-          if(sharedInstance.lookupTable.has(lookupTableIndex)){
-            displayValues[DisplayDimensionIndex.PerspectiveDiff] = sharedInstance.lookupTable.get(lookupTableIndex)!;
+          let objectWidth = canvasResolutionWidth*objectScale*gObject._widthScale;
+          let objectHeight = canvasResolutionHeight*objectScale*gObject._heightScale;
+
+          if(texRef){
+            if(!solvedTexture && !textureManager.isATextureAnim(textureName!))
+              dimentionsPack.solvedTexture = texRef;
+            if(gObject._useEngineUnits){
+              objectWidth = texRef.resolution.width*objectScale*gObject._widthScale*developmentRatio;
+              objectHeight = texRef.resolution.height*objectScale*gObject._heightScale*developmentRatio;
+            }else{
+              objectHeight = (texRef.resolution.heightWidthRelation)*canvasResolutionWidth*objectScale*gObject._heightScale;
+            }
           }else{
-            displayValues[DisplayDimensionIndex.PerspectiveDiff] = 1 - ((1/displayValues[DisplayDimensionIndex.ObjectZ])-1)/perspectiveDiffHelper;
-            sharedInstance.lookupTable.set(lookupTableIndex, displayValues[DisplayDimensionIndex.PerspectiveDiff]);
+            if(gObject._useEngineUnits){
+              objectWidth = canvasResolutionHeight*objectScale*gObject._widthScale;
+            }
           }
 
-          displayValues[DisplayDimensionIndex.PerspectiveScale] = displayValues[DisplayDimensionIndex.PerspectiveDiff] * toAddSizeHelper;
+          const cornerX = objectLeft - objectWidth*0.5;
+          const cornerY = objectTop - objectHeight*0.5;
+
+          if(!gObject._repeatPattern){
+            dimentionsPack.repeatPattern = false;
+            if(cornerX > canvasResolutionWidth || cornerY > canvasResolutionHeight || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
+              continue;
+            }
+          }
+
+          dimentionsPack.x  = objectLeft;
+          dimentionsPack.y  = objectTop;
+          dimentionsPack.z  = accumZ;
+          dimentionsPack.corner.x = cornerX;
+          dimentionsPack.corner.y = cornerY;
+
+          dimentionsPack.base.x = originX + gObject._x;
+          dimentionsPack.base.y = originY + gObject._y;
+          dimentionsPack.base.z = accumZ;
+
+          dimentionsPack.sizeInDisplay  = perspectiveScale;
+          dimentionsPack.width  = objectWidth;
+          dimentionsPack.height  = objectHeight;
+
+          dimentionsPack.rotation = gObject._rotate;
+          dimentionsPack.pitch = gObject._pitch;
+          dimentionsPack.yaw = gObject._yaw;
+          dimentionsPack.roll = gObject._rotate;
+
+        }else{
+          let objectLeft = gObject._x + originX + camCenterX;
+          let objectTop = gObject._y + originY + camCenterY;
+          const objectZ = accumZ + camCenterZ;
+
+          const lookupTableIndex = Math.trunc(objectZ*1000);
+          let perspectiveDiff = lookupTable.get(lookupTableIndex);
+          if(perspectiveDiff === undefined){
+            perspectiveDiff = 1 - ((1/objectZ)-1)/perspectiveDiffHelper;
+            lookupTable.set(lookupTableIndex, perspectiveDiff);
+          }
+
+          perspectiveScale = perspectiveDiff * toAddSizeHelper;
 
           //*with perspectiveScale > 0.003 we ensure the very far of|behind the camera elements won't be further calculated
-          if(displayValues[DisplayDimensionIndex.PerspectiveScale]<=0.003){
+          if(perspectiveScale<=0.003){
             continue;
           }
-          displayValues[DisplayDimensionIndex.ObjectScale] *= displayValues[DisplayDimensionIndex.PerspectiveScale];
+          objectScale *= perspectiveScale;
 
           //*recalculate gObject coords
-          displayValues[DisplayDimensionIndex.PerspectiveLayer] = canvasResolutionHeight*displayValues[DisplayDimensionIndex.PerspectiveScale];
+          const perspectiveLayer = canvasResolutionHeight*perspectiveScale;
 
           //it will calc were the image must to be, inside the perspectiveLayer
-          displayValues[DisplayDimensionIndex.ObjectLeft] *= displayValues[DisplayDimensionIndex.PerspectiveLayer];
-          displayValues[DisplayDimensionIndex.ObjectTop] *= displayValues[DisplayDimensionIndex.PerspectiveLayer];
+          objectLeft *= perspectiveLayer;
+          objectTop *= perspectiveLayer;
           //now add the originof the perspectiveLayer
-          displayValues[DisplayDimensionIndex.ObjectLeft] += -(displayValues[DisplayDimensionIndex.PerspectiveLayer]-canvasResolutionHeight)*(0.88889); // 1.77/2 :display horizontal center
-          displayValues[DisplayDimensionIndex.ObjectTop] += -(displayValues[DisplayDimensionIndex.PerspectiveLayer]-canvasResolutionHeight)*camera.origin.y;
-        }
+          objectLeft += -(perspectiveLayer-canvasResolutionHeight)*(0.88889); // 1.77/2 :display horizontal center
+          objectTop += -(perspectiveLayer-canvasResolutionHeight)*cameraOriginY;
 
-        //By default values for the textboxes
-        displayValues[DisplayDimensionIndex.ObjectWidth] = canvasResolutionWidth*displayValues[DisplayDimensionIndex.ObjectScale]*gObject.widthScale;
-        displayValues[DisplayDimensionIndex.ObjectHeight] = canvasResolutionHeight*displayValues[DisplayDimensionIndex.ObjectScale]*gObject.heightScale;
+          let objectWidth = canvasResolutionWidth*objectScale*gObject._widthScale;
+          let objectHeight = canvasResolutionHeight*objectScale*gObject._heightScale;
 
-        if(texRef){
-          if(!dimentionsPack.solvedTexture && !engine.textureManager.isATextureAnim(gObject.textureName!))
-            dimentionsPack.solvedTexture = texRef;
-          if(gObject.useEngineUnits){
-            displayValues[DisplayDimensionIndex.ObjectWidth] = texRef.resolution.width*displayValues[DisplayDimensionIndex.ObjectScale]*gObject.widthScale*developmentRatio;
-            displayValues[DisplayDimensionIndex.ObjectHeight] = texRef.resolution.height*displayValues[DisplayDimensionIndex.ObjectScale]*gObject.heightScale*developmentRatio;
+          if(texRef){
+            if(!solvedTexture && !textureManager.isATextureAnim(textureName!))
+              dimentionsPack.solvedTexture = texRef;
+            if(gObject._useEngineUnits){
+              objectWidth = texRef.resolution.width*objectScale*gObject._widthScale*developmentRatio;
+              objectHeight = texRef.resolution.height*objectScale*gObject._heightScale*developmentRatio;
+            }else{
+              objectHeight = (texRef.resolution.heightWidthRelation)*canvasResolutionWidth*objectScale*gObject._heightScale;
+            }
           }else{
-            displayValues[DisplayDimensionIndex.ObjectHeight] = (texRef.resolution.heightWidthRelation)*canvasResolutionWidth*displayValues[DisplayDimensionIndex.ObjectScale]*gObject.heightScale;
+            if(gObject._useEngineUnits){
+              objectWidth = canvasResolutionHeight*objectScale*gObject._widthScale;
+            }
           }
-        }else{
-          //dimentionsPack.solvedTextureName = ""; Unused in RenderEngine
-          if(gObject.useEngineUnits){
-            displayValues[DisplayDimensionIndex.ObjectWidth] = canvasResolutionHeight*displayValues[DisplayDimensionIndex.ObjectScale]*gObject.widthScale;
+
+          const cornerX = objectLeft - objectWidth*0.5;
+          const cornerY = objectTop - objectHeight*0.5;
+
+          if(!gObject._repeatPattern){
+            dimentionsPack.repeatPattern = false;
+            if(cornerX > canvasResolutionWidth || cornerY > canvasResolutionHeight || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
+              continue;
+            }
           }
+
+          dimentionsPack.x  = objectLeft;
+          dimentionsPack.y  = objectTop;
+          dimentionsPack.z  = objectZ;
+          dimentionsPack.corner.x = cornerX;
+          dimentionsPack.corner.y = cornerY;
+
+          dimentionsPack.base.x = originX + gObject._x;
+          dimentionsPack.base.y = originY + gObject._y;
+          dimentionsPack.base.z = accumZ;
+
+          dimentionsPack.sizeInDisplay  = perspectiveScale;
+          dimentionsPack.width  = objectWidth;
+          dimentionsPack.height  = objectHeight;
+
+          dimentionsPack.rotation = gObject._rotate;
+          dimentionsPack.pitch = gObject._pitch;
+          dimentionsPack.yaw = gObject._yaw;
+          dimentionsPack.roll = gObject._rotate;
         }
-
-        displayValues[DisplayDimensionIndex.CornerX] = displayValues[DisplayDimensionIndex.ObjectLeft] - displayValues[DisplayDimensionIndex.ObjectWidth]*0.5;
-        displayValues[DisplayDimensionIndex.CornerY] = displayValues[DisplayDimensionIndex.ObjectTop] - displayValues[DisplayDimensionIndex.ObjectHeight]*0.5;
-
-        if(!gObject.repeatPattern){
-          dimentionsPack.repeatPattern = false;
-          if(displayValues[DisplayDimensionIndex.CornerX] > canvasResolutionWidth || displayValues[DisplayDimensionIndex.CornerY] > canvasResolutionHeight || (displayValues[DisplayDimensionIndex.CornerX] + displayValues[DisplayDimensionIndex.ObjectWidth]) < 0 || (displayValues[DisplayDimensionIndex.CornerY] + displayValues[DisplayDimensionIndex.ObjectHeight])<0){
-            continue;
-          }
-        }
-
-        dimentionsPack.x  = displayValues[DisplayDimensionIndex.ObjectLeft];
-        dimentionsPack.y  = displayValues[DisplayDimensionIndex.ObjectTop];
-        dimentionsPack.z  = displayValues[DisplayDimensionIndex.ObjectZ];
-        dimentionsPack.corner.x = displayValues[DisplayDimensionIndex.CornerX];
-        dimentionsPack.corner.y = displayValues[DisplayDimensionIndex.CornerY];
-
-        dimentionsPack.base.x = displayValues[DisplayDimensionIndex.OriginX] + gObject.x;
-        dimentionsPack.base.y = displayValues[DisplayDimensionIndex.OriginY] + gObject.y;
-        dimentionsPack.base.z = gObject.accomulatedZ;
-
-        dimentionsPack.sizeInDisplay  = displayValues[DisplayDimensionIndex.PerspectiveScale];
-        dimentionsPack.width  = displayValues[DisplayDimensionIndex.ObjectWidth];
-        dimentionsPack.height  = displayValues[DisplayDimensionIndex.ObjectHeight];
-
-        dimentionsPack.rotation = gObject.rotateRad;
-        dimentionsPack.pitch = gObject.pitchRad;
-        dimentionsPack.yaw = gObject.yawRad;
-        dimentionsPack.roll = gObject.rollRad;
 
         //TODO: texts requires continous recomputing
-        if(gObject.text !== null && (strRef = getStr(gObject.text)) !== null){
-          const fontSizeRenderingValue = gObject.fontSizeNumeric*canvasResolution.scale*developmentRatio*displayValues[DisplayDimensionIndex.PerspectiveScale];
-          const fontSizeHelper = fontSizeRenderingValue/gObject.fontSize;
-          const objectWidthMargin = fontSizeHelper*gObject.horizontalMargin;
-          const objectHeightMargin = fontSizeHelper*gObject.verticalMargin;
+        if(gObject._text !== null && (strRef = getStr(gObject._text)) !== null){
+          const fontSizeRenderingValue = gObject._fontSize*canvasResolutionScale*developmentRatio*perspectiveScale;
+          const fontSizeHelper = fontSizeRenderingValue/gObject._fontSize;
+          const objectWidthMargin = fontSizeHelper*gObject._horizontalMargin;
+          const objectHeightMargin = fontSizeHelper*gObject._verticalMargin;
 
           dimentionsPack.text.fontSize = fontSizeRenderingValue;
           dimentionsPack.text.margin.horizontal = objectWidthMargin;
           dimentionsPack.text.margin.vertical = objectHeightMargin;
 
-          if(gObject.fitContent){
-            RenderDebug.getInstance().setFont(fontSizeRenderingValue, gObject.font, window.debugContext);
+          if(gObject._fitContent){
+            RenderDebug.getInstance().setFont(fontSizeRenderingValue, gObject._font, window.debugContext);
 
             //Why i do this here?
             //Because i need to know the fontSizeRenderingValue to calculate the margin, 
@@ -235,30 +283,30 @@ export function generateObjectsDisplayDimentions(
               dimentionsPack.width - objectWidthMargin*2,
               0,
               fontSizeRenderingValue,
-              gObject.center, 
+              gObject._center, 
               false
             );
 
             const lastText = texts.at(-1);
             if (lastText) {
-              displayValues[DisplayDimensionIndex.ObjectHeight] = lastText.y + fontSizeRenderingValue*0.5 + objectHeightMargin*2;
+              dimentionsPack.height = lastText.y + fontSizeRenderingValue*0.5 + objectHeightMargin*2;
             }
 
             for (let index = 0; index < texts.length; index++) {
-              texts[index].y += objectHeightMargin + (displayValues[DisplayDimensionIndex.ObjectTop] - displayValues[DisplayDimensionIndex.ObjectHeight]*0.5);  
+              texts[index].y += objectHeightMargin + (dimentionsPack.y - dimentionsPack.height*0.5);  
             }
 
-            dimentionsPack.corner.y = (displayValues[DisplayDimensionIndex.ObjectTop] - displayValues[DisplayDimensionIndex.ObjectHeight]*0.5);
-            dimentionsPack.height = displayValues[DisplayDimensionIndex.ObjectHeight];
+            dimentionsPack.corner.y = (dimentionsPack.y - dimentionsPack.height*0.5);
 
             dimentionsPack.text.value = texts;
           }
         }else{
           dimentionsPack.text.value = null;
         }
-        sharedInstance.nDicoSet.add(gObject.id);
+        nDicoSet.add(gObject._id);
+        visibleRefsOut.push(gObject);
 
-        gObject.pendingRenderingRecalculation = false;
+        gObject._pendingRenderingRecalculation = false;
 
       }
     }

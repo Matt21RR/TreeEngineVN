@@ -2,92 +2,131 @@ import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import GraphObject from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
 
-export type CalculationOrder = Array<string>;
+export type CalculationOrder = Array<GraphObject>;
 
-function _deepRootSearch(
-    graphObject: GraphObject, 
-    generalIdMap: Set<string>, 
-    visited: CalculationOrder = []): CalculationOrder {
-  //if the parent is not in the generalOrderMap, we need to go up the tree until we find a parent that is in the generalOrderMap or we reach a root element (no parent)
-  const isInGeneralOrder = generalIdMap.has(graphObject.parentRef?.id || "");
-
-  if(graphObject.parentRef && !isInGeneralOrder){
-    const newVisited = _deepRootSearch(graphObject.parentRef, generalIdMap, visited);
-
-    newVisited.push(graphObject.id);
-    graphObject.accomulatedZ = graphObject.z + graphObject.parentRef.accomulatedZ;
-    return newVisited;
-
-  //if the parent is in the generalOrderMap, we can calculate the weight and z based on the parent's data
-  }else if(graphObject.parentRef && isInGeneralOrder){
-    const parentData = graphObject.parentRef;
-
-    visited.push(graphObject.id);
-    graphObject.accomulatedZ = graphObject.z + parentData.accomulatedZ;
-    return visited;
-
-  }else { //Root element, no parent
-    visited.push(graphObject.id);
-    graphObject.accomulatedZ = graphObject.z;
-    return visited; //Root element has weight 0 and its own z
-  }
+function asRaw(node: any): GraphObject {
+  return node._rawSelf ?? node;
 }
 
+const orderCache: {
+  source: RenList<GraphObject> | null;
+  version: number;
+  order: CalculationOrder;
+} = { source: null, version: -1, order: [] };
+
+const stamps = { arr: new Uint32Array(1024), counter: 0 };
+
+function ensureStampCapacity(size: number) {
+  if (stamps.arr.length >= size) return;
+  let cap = stamps.arr.length;
+  while (cap < size) cap *= 2;
+  stamps.arr = new Uint32Array(cap);
+  stamps.counter = 0;
+}
+
+/**
+ * Genera el orden de calculo como referencias directas a los GraphObject.
+ * El resultado se cachea y solo se regenera cuando cambia la estructura del
+ * arbol (push/remove/wipe/enabled/parent/z). La iteracion parte de
+ * enabledIds para respetar exactamente el orden historico.
+ */
 function generateCalculationOrder(graphArray: RenList<GraphObject>): CalculationOrder {
-  const allIds = graphArray.enabledIds;
-  const totalItems = allIds.length;
+  const version = graphArray.structureVersion;
+  if (orderCache.source === graphArray && orderCache.version === version) {
+    return orderCache.order;
+  }
 
-  // Pre-size the output array instead of growing it with push()
-  const final: CalculationOrder = new Array(totalItems);
-  let writeIndex = 0;
+  const enabledIds = graphArray.enabledIds;
+  const totalItems = enabledIds.length;
 
-  // Single Set instead of finalIdSet + unprocessedIds
-  const processed = new Set<string>();
+  ensureStampCapacity(graphArray.objects.length + 1);
+  const stampArr = stamps.arr;
+  const stampId = ++stamps.counter;
 
-  // Reused scratch stack, avoids per-branch array allocation
+  const final: CalculationOrder = [];
   const stack: GraphObject[] = [];
 
   for (let i = 0; i < totalItems; i++) {
-    const startId = allIds[i];
-    if (processed.has(startId)) continue;
+    const startNode = asRaw(graphArray.fastGet(enabledIds[i]));
+    const startHandle = startNode._renHandle;
+    if (startHandle >= 0 && stampArr[startHandle] === stampId) continue;
 
-    // Walk up the parent chain iteratively (no recursion, no stack-depth limit)
     stack.length = 0;
-    let current: GraphObject | undefined = graphArray.fastGet(startId);
+    let current: GraphObject | null | undefined = startNode;
 
-    while (current && !processed.has(current.id)) {
-      stack.push(current);
-      current = current.parentRef as GraphObject | undefined;
+    while (current) {
+      const rawCur = asRaw(current);
+      const h = rawCur._renHandle;
+      if (h >= 0 && stampArr[h] === stampId) break;
+      stack.push(rawCur);
+      current = rawCur._parentRef;
     }
 
-    // `current` is either undefined (we bottomed out at a root) or an
-    // already-processed ancestor whose accomulatedZ is already final.
-    let parentZ = current ? current.accomulatedZ : 0;
+    let parentZ = current ? asRaw(current)._accomulatedZ : 0;
 
-    // Unwind from closest-to-root down to startId so each node can use
-    // its parent's just-computed accomulatedZ.
     for (let j = stack.length - 1; j >= 0; j--) {
       const node = stack[j];
-      node.accomulatedZ = node.z + parentZ;
-      parentZ = node.accomulatedZ;
+      node._accomulatedZ = node._z + parentZ;
+      parentZ = node._accomulatedZ;
 
-      processed.add(node.id);
-      final[writeIndex++] = node.id;
+      const nh = node._renHandle;
+      if (nh >= 0 && nh < stampArr.length) stampArr[nh] = stampId;
+      final.push(node);
     }
   }
 
+  orderCache.source = graphArray;
+  orderCache.version = version;
+  orderCache.order = final;
   return final;
 }
 
-function generateRenderingOrder(dimentionsPack: Record<string, ObjectRenderingData>) {
-  const ids = Object.keys(dimentionsPack);
-  if (ids.length === 0) return [];
+/**
+ * Variante por referencias: ordena in-place el array de refs visibles por z
+ * (descendente, desempate estable por insercion) y devuelve un array nuevo
+ * con los ids en el mismo orden.
+ */
+function generateRenderingOrderFromRefs(refs: Array<GraphObject>): Array<string> {
+  const zs: number[] = new Array(refs.length);
+  for (let i = 0; i < refs.length; i++) {
+    zs[i] = refs[i].dimentionsPack.z;
+  }
+  const idx: number[] = new Array(refs.length);
+  for (let i = 0; i < refs.length; i++) idx[i] = i;
+  idx.sort((a, b) => (zs[b] - zs[a]) || (a - b));
 
-  // Sort directly on the array. V8 can optimize this much better 
-  // than the Map -> Array.from -> flatMap pipeline.
-  return ids.sort((a, b) => {
-    return dimentionsPack[b].z - dimentionsPack[a].z;
-  });
+  const sortedRefs: Array<GraphObject> = new Array(refs.length);
+  const ids: Array<string> = new Array(refs.length);
+  for (let j = 0; j < refs.length; j++) {
+    const r = refs[idx[j]];
+    sortedRefs[j] = r;
+    ids[j] = r.id;
+  }
+  //Se devuelve tambien via mutacion del array entrante (scratch del caller)
+  for (let j = 0; j < refs.length; j++) refs[j] = sortedRefs[j];
+  return ids;
 }
 
-export {generateCalculationOrder, generateRenderingOrder}
+/**
+ * Variante legacy por diccionario id->pack. Mismo resultado estable que la
+ * implementacion original, pero comparando numeros en vez de hacer dos
+ * lookups por diccionario en cada comparacion.
+ */
+function generateRenderingOrder(dimentionsPack: Record<string, ObjectRenderingData>): Array<string> {
+  const ids = Object.keys(dimentionsPack);
+  const n = ids.length;
+  if (n === 0) return ids;
+
+  const zs: number[] = new Array(n);
+  for (let i = 0; i < n; i++) zs[i] = dimentionsPack[ids[i]].z;
+
+  const idx: number[] = new Array(n);
+  for (let i = 0; i < n; i++) idx[i] = i;
+  idx.sort((a, b) => (zs[b] - zs[a]) || (a - b));
+
+  const out: Array<string> = new Array(n);
+  for (let j = 0; j < n; j++) out[j] = ids[idx[j]];
+  return out;
+}
+
+export {generateCalculationOrder, generateRenderingOrder, generateRenderingOrderFromRefs}

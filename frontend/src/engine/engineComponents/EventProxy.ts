@@ -4,6 +4,7 @@
 export default class Proxificator{
   private constructor(){}
   static proxify<T>(element:T,setEvents:Array<(target:T,property?:string|symbol, value?: any)=>void> = []){
+    (element as any)._rawSelf = element;
     return new Proxy(element as object, {
       set: (target, property, value) => {
         setEvents.forEach(f=>{

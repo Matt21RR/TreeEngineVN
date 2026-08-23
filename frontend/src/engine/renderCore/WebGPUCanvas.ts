@@ -15,10 +15,12 @@ interface DrawParams {
   tileHeight?: number;
 }
 
-type QueuedItem = 
+type QueuedItem =
   | { type: 'image'; params: DrawParams }
   | { type: 'pattern'; params: DrawParams; mode: RepeatMode }
   | { type: 'rect'; params: DrawParams };
+
+type DrawCallRef = { id: string; firstInstance: number; count: number };
 
 export default class WebGPUCanvas {
   private device!: GPUDevice;
@@ -33,18 +35,34 @@ export default class WebGPUCanvas {
   private sampler!: GPUSampler;
 
   private vertexBuffer!: GPUBuffer;
-  
+
   private imageInstanceBuffer!: GPUBuffer;
   private patternInstanceBuffer!: GPUBuffer;
   private rectInstanceBuffer!: GPUBuffer;
 
+  //*Persistent CPU-side staging (no per-frame allocations)
+  private imageStaging!: Float32Array;
+  private patternStaging!: Float32Array;
+  private rectStaging!: Float32Array;
+
+  //*Bind groups are fixed per pipeline+buffer pair, created once at init
+  private imageGlobalBindGroup!: GPUBindGroup;
+  private patternGlobalBindGroup!: GPUBindGroup;
+  private rectGlobalBindGroup!: GPUBindGroup;
+
   private queue: QueuedItem[] = [];
   private MAX_INSTANCES = 40000;
 
-  // Stride de 16 floats (64 bytes). 
-  // Bloque 1 (vec4f): [x, y, w, h]
-  // Bloque 2 (vec4f): [rot, canvasW, canvasH, opcional]
+  // Stride de 16 floats (64 bytes).
   private readonly FLOATS_PER_INSTANCE = 16;
+
+  //*Scratch state reused across batches to avoid allocations in the hot path
+  private groupCounts = new Map<string, number>();
+  private groupFirst = new Map<string, number>();
+  private groupCursor = new Map<string, number>();
+  private groupOrder: string[] = [];
+  private drawCallPool: DrawCallRef[] = [];
+  private drawCallCount = 0;
 
   async init(context: GPUCanvasContext) {
     this.context = context;
@@ -99,10 +117,14 @@ export default class WebGPUCanvas {
 
     const bufSize = this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE * 4;
     const bufDesc = { size: bufSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST };
-    
+
     this.imageInstanceBuffer   = this.device.createBuffer(bufDesc);
     this.patternInstanceBuffer = this.device.createBuffer(bufDesc);
     this.rectInstanceBuffer    = this.device.createBuffer(bufDesc);
+
+    this.imageStaging   = new Float32Array(this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE);
+    this.patternStaging = new Float32Array(this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE);
+    this.rectStaging    = new Float32Array(this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE);
   }
 
   async preloadImage(image: ImageBitmap, id: string) {
@@ -128,17 +150,17 @@ export default class WebGPUCanvas {
     });
   }
 
-  queueImage(params: DrawParams) { 
-    this.queue.push({ type: 'image', params }); 
+  queueImage(params: DrawParams) {
+    this.queue.push({ type: 'image', params });
   }
 
-  queueRect(params: DrawParams) { 
-    this.queue.push({ type: 'rect', params }); 
+  queueRect(params: DrawParams) {
+    this.queue.push({ type: 'rect', params });
   }
 
   queueRepeatPattern(params: DrawParams, mode: RepeatMode) {
     const canvas = this.context.canvas as HTMLCanvasElement;
-    let { x, y, width, height } = params;
+    let x = params.x, y = params.y, width = params.width, height = params.height;
 
     if (mode === "repeat") {
       width = canvas.width; height = canvas.height;
@@ -146,24 +168,28 @@ export default class WebGPUCanvas {
     }
     if (mode === "repeat-x") {
       width = canvas.width; height = params.tileHeight!;
-      x = 0; params.y = 0;
+      x = 0; y = 0;
     }
     if (mode === "repeat-y") {
       height = canvas.height; width = params.tileWidth!;
-      y = 0; params.x = 0;
+      y = 0; x = 0;
     }
 
-    const uvScaleX = width  / params.tileWidth!;
+    const uvScaleX = width / params.tileWidth!;
     const uvScaleY = height / params.tileHeight!;
-    const uvOffsetX = -params.x / params.tileWidth!;
-    const uvOffsetY = -params.y / params.tileHeight!;
+    const uvOffsetX = -x / params.tileWidth!;
+    const uvOffsetY = -y / params.tileHeight!;
 
     this.queue.push({
       type: 'pattern',
       mode,
       params: {
-        ...params,
+        id: params.id,
         x, y, width, height,
+        rotation: params.rotation,
+        pitch: params.pitch,
+        yaw: params.yaw,
+        roll: params.roll,
         fillColor: [uvScaleX, uvScaleY, uvOffsetX, uvOffsetY]
       }
     });
@@ -191,149 +217,135 @@ export default class WebGPUCanvas {
     passEncoder.end();
     this.device.queue.submit([commandEncoder.finish()]);
 
-    this.queue = [];
+    this.queue.length = 0;
   }
 
   private processQueueInOrder(pass: GPURenderPassEncoder, cw: number, ch: number) {
     if (this.queue.length === 0) return;
 
+    let runStart = 0;
     let currentType: string | null = null;
-    let batchItems: { item: QueuedItem; index: number }[] = [];
 
     for (let i = 0; i < this.queue.length; i++) {
-      const item = this.queue[i];
-      
-      if (currentType !== null && currentType !== item.type) {
-        // Tipo cambió, procesar batch anterior
-        this.processBatch(pass, batchItems, cw, ch);
-        batchItems = [];
+      const itemType = this.queue[i].type;
+      if (currentType !== null && currentType !== itemType) {
+        this.processBatch(pass, currentType, runStart, i, cw, ch);
+        runStart = i;
       }
-      
-      currentType = item.type;
-      batchItems.push({ item, index: i });
+      currentType = itemType;
     }
-
-    // Procesar último batch
-    if (batchItems.length > 0) {
-      this.processBatch(pass, batchItems, cw, ch);
+    if (currentType !== null) {
+      this.processBatch(pass, currentType, runStart, this.queue.length, cw, ch);
     }
   }
 
-  private processBatch(pass: GPURenderPassEncoder, batchItems: { item: QueuedItem; index: number }[], cw: number, ch: number) {
-    if (batchItems.length === 0) return;
-
-    const type = batchItems[0].item.type;
-
+  private processBatch(pass: GPURenderPassEncoder, type: string, startIdx: number, endIdx: number, cw: number, ch: number) {
+    if (endIdx <= startIdx) return;
     if (type === 'image') {
-      this.processImageBatch(pass, batchItems.map(b => b.item as Extract<QueuedItem, { type: 'image' }>), cw, ch);
+      this.processGroupedBatch(pass, this.imageStaging, this.imageInstanceBuffer, this.imageGlobalBindGroup, startIdx, endIdx, cw, ch, false);
     } else if (type === 'pattern') {
-      this.processPatternBatch(pass, batchItems.map(b => b.item as Extract<QueuedItem, { type: 'pattern' }>), cw, ch);
+      this.processGroupedBatch(pass, this.patternStaging, this.patternInstanceBuffer, this.patternGlobalBindGroup, startIdx, endIdx, cw, ch, true);
     } else if (type === 'rect') {
-      this.processRectBatch(pass, batchItems.map(b => b.item as Extract<QueuedItem, { type: 'rect' }>), cw, ch);
+      this.processRectBatch(pass, startIdx, endIdx, cw, ch);
     }
   }
 
-  private processImageBatch(pass: GPURenderPassEncoder, items: Extract<QueuedItem, { type: 'image' }>[], cw: number, ch: number) {
-    const imageQueue = items.map(i => i.params);
-    if (imageQueue.length === 0) return;
+  /**
+   * Escribe las instancias de un rango del queue agrupadas por textura,
+   * preservando el orden de primera aparicion (identico al comportamiento previo)
+   * y emitiento un draw call por grupo.
+   */
+  private processGroupedBatch(
+    pass: GPURenderPassEncoder,
+    staging: Float32Array,
+    instanceBuffer: GPUBuffer,
+    globalBindGroup: GPUBindGroup,
+    startIdx: number,
+    endIdx: number,
+    cw: number,
+    ch: number,
+    isPattern: boolean
+  ) {
+    const queue = this.queue;
+    const counts = this.groupCounts;
+    const firstOf = this.groupFirst;
+    const cursor = this.groupCursor;
+    const order = this.groupOrder;
+    counts.clear(); firstOf.clear(); cursor.clear(); order.length = 0;
+    this.drawCallCount = 0;
 
-    const groups = new Map<string, DrawParams[]>();
-    for (const img of imageQueue) {
-      if (!groups.has(img.id!)) groups.set(img.id!, []);
-      groups.get(img.id!)!.push(img);
+    for (let i = startIdx; i < endIdx; i++) {
+      const id = queue[i].params.id!;
+      const known = counts.get(id);
+      if (known === undefined) {
+        counts.set(id, 1);
+        firstOf.set(id, 0);
+        order.push(id);
+      } else {
+        counts.set(id, known + 1);
+      }
     }
 
-    const allData = new Float32Array(imageQueue.length * this.FLOATS_PER_INSTANCE);
-    let globalIndex = 0;
-    const drawCalls: { id: string; firstInstance: number; count: number }[] = [];
+    let acc = 0;
+    for (let k = 0; k < order.length; k++) {
+      const id = order[k];
+      firstOf.set(id, acc);
+      cursor.set(id, acc);
+      const c = counts.get(id)!;
+      this.drawCallPool[this.drawCallCount++] = { id, firstInstance: acc, count: c };
+      acc += c;
+    }
 
-    groups.forEach((groupItems, id) => {
-      const firstInstance = globalIndex;
-      groupItems.forEach(item => {
-        const offset = globalIndex * this.FLOATS_PER_INSTANCE;
-        allData[offset + 0] = item.x;
-        allData[offset + 1] = item.y;
-        allData[offset + 2] = item.width;
-        allData[offset + 3] = item.height;
-        allData[offset + 4] = item.roll ?? item.rotation;
-        allData[offset + 5] = item.pitch ?? 0;
-        allData[offset + 6] = item.yaw ?? 0;
-        allData[offset + 7] = cw;
-        allData[offset + 8] = ch;
-        globalIndex++;
-      });
-      drawCalls.push({ id, firstInstance, count: groupItems.length });
-    });
+    const FLOATS = this.FLOATS_PER_INSTANCE;
+    for (let i = startIdx; i < endIdx; i++) {
+      const p = queue[i].params;
+      const offset = cursor.get(p.id!)! * FLOATS;
+      cursor.set(p.id!, offset / FLOATS + 1);
 
-    this.device.queue.writeBuffer(this.imageInstanceBuffer, 0, allData);
-    pass.setPipeline(this.texturePipeline);
-    pass.setBindGroup(0, this.createGlobalBindGroup(this.texturePipeline, this.imageInstanceBuffer));
+      staging[offset + 0] = p.x;
+      staging[offset + 1] = p.y;
+      staging[offset + 2] = p.width;
+      staging[offset + 3] = p.height;
+      staging[offset + 4] = p.roll ?? p.rotation;
+      staging[offset + 5] = p.pitch ?? 0;
+      staging[offset + 6] = p.yaw ?? 0;
+      staging[offset + 7] = cw;
+      staging[offset + 8] = ch;
+      if (isPattern) {
+        staging[offset + 9] = p.fillColor![0];  // uvScaleX
+        staging[offset + 10] = p.fillColor![1]; // uvScaleY
+        staging[offset + 11] = p.fillColor![2]; // uvOffsetX
+        staging[offset + 12] = p.fillColor![3]; // uvOffsetY
+      }
+    }
 
-    for (const { id, firstInstance, count } of drawCalls) {
-      const tex = this.textureCache.get(id);
+    this.device.queue.writeBuffer(instanceBuffer, 0, staging, 0, acc * FLOATS);
+
+    if (isPattern) {
+      pass.setPipeline(this.patternPipeline);
+    } else {
+      pass.setPipeline(this.texturePipeline);
+    }
+    pass.setBindGroup(0, globalBindGroup);
+
+    for (let d = 0; d < this.drawCallCount; d++) {
+      const dc = this.drawCallPool[d];
+      const tex = this.textureCache.get(dc.id);
       if (!tex) continue;
-      pass.setBindGroup(1, tex.bindGroup);
-      pass.draw(6, count, 0, firstInstance);
+      pass.setBindGroup(1, isPattern ? tex.patternBindGroup : tex.bindGroup);
+      pass.draw(6, dc.count, 0, dc.firstInstance);
     }
   }
 
-  private processPatternBatch(pass: GPURenderPassEncoder, items: Extract<QueuedItem, { type: 'pattern' }>[], cw: number, ch: number) {
-    const patternQueue = items.map(i => i.params);
-    if (patternQueue.length === 0) return;
+  private processRectBatch(pass: GPURenderPassEncoder, startIdx: number, endIdx: number, cw: number, ch: number) {
+    const queue = this.queue;
+    const data = this.rectStaging;
+    const FLOATS = this.FLOATS_PER_INSTANCE;
+    const count = endIdx - startIdx;
 
-    const groups = new Map<string, DrawParams[]>();
-    for (const p of patternQueue) {
-      if (!groups.has(p.id!)) groups.set(p.id!, []);
-      groups.get(p.id!)!.push(p);
-    }
-
-    const allData = new Float32Array(patternQueue.length * this.FLOATS_PER_INSTANCE);
-    let globalIndex = 0;
-    const drawCalls: { id: string; firstInstance: number; count: number }[] = [];
-
-    groups.forEach((groupItems, id) => {
-      const firstInstance = globalIndex;
-      groupItems.forEach(item => {
-        const offset = globalIndex * this.FLOATS_PER_INSTANCE;
-        allData[offset + 0] = item.x;
-        allData[offset + 1] = item.y;
-        allData[offset + 2] = item.width;
-        allData[offset + 3] = item.height;
-        allData[offset + 4] = item.roll ?? item.rotation;
-        allData[offset + 5] = item.pitch ?? 0;
-        allData[offset + 6] = item.yaw ?? 0;
-        allData[offset + 7] = cw;
-
-        allData[offset + 8] = ch;
-        allData[offset + 9] = item.fillColor![0]; // uvScaleX
-        allData[offset + 10] = item.fillColor![1]; // uvScaleY
-        allData[offset + 11] = item.fillColor![2]; // uvOffsetX
-        allData[offset + 12] = item.fillColor![3]; // uvOffsetY
-        globalIndex++;
-      });
-      drawCalls.push({ id, firstInstance, count: groupItems.length });
-    });
-
-    this.device.queue.writeBuffer(this.patternInstanceBuffer, 0, allData);
-    pass.setPipeline(this.patternPipeline);
-    pass.setBindGroup(0, this.createGlobalBindGroup(this.patternPipeline, this.patternInstanceBuffer));
-
-    for (const { id, firstInstance, count } of drawCalls) {
-      const tex = this.textureCache.get(id);
-      if (!tex) continue;
-      pass.setBindGroup(1, tex.patternBindGroup);
-      pass.draw(6, count, 0, firstInstance);
-    }
-  }
-
-  private processRectBatch(pass: GPURenderPassEncoder, items: Extract<QueuedItem, { type: 'rect' }>[], cw: number, ch: number) {
-    const rectQueue = items.map(i => i.params);
-    if (rectQueue.length === 0) return;
-
-    const data = new Float32Array(rectQueue.length * this.FLOATS_PER_INSTANCE);
-    
-    rectQueue.forEach((item, i) => {
-      const offset = i * this.FLOATS_PER_INSTANCE;
+    for (let i = startIdx; i < endIdx; i++) {
+      const item = queue[i].params;
+      const offset = (i - startIdx) * FLOATS;
       data[offset + 0] = item.x;
       data[offset + 1] = item.y;
       data[offset + 2] = item.width;
@@ -352,21 +364,12 @@ export default class WebGPUCanvas {
       data[offset + 13] = item.borderColor![1] / 255;
       data[offset + 14] = item.borderColor![2] / 255;
       data[offset + 15] = item.borderColor![3] / 255;
-    });
+    }
 
-    this.device.queue.writeBuffer(this.rectInstanceBuffer, 0, data);
+    this.device.queue.writeBuffer(this.rectInstanceBuffer, 0, data, 0, count * FLOATS);
     pass.setPipeline(this.shapePipeline);
-    pass.setBindGroup(0, this.createGlobalBindGroup(this.shapePipeline, this.rectInstanceBuffer));
-    pass.draw(6, rectQueue.length);
-  }
-
-  private createGlobalBindGroup(pipeline: GPURenderPipeline, buffer: GPUBuffer) {
-    return this.device.createBindGroup({
-      layout: pipeline.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer } } // Eliminamos la dependencia del buffer de uniform global
-      ]
-    });
+    pass.setBindGroup(0, this.rectGlobalBindGroup);
+    pass.draw(6, count);
   }
 
   private createPipelines() {
@@ -529,7 +532,7 @@ export default class WebGPUCanvas {
       alpha: { srcFactor: "one",       dstFactor: "one-minus-src-alpha", operation: "add" }
     } as GPUBlendState;
 
-    
+
     this.shapePipeline = this.device.createRenderPipeline({
       layout: "auto",
       vertex:   { module: this.device.createShaderModule({ code: rectShader }),    entryPoint: "vs", buffers: [commonAttribs as any] },
@@ -548,6 +551,19 @@ export default class WebGPUCanvas {
       vertex:   { module: this.device.createShaderModule({ code: patternShader }), entryPoint: "vs", buffers: [commonAttribs as any] },
       fragment: { module: this.device.createShaderModule({ code: patternShader }), entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
       primitive: { topology: "triangle-list" }
+    });
+
+    this.imageGlobalBindGroup = this.device.createBindGroup({
+      layout: this.texturePipeline.getBindGroupLayout(0),
+      entries: [{ binding: 0, resource: { buffer: this.imageInstanceBuffer } }]
+    });
+    this.patternGlobalBindGroup = this.device.createBindGroup({
+      layout: this.patternPipeline.getBindGroupLayout(0),
+      entries: [{ binding: 0, resource: { buffer: this.patternInstanceBuffer } }]
+    });
+    this.rectGlobalBindGroup = this.device.createBindGroup({
+      layout: this.shapePipeline.getBindGroupLayout(0),
+      entries: [{ binding: 0, resource: { buffer: this.rectInstanceBuffer } }]
     });
   }
 }
