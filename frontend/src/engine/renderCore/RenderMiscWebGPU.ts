@@ -112,6 +112,9 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
       width:object.width,
       height:object.height,
       rotation: object.rotation,
+      pitch: object.pitch,
+      yaw: object.yaw,
+      roll: object.roll,
       borderColor: colorToRGBA(boxColor),
       fillColor: colorToRGBA(boxColor),
     });

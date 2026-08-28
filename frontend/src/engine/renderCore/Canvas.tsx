@@ -194,7 +194,14 @@ class Canvas extends React.Component<CanvasProps>{
     this.resolutionWidth = Math.floor(this.props.displayResolution.width * this.scale *window.devicePixelRatio);
     this.engine(this.loopId);
   }
+  private pushEngineError(processName:string,error: Error){
+    const log = ((window as any).__ENGINE_ERRORS ??= []);
+    if(log.length < 50){
+      log.push({process:processName, message:String(error?.message ?? error), stack:String(error?.stack ?? ""), at:new Date().toISOString()});
+    }
+  }
   private renderErrorLog(processName:string,error: Error){
+    this.pushEngineError(processName, error);
     let errorData: Array<string> = [
       //@ts-ignore
       `Engine Killed due fatal error during ${processName} process in line: ${error.lineNumber}`,
@@ -235,6 +242,7 @@ class Canvas extends React.Component<CanvasProps>{
         this.props.events();
         animator(fps);
       } catch (error) {//!Kill engine
+        this.pushEngineError("events", error);
         this.stopEngine = true;
         this.engineKilled = true;
         console.error("Engine killed due an error in the events logic");

@@ -55,6 +55,8 @@ export default class WebGPUCanvas {
 
   // Stride de 16 floats (64 bytes).
   private readonly FLOATS_PER_INSTANCE = 16;
+  //*Los rects llevan stride propio de 20 floats: roll+pitch+yaw+borderW y canvas en transform3
+  private readonly RECT_FLOATS_PER_INSTANCE = 20;
 
   //*Scratch state reused across batches to avoid allocations in the hot path
   private groupCounts = new Map<string, number>();
@@ -63,6 +65,25 @@ export default class WebGPUCanvas {
   private groupOrder: string[] = [];
   private drawCallPool: DrawCallRef[] = [];
   private drawCallCount = 0;
+
+  //*Per-frame instance usage. The frame is submitted once at the end of render(),
+  //so every writeBuffer must target a distinct region or earlier runs get clobbered.
+  private imageUsed = 0;
+  private patternUsed = 0;
+  private rectUsed = 0;
+
+  //*Temporary diagnostics (window.__GPU_DIAG): silent GPU-side failures visibility
+  private diag = {
+    frames: 0,
+    lastFrame: null as null | {
+      queueLength: number;
+      runs: Array<{ type: string; start: number; end: number }>;
+      draws: Array<{ type: string; id?: string; firstInstance: number; count: number }>;
+    },
+    missingTextures: [] as string[],
+    deviceErrors: [] as string[],
+    deviceLost: null as string | null,
+  };
 
   async init(context: GPUCanvasContext) {
     this.context = context;
@@ -80,6 +101,18 @@ export default class WebGPUCanvas {
     this.sampler = this.device.createSampler({
       magFilter: "linear", minFilter: "linear",
       addressModeU: "repeat", addressModeV: "repeat",
+    });
+
+    //*Diagnostics hooks
+    (window as any).__GPU_DIAG = this.diag;
+    this.device.lost.then((info) => {
+      this.diag.deviceLost = String(info?.reason ?? "unknown");
+      console.error("WebGPU device lost:", info);
+    });
+    this.device.addEventListener("uncapturederror", (ev: any) => {
+      const msg = ev?.error?.message ?? String(ev);
+      if (this.diag.deviceErrors.length < 50) this.diag.deviceErrors.push(msg);
+      console.error("WebGPU uncaptured error:", msg);
     });
 
     this.createBuffers();
@@ -116,15 +149,19 @@ export default class WebGPUCanvas {
     this.vertexBuffer.unmap();
 
     const bufSize = this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE * 4;
+    const rectBufSize = this.MAX_INSTANCES * this.RECT_FLOATS_PER_INSTANCE * 4;
     const bufDesc = { size: bufSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST };
 
     this.imageInstanceBuffer   = this.device.createBuffer(bufDesc);
     this.patternInstanceBuffer = this.device.createBuffer(bufDesc);
-    this.rectInstanceBuffer    = this.device.createBuffer(bufDesc);
+    this.rectInstanceBuffer = this.device.createBuffer({
+      size: rectBufSize,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
 
     this.imageStaging   = new Float32Array(this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE);
     this.patternStaging = new Float32Array(this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE);
-    this.rectStaging    = new Float32Array(this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE);
+    this.rectStaging    = new Float32Array(this.MAX_INSTANCES * this.RECT_FLOATS_PER_INSTANCE);
   }
 
   async preloadImage(image: ImageBitmap, id: string) {
@@ -199,6 +236,10 @@ export default class WebGPUCanvas {
     const canvas = this.context.canvas as HTMLCanvasElement;
     if (canvas.width === 0 || canvas.height === 0) return;
 
+    this.imageUsed = 0;
+    this.patternUsed = 0;
+    this.rectUsed = 0;
+
     const commandEncoder = this.device.createCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass({
       colorAttachments: [{
@@ -223,6 +264,7 @@ export default class WebGPUCanvas {
   private processQueueInOrder(pass: GPURenderPassEncoder, cw: number, ch: number) {
     if (this.queue.length === 0) return;
 
+    const runs: Array<{ type: string; start: number; end: number }> = [];
     let runStart = 0;
     let currentType: string | null = null;
 
@@ -230,23 +272,68 @@ export default class WebGPUCanvas {
       const itemType = this.queue[i].type;
       if (currentType !== null && currentType !== itemType) {
         this.processBatch(pass, currentType, runStart, i, cw, ch);
+        runs.push({ type: currentType, start: runStart, end: i });
         runStart = i;
       }
       currentType = itemType;
     }
     if (currentType !== null) {
       this.processBatch(pass, currentType, runStart, this.queue.length, cw, ch);
+      runs.push({ type: currentType, start: runStart, end: this.queue.length });
+    }
+
+    //*Diagnostics
+    this.diag.frames++;
+    this.diag.lastFrame = {
+      queueLength: this.queue.length,
+      runs,
+      draws: (this.diag as any)._frameDraws ?? []
+    };
+    (this.diag as any)._frameDraws = undefined;
+  }
+
+  private diagDraw(type: string, id: string | undefined, firstInstance: number, count: number) {
+    const frameDraws = ((this.diag as any)._frameDraws ??= []);
+    frameDraws.push({ type, id, firstInstance, count });
+  }
+
+  private diagMissingTexture(id: string) {
+    if (!this.diag.missingTextures.includes(id) && this.diag.missingTextures.length < 100) {
+      this.diag.missingTextures.push(id);
     }
   }
 
   private processBatch(pass: GPURenderPassEncoder, type: string, startIdx: number, endIdx: number, cw: number, ch: number) {
     if (endIdx <= startIdx) return;
+
+    let slotBase: number;
+    let count = endIdx - startIdx;
     if (type === 'image') {
-      this.processGroupedBatch(pass, this.imageStaging, this.imageInstanceBuffer, this.imageGlobalBindGroup, startIdx, endIdx, cw, ch, false);
+      slotBase = this.imageUsed;
     } else if (type === 'pattern') {
-      this.processGroupedBatch(pass, this.patternStaging, this.patternInstanceBuffer, this.patternGlobalBindGroup, startIdx, endIdx, cw, ch, true);
+      slotBase = this.patternUsed;
     } else if (type === 'rect') {
-      this.processRectBatch(pass, startIdx, endIdx, cw, ch);
+      slotBase = this.rectUsed;
+    } else {
+      return;
+    }
+
+    if (slotBase + count > this.MAX_INSTANCES) {
+      console.warn(`WebGPUCanvas: '${type}' instance overflow (${slotBase + count} > ${this.MAX_INSTANCES}), skipping ${slotBase + count - this.MAX_INSTANCES} instances`);
+      count = this.MAX_INSTANCES - slotBase;
+    }
+    if (count <= 0) return;
+    const clampedEnd = startIdx + count;
+
+    if (type === 'image') {
+      this.imageUsed += count;
+      this.processGroupedBatch(pass, this.imageStaging, this.imageInstanceBuffer, this.imageGlobalBindGroup, startIdx, clampedEnd, cw, ch, false, slotBase);
+    } else if (type === 'pattern') {
+      this.patternUsed += count;
+      this.processGroupedBatch(pass, this.patternStaging, this.patternInstanceBuffer, this.patternGlobalBindGroup, startIdx, clampedEnd, cw, ch, true, slotBase);
+    } else {
+      this.rectUsed += count;
+      this.processRectBatch(pass, startIdx, clampedEnd, cw, ch, slotBase);
     }
   }
 
@@ -254,6 +341,9 @@ export default class WebGPUCanvas {
    * Escribe las instancias de un rango del queue agrupadas por textura,
    * preservando el orden de primera aparicion (identico al comportamiento previo)
    * y emitiento un draw call por grupo.
+   * slotBase es el offset absoluto (en instancias) dentro del instanceBuffer donde
+   * inicia este run: los slots se acumulan durante todo el frame porque solo hay
+   * un submit al final de render().
    */
   private processGroupedBatch(
     pass: GPURenderPassEncoder,
@@ -264,7 +354,8 @@ export default class WebGPUCanvas {
     endIdx: number,
     cw: number,
     ch: number,
-    isPattern: boolean
+    isPattern: boolean,
+    slotBase: number
   ) {
     const queue = this.queue;
     const counts = this.groupCounts;
@@ -286,7 +377,7 @@ export default class WebGPUCanvas {
       }
     }
 
-    let acc = 0;
+    let acc = slotBase;
     for (let k = 0; k < order.length; k++) {
       const id = order[k];
       firstOf.set(id, acc);
@@ -319,7 +410,13 @@ export default class WebGPUCanvas {
       }
     }
 
-    this.device.queue.writeBuffer(instanceBuffer, 0, staging, 0, acc * FLOATS);
+    this.device.queue.writeBuffer(
+      instanceBuffer,
+      slotBase * FLOATS * 4,
+      staging,
+      slotBase * FLOATS,
+      (acc - slotBase) * FLOATS
+    );
 
     if (isPattern) {
       pass.setPipeline(this.patternPipeline);
@@ -331,45 +428,49 @@ export default class WebGPUCanvas {
     for (let d = 0; d < this.drawCallCount; d++) {
       const dc = this.drawCallPool[d];
       const tex = this.textureCache.get(dc.id);
-      if (!tex) continue;
+      if (!tex) { this.diagMissingTexture(dc.id); continue; }
       pass.setBindGroup(1, isPattern ? tex.patternBindGroup : tex.bindGroup);
       pass.draw(6, dc.count, 0, dc.firstInstance);
+      this.diagDraw(isPattern ? "pattern" : "image", dc.id, dc.firstInstance, dc.count);
     }
   }
 
-  private processRectBatch(pass: GPURenderPassEncoder, startIdx: number, endIdx: number, cw: number, ch: number) {
+  private processRectBatch(pass: GPURenderPassEncoder, startIdx: number, endIdx: number, cw: number, ch: number, slotBase: number) {
     const queue = this.queue;
     const data = this.rectStaging;
-    const FLOATS = this.FLOATS_PER_INSTANCE;
+    const FLOATS = this.RECT_FLOATS_PER_INSTANCE;
     const count = endIdx - startIdx;
 
     for (let i = startIdx; i < endIdx; i++) {
       const item = queue[i].params;
-      const offset = (i - startIdx) * FLOATS;
+      const offset = ((i - startIdx) + slotBase) * FLOATS;
       data[offset + 0] = item.x;
       data[offset + 1] = item.y;
       data[offset + 2] = item.width;
       data[offset + 3] = item.height;
-      data[offset + 4] = item.rotation;
-      data[offset + 5] = item.borderWidth! / Math.max(item.width, item.height);
-      data[offset + 6] = cw;
-      data[offset + 7] = ch;
+      data[offset + 4] = item.roll ?? item.rotation;
+      data[offset + 5] = item.pitch ?? 0;
+      data[offset + 6] = item.yaw ?? 0;
+      data[offset + 7] = item.borderWidth! / Math.max(item.width, item.height);
+      data[offset + 8] = cw;
+      data[offset + 9] = ch;
 
-      data[offset + 8] = item.fillColor![0] / 255;
-      data[offset + 9] = item.fillColor![1] / 255;
-      data[offset + 10] = item.fillColor![2] / 255;
-      data[offset + 11] = item.fillColor![3] / 255;
+      data[offset + 12] = item.fillColor![0] / 255;
+      data[offset + 13] = item.fillColor![1] / 255;
+      data[offset + 14] = item.fillColor![2] / 255;
+      data[offset + 15] = item.fillColor![3] / 255;
 
-      data[offset + 12] = item.borderColor![0] / 255;
-      data[offset + 13] = item.borderColor![1] / 255;
-      data[offset + 14] = item.borderColor![2] / 255;
-      data[offset + 15] = item.borderColor![3] / 255;
+      data[offset + 16] = item.borderColor![0] / 255;
+      data[offset + 17] = item.borderColor![1] / 255;
+      data[offset + 18] = item.borderColor![2] / 255;
+      data[offset + 19] = item.borderColor![3] / 255;
     }
 
-    this.device.queue.writeBuffer(this.rectInstanceBuffer, 0, data, 0, count * FLOATS);
+    this.device.queue.writeBuffer(this.rectInstanceBuffer, slotBase * FLOATS * 4, data, slotBase * FLOATS, count * FLOATS);
     pass.setPipeline(this.shapePipeline);
     pass.setBindGroup(0, this.rectGlobalBindGroup);
-    pass.draw(6, count);
+    pass.draw(6, count, 0, slotBase);
+    this.diagDraw("rect", undefined, slotBase, count);
   }
 
   private createPipelines() {
@@ -486,7 +587,8 @@ export default class WebGPUCanvas {
     const rectShader = `
       struct InstRect {
         transform1: vec4f, // [x, y, width, height]
-        transform2: vec4f, // [rotation, borderWidth, canvasWidth, canvasHeight]
+        transform2: vec4f, // [roll, pitch, yaw, borderWidth(normalized)]
+        transform3: vec4f, // [canvasWidth, canvasHeight, 0, 0]
         fill: vec4f,       // [r, g, b, a]
         border: vec4f      // [r, g, b, a]
       };
@@ -502,15 +604,17 @@ export default class WebGPUCanvas {
         let p_pos = inst.transform1.xy;
         let p_size = inst.transform1.zw;
         let p_rot = inst.transform2.x;
-        let canvasSize = inst.transform2.zw;
+        let p_pitch = inst.transform2.y;
+        let p_yaw = inst.transform2.z;
+        let canvasSize = inst.transform3.xy;
 
-        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, canvasSize);
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize);
         return Out(ndc, uv, i);
       }
 
       @fragment fn fs(in: Out) -> @location(0) vec4f {
         let inst = data.instances[in.id];
-        let brdW = inst.transform2.y;
+        let brdW = inst.transform2.w;
 
         let d = max(abs(in.uv.x - 0.5), abs(in.uv.y - 0.5)) * 2.0;
         if (d > 1.0) { discard; }
