@@ -40,6 +40,9 @@ export default class WebGPUCanvas {
   private patternInstanceBuffer!: GPUBuffer;
   private rectInstanceBuffer!: GPUBuffer;
 
+  private worldDataBuffer!: GPUBuffer;
+  private worldDataValues = new Float32Array(4);
+
   //*Persistent CPU-side staging (no per-frame allocations)
   private imageStaging!: Float32Array;
   private patternStaging!: Float32Array;
@@ -130,6 +133,14 @@ export default class WebGPUCanvas {
     });
   }
 
+  setWorldRotation(pitch: number, yaw: number, roll: number) {
+    this.worldDataValues[0] = pitch;
+    this.worldDataValues[1] = yaw;
+    this.worldDataValues[2] = roll;
+    this.worldDataValues[3] = 0;
+    this.device.queue.writeBuffer(this.worldDataBuffer, 0, this.worldDataValues);
+  }
+
   private createBuffers() {
     const vertexData = new Float32Array([
       0, 0, 0, 0,
@@ -162,6 +173,11 @@ export default class WebGPUCanvas {
     this.imageStaging   = new Float32Array(this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE);
     this.patternStaging = new Float32Array(this.MAX_INSTANCES * this.FLOATS_PER_INSTANCE);
     this.rectStaging    = new Float32Array(this.MAX_INSTANCES * this.RECT_FLOATS_PER_INSTANCE);
+
+    this.worldDataBuffer = this.device.createBuffer({
+      size: 16,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
   }
 
   async preloadImage(image: ImageBitmap, id: string) {
@@ -475,6 +491,11 @@ export default class WebGPUCanvas {
 
   private createPipelines() {
     const commonWGSLTransforms = `
+      struct WorldData {
+        rotation: vec4f,
+      };
+      @group(0) @binding(1) var<uniform> world: WorldData;
+
       fn rotate3D(point: vec3f, roll: f32, pitch: f32, yaw: f32) -> vec3f {
         let cr = cos(roll);
         let sr = sin(roll);
@@ -501,7 +522,9 @@ export default class WebGPUCanvas {
         let translatedPos = localPixelPos - center;
         let local3D = vec3f(translatedPos.x, translatedPos.y, 0.0);
 
-        let rotated3D = rotate3D(local3D, roll, pitch, yaw);
+        let worldRotatedLocal = rotate3D(local3D, world.rotation.z, world.rotation.x, world.rotation.y);
+        let rotated3D = rotate3D(worldRotatedLocal, roll, pitch, yaw);
+
         let cameraDist = max(canvasSize.x, canvasSize.y) * 1.2;
         let perspectiveScale = cameraDist / (cameraDist + rotated3D.z);
         let worldPixelPos = vec2f(rotated3D.x, rotated3D.y) * perspectiveScale + center + pos;
@@ -659,15 +682,24 @@ export default class WebGPUCanvas {
 
     this.imageGlobalBindGroup = this.device.createBindGroup({
       layout: this.texturePipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: { buffer: this.imageInstanceBuffer } }]
+      entries: [
+        { binding: 0, resource: { buffer: this.imageInstanceBuffer } },
+        { binding: 1, resource: { buffer: this.worldDataBuffer } },
+      ]
     });
     this.patternGlobalBindGroup = this.device.createBindGroup({
       layout: this.patternPipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: { buffer: this.patternInstanceBuffer } }]
+      entries: [
+        { binding: 0, resource: { buffer: this.patternInstanceBuffer } },
+        { binding: 1, resource: { buffer: this.worldDataBuffer } },
+      ]
     });
     this.rectGlobalBindGroup = this.device.createBindGroup({
       layout: this.shapePipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: { buffer: this.rectInstanceBuffer } }]
+      entries: [
+        { binding: 0, resource: { buffer: this.rectInstanceBuffer } },
+        { binding: 1, resource: { buffer: this.worldDataBuffer } },
+      ]
     });
   }
 }

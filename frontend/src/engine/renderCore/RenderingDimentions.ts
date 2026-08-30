@@ -9,6 +9,26 @@ import { CalculationOrder } from "./RenderingOrder.ts";
 import RenderMiscCanvas2D from "./RenderMiscCanvas2D.ts";
 const RenderDebug = RenderMiscCanvas2D;
 
+function rotate3DJS(
+  point: [number, number, number],
+  roll: number, pitch: number, yaw: number
+): [number, number, number] {
+  const cr = Math.cos(roll),  sr = Math.sin(roll);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const cy = Math.cos(yaw),   sy = Math.sin(yaw);
+
+  const x1 = point[0] * cy + point[2] * sy;
+  const z1 = -point[0] * sy + point[2] * cy;
+  const y1 = point[1];
+
+  const y2 = y1 * cp - z1 * sp;
+  const z2 = y1 * sp + z1 * cp;
+
+  const x3 = x1 * cr - y2 * sr;
+  const y3 = x1 * sr + y2 * cr;
+  return [x3, y3, z2];
+}
+
 export class SharedDisplayCalcs{
   private static instance: SharedDisplayCalcs;
 
@@ -63,6 +83,11 @@ export function generateObjectsDisplayDimentions(
     const cameraOriginYDelta = (cameraOriginY-0.5)*canvasResolutionHeight;
     const finalCameraHorizontalPixelOrigin = (camera.origin.x-0.5)*canvasResolutionWidth;
 
+    const worldPitch = camera.position.pitch ?? 0;
+    const worldYaw   = camera.position.yaw   ?? 0;
+    const worldRoll  = camera.position.roll  ?? 0;
+    const hasWorldRotation = worldPitch !== 0 || worldYaw !== 0 || worldRoll !== 0;
+
     let strRef: any;
     const recalculateAll = sharedInstance.recalculateAll;
 
@@ -77,24 +102,6 @@ export function generateObjectsDisplayDimentions(
         visibleRefsOut.push(gObject);
         //TODO: if text value is not null, jump to text attribs recalculation
       }else{
-        const isBehindCamera = accumZ + camCenterZ < 0;
-        //*Equivalence-safe fast path: repeating the behind-camera check with the
-        //same accumulated z and an unchanged camera yields the same discard.
-        if(isBehindCamera && !recalculateAll && gObject._behindStamp === accumZ){
-          continue;
-        }
-        const childsRefs = gObject._childsRefs;
-        if(childsRefs.size > 0){
-          for (const childRef of childsRefs.values()){
-            const rawChild: any = childRef._rawSelf ?? childRef;
-            rawChild._pendingRenderingRecalculation = true;
-          }
-        }
-        if(isBehindCamera){
-          gObject._behindStamp = accumZ;
-          continue;
-        }
-
         const dimentionsPack = gObject.dimentionsPack;
 
        //*Sanitization: neutral defaults each iteration so results never depend on unrelated objects
@@ -117,6 +124,41 @@ export function generateObjectsDisplayDimentions(
           }
         }
 
+        let worldX = gObject._x + originX;
+        let worldY = gObject._y + originY;
+        let worldZ = accumZ;
+
+        if (hasWorldRotation) {
+          const camPosX = camera.position.x;
+          const camPosY = camera.position.y;
+          const camPosZ = camera.position.z;
+          const rotated = rotate3DJS(
+            [worldX - camPosX, worldY - camPosY, worldZ - camPosZ],
+            worldRoll, worldPitch, worldYaw
+          );
+          worldX = rotated[0] + camPosX;
+          worldY = rotated[1] + camPosY;
+          worldZ = rotated[2] + camPosZ;
+        }
+
+        const isBehindCamera = worldZ + camCenterZ < 0;
+        //*Equivalence-safe fast path: repeating the behind-camera check with the
+        //same accumulated z and an unchanged camera yields the same discard.
+        if(isBehindCamera && !recalculateAll && gObject._behindStamp === accumZ){
+          continue;
+        }
+        const childsRefs = gObject._childsRefs;
+        if(childsRefs.size > 0){
+          for (const childRef of childsRefs.values()){
+            const rawChild: any = childRef._rawSelf ?? childRef;
+            rawChild._pendingRenderingRecalculation = true;
+          }
+        }
+        if(isBehindCamera){
+          gObject._behindStamp = accumZ;
+          continue;
+        }
+
         if (!cameraUsePerspective && gObject._ignoreParallax){
           additionX = camCenterX;
           additionY = camCenterY;
@@ -127,8 +169,8 @@ export function generateObjectsDisplayDimentions(
         let perspectiveScale = 0.99;
 
         if(!cameraUsePerspective || gObject._ignoreParallax){
-          const objectLeft = ((gObject._x + originX + additionX)*canvasResolutionHeight) + finalCameraHorizontalPixelOrigin;
-          const objectTop = (gObject._y + originY + additionY + cameraOriginYDelta)*canvasResolutionHeight;
+          const objectLeft = ((worldX + additionX)*canvasResolutionHeight) + finalCameraHorizontalPixelOrigin;
+          const objectTop = ((worldY + additionY) + cameraOriginYDelta)*canvasResolutionHeight;
 
           let objectWidth = canvasResolutionWidth*objectScale*gObject._widthScale;
           let objectHeight = canvasResolutionHeight*objectScale*gObject._heightScale;
@@ -160,13 +202,13 @@ export function generateObjectsDisplayDimentions(
 
           dimentionsPack.x  = objectLeft;
           dimentionsPack.y  = objectTop;
-          dimentionsPack.z  = accumZ;
+          dimentionsPack.z  = worldZ;
           dimentionsPack.corner.x = cornerX;
           dimentionsPack.corner.y = cornerY;
 
-          dimentionsPack.base.x = originX + gObject._x;
-          dimentionsPack.base.y = originY + gObject._y;
-          dimentionsPack.base.z = accumZ;
+          dimentionsPack.base.x = worldX;
+          dimentionsPack.base.y = worldY;
+          dimentionsPack.base.z = worldZ;
 
           dimentionsPack.sizeInDisplay  = perspectiveScale;
           dimentionsPack.width  = objectWidth;
@@ -178,9 +220,9 @@ export function generateObjectsDisplayDimentions(
           dimentionsPack.roll = gObject._rotate;
 
         }else{
-          let objectLeft = gObject._x + originX + camCenterX;
-          let objectTop = gObject._y + originY + camCenterY;
-          const objectZ = accumZ + camCenterZ;
+          let objectLeft = worldX + camCenterX;
+          let objectTop = worldY + camCenterY;
+          const objectZ = worldZ + camCenterZ;
 
           const lookupTableIndex = Math.trunc(objectZ*1000);
           let perspectiveDiff = lookupTable.get(lookupTableIndex);
@@ -241,9 +283,9 @@ export function generateObjectsDisplayDimentions(
           dimentionsPack.corner.x = cornerX;
           dimentionsPack.corner.y = cornerY;
 
-          dimentionsPack.base.x = originX + gObject._x;
-          dimentionsPack.base.y = originY + gObject._y;
-          dimentionsPack.base.z = accumZ;
+          dimentionsPack.base.x = worldX;
+          dimentionsPack.base.y = worldY;
+          dimentionsPack.base.z = worldZ;
 
           dimentionsPack.sizeInDisplay  = perspectiveScale;
           dimentionsPack.width  = objectWidth;

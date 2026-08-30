@@ -289,6 +289,12 @@ class Canvas extends React.Component<CanvasProps>{
         resolution:{width:this.resolutionWidth,height:this.resolutionHeight,scale:this.scale},
         fps:fps});
 
+      const cam = this.renderEngine.camera;
+      RenderMisc.setWorldRotation(
+        cam.position.pitch ?? 0,
+        cam.position.yaw ?? 0,
+        cam.position.roll ?? 0
+      );
       RenderMisc.render();
 
       if(this.showFps){

@@ -384,7 +384,10 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
         x:.5,
         y:.5,
         z:0,
-        angle: canvas ? canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width) : 0}, handler),
+        angle: canvas ? canvas.resolution.height/(this.camera.maxZ*canvas.resolution.width) : 0,
+        pitch:0,
+        yaw:0,
+        roll:0}, handler),
       usePerspective:false
     }, handler);
     
