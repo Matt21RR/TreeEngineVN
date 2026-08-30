@@ -156,6 +156,7 @@ export function generateObjectsDisplayDimentions(
         }
         if(isBehindCamera){
           gObject._behindStamp = accumZ;
+          gObject._pendingRenderingRecalculation = true;
           continue;
         }
 
@@ -196,6 +197,7 @@ export function generateObjectsDisplayDimentions(
           if(!gObject._repeatPattern){
             dimentionsPack.repeatPattern = false;
             if(cornerX > canvasResolutionWidth || cornerY > canvasResolutionHeight || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
+              gObject._pendingRenderingRecalculation = true;
               continue;
             }
           }
@@ -235,6 +237,7 @@ export function generateObjectsDisplayDimentions(
 
           //*with perspectiveScale > 0.003 we ensure the very far of|behind the camera elements won't be further calculated
           if(perspectiveScale<=0.003){
+            gObject._pendingRenderingRecalculation = true;
             continue;
           }
           objectScale *= perspectiveScale;
@@ -273,6 +276,7 @@ export function generateObjectsDisplayDimentions(
           if(!gObject._repeatPattern){
             dimentionsPack.repeatPattern = false;
             if(cornerX > canvasResolutionWidth || cornerY > canvasResolutionHeight || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
+              gObject._pendingRenderingRecalculation = true;
               continue;
             }
           }
