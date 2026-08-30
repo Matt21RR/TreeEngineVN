@@ -110,6 +110,7 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
   renderingOrderRefs: Array<GraphObject>;
   
   mouse: { x: number; y: number; origin: any };
+  worldRotationQuat: [number, number, number, number];
   //*Debug stuff
   noRenderedItemsCount: number;
   drawObjectLimits: boolean;
@@ -174,6 +175,7 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
 
     //MOUSE
     this.mouse = {x:0,y:0,origin:null};
+    this.worldRotationQuat = [0, 0, 0, 1];
 
     //Debug values
     this.noRenderedItemsCount = 0;
@@ -620,6 +622,49 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
       }
     }
   }
+
+  private quatFromAxisAngle(axis: [number,number,number], angle: number): [number,number,number,number] {
+    const half = angle * 0.5;
+    const s = Math.sin(half);
+    return [axis[0]*s, axis[1]*s, axis[2]*s, Math.cos(half)];
+  }
+
+  private quatMultiply(a: [number,number,number,number], b: [number,number,number,number]): [number,number,number,number] {
+    return [
+      a[3]*b[0] + a[0]*b[3] + a[1]*b[2] - a[2]*b[1],
+      a[3]*b[1] - a[0]*b[2] + a[1]*b[3] + a[2]*b[0],
+      a[3]*b[2] + a[0]*b[1] - a[1]*b[0] + a[2]*b[3],
+      a[3]*b[3] - a[0]*b[0] - a[1]*b[1] - a[2]*b[2]
+    ];
+  }
+
+  private quatToEuler(q: [number,number,number,number]): {pitch:number, yaw:number, roll:number} {
+    const [x, y, z, w] = q;
+    const sinp = 2*(w*x + y*z);
+    const cosp = 1 - 2*(x*x + z*z);
+    const siny = 2*(w*y - x*z);
+    const cosy = 1 - 2*(x*x + y*y);
+    const sinr = 2*(w*z - x*y);
+    const cosr = 1 - 2*(x*x + z*z);
+    return {
+      pitch: Math.abs(sinp) >= 1 ? Math.sign(sinp)*Math.PI/2 : Math.asin(sinp),
+      yaw: Math.atan2(siny, cosy),
+      roll: Math.abs(sinr) >= 1 ? Math.sign(sinr)*Math.PI/2 : Math.atan2(sinr, cosr)
+    };
+  }
+
+  applyWorldRotationFromMouse(deltaX: number, deltaY: number) {
+    const sensitivity = 0.005;
+    const yawQuat = this.quatFromAxisAngle([0, 1, 0], -deltaX * sensitivity);
+    const pitchQuat = this.quatFromAxisAngle([1, 0, 0], -deltaY * sensitivity);
+    const deltaQuat = this.quatMultiply(pitchQuat, yawQuat);
+    this.worldRotationQuat = this.quatMultiply(deltaQuat, this.worldRotationQuat);
+    const euler = this.quatToEuler(this.worldRotationQuat);
+    this.camera.position.pitch = euler.pitch;
+    this.camera.position.yaw = euler.yaw;
+    this.camera.position.roll = euler.roll;
+  }
+
   render(){
     return(
       <div className="relative w-full h-full mx-auto my-auto" id={'display'+this.id}>
@@ -740,10 +785,23 @@ class InputManager{
   private boundKeydown: (e: KeyboardEvent) => void;
   private boundKeyup: (e: KeyboardEvent) => void;
 
+  //*Mouse rotation stuff
+  private mouseState = {
+    middleButton: false,
+    lastX: 0, lastY: 0,
+    deltaX: 0, deltaY: 0,
+  };
+  private boundMousedown: (e: MouseEvent) => void;
+  private boundMouseup: (e: MouseEvent) => void;
+  private boundMousemove: (e: MouseEvent) => void;
+
   constructor(){
     this.destroy();
     this.boundKeydown = this.onKeydown.bind(this);
     this.boundKeyup = this.onKeyup.bind(this);
+    this.boundMousedown = this.onMousedown.bind(this);
+    this.boundMouseup = this.onMouseup.bind(this);
+    this.boundMousemove = this.onMousemove.bind(this);
 
     this.bind();
   }
@@ -789,16 +847,44 @@ class InputManager{
     } 
   }
 
+  onMousedown(e: MouseEvent){
+    if(e.button === 1){
+      this.mouseState.middleButton = true;
+      this.mouseState.lastX = e.clientX;
+      this.mouseState.lastY = e.clientY;
+      e.preventDefault();
+    }
+  }
+
+  onMouseup(e: MouseEvent){
+    if(e.button === 1) this.mouseState.middleButton = false;
+  }
+
+  onMousemove(e: MouseEvent){
+    if(this.mouseState.middleButton){
+      this.mouseState.deltaX += e.clientX - this.mouseState.lastX;
+      this.mouseState.deltaY += e.clientY - this.mouseState.lastY;
+      this.mouseState.lastX = e.clientX;
+      this.mouseState.lastY = e.clientY;
+    }
+  }
+
   bind(){
     console.log("binding");
     document.body.addEventListener("keydown", this.boundKeydown as EventListener);
     document.body.addEventListener("keyup", this.boundKeyup as EventListener);
+    document.body.addEventListener("mousedown", this.boundMousedown as EventListener);
+    document.body.addEventListener("mouseup", this.boundMouseup as EventListener);
+    document.body.addEventListener("mousemove", this.boundMousemove as EventListener);
   }
 
   destroy(){
     console.log("destroy");
     document.body.removeEventListener("keydown", this.boundKeydown as EventListener);
     document.body.removeEventListener("keyup", this.boundKeyup as EventListener);
+    document.body.removeEventListener("mousedown", this.boundMousedown as EventListener);
+    document.body.removeEventListener("mouseup", this.boundMouseup as EventListener);
+    document.body.removeEventListener("mousemove", this.boundMousemove as EventListener);
   }
 
   update(engineRef: RenderEngine){
@@ -811,6 +897,12 @@ class InputManager{
         this.keyboardTriggers.get(key).check(engineRef,"onHold");
       }
     });
+
+    if(this.mouseState.deltaX !== 0 || this.mouseState.deltaY !== 0){
+      engineRef.applyWorldRotationFromMouse(this.mouseState.deltaX, this.mouseState.deltaY);
+      this.mouseState.deltaX = 0;
+      this.mouseState.deltaY = 0;
+    }
   }
 }
 
