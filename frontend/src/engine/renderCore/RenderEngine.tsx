@@ -331,11 +331,7 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
         width : engineDisplayRes.width + "px", 
         height : engineDisplayRes.height + "px"
       } 
-    ).then(()=>{
-      // this.graphArray.objects.forEach(e=>{
-      //     e.pendingRenderingRecalculation = true;
-      //   });
-    });
+    );
 
     this.setState({ engineDisplayRes });
   }
@@ -662,7 +658,7 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
     const euler = this.quatToEuler(this.worldRotationQuat);
     this.camera.position.pitch = euler.pitch;
     this.camera.position.yaw = euler.yaw;
-    this.camera.position.roll = euler.roll;
+    this.camera.position.roll = 0;
   }
 
   render(){
