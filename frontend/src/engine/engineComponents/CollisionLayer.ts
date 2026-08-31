@@ -21,6 +21,8 @@ export type ObjectRenderingData = {
     y: number;
     z: number;
   },
+  /** 0 = apply world rotation in GPU, 1 = skip it (UI elements) */
+  ignoreWorldRotation?: number,
   id:string,
   repeatPattern:boolean,
   solvedTexture:EngTexture|null,

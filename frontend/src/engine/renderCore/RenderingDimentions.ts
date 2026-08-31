@@ -128,7 +128,7 @@ export function generateObjectsDisplayDimentions(
         let worldY = gObject._y + originY;
         let worldZ = accumZ;
 
-        if (hasWorldRotation) {
+        if (hasWorldRotation && !gObject._ignoreParallax) {
           const camPosX = camera.position.x;
           const camPosY = camera.position.y;
           const camPosZ = camera.position.z;
@@ -220,6 +220,7 @@ export function generateObjectsDisplayDimentions(
           dimentionsPack.pitch = gObject._pitch;
           dimentionsPack.yaw = gObject._yaw;
           dimentionsPack.roll = gObject._rotate;
+          dimentionsPack.ignoreWorldRotation = gObject._ignoreParallax ? 1 : 0;
 
         }else{
           let objectLeft = worldX + camCenterX;
@@ -299,6 +300,7 @@ export function generateObjectsDisplayDimentions(
           dimentionsPack.pitch = gObject._pitch;
           dimentionsPack.yaw = gObject._yaw;
           dimentionsPack.roll = gObject._rotate;
+          dimentionsPack.ignoreWorldRotation = gObject._ignoreParallax ? 1 : 0;
         }
 
         //TODO: texts requires continous recomputing

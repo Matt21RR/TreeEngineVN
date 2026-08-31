@@ -8,6 +8,7 @@ interface DrawParams {
   pitch?: number;
   yaw?: number;
   roll?: number;
+  ignoreWorldRotation?: number;
   fillColor?: [number, number, number, number];
   borderColor?: [number, number, number, number];
   borderWidth?: number;
@@ -243,6 +244,7 @@ export default class WebGPUCanvas {
         pitch: params.pitch,
         yaw: params.yaw,
         roll: params.roll,
+        ignoreWorldRotation: params.ignoreWorldRotation,
         fillColor: [uvScaleX, uvScaleY, uvOffsetX, uvOffsetY]
       }
     });
@@ -423,6 +425,9 @@ export default class WebGPUCanvas {
         staging[offset + 10] = p.fillColor![1]; // uvScaleY
         staging[offset + 11] = p.fillColor![2]; // uvOffsetX
         staging[offset + 12] = p.fillColor![3]; // uvOffsetY
+        staging[offset + 13] = p.ignoreWorldRotation ?? 0; // offset.y → ignoreWorld flag
+      } else {
+        staging[offset + 9] = p.ignoreWorldRotation ?? 0; // transform3.y → ignoreWorld flag
       }
     }
 
@@ -470,6 +475,7 @@ export default class WebGPUCanvas {
       data[offset + 7] = item.borderWidth! / Math.max(item.width, item.height);
       data[offset + 8] = cw;
       data[offset + 9] = ch;
+      data[offset + 10] = item.ignoreWorldRotation ?? 0; // transform3.z → ignoreWorld flag
 
       data[offset + 12] = item.fillColor![0] / 255;
       data[offset + 13] = item.fillColor![1] / 255;
@@ -516,13 +522,14 @@ export default class WebGPUCanvas {
         return vec3f(x3, y3, z2);
       }
 
-      fn getNDCPosition(vertexPos: vec2f, pos: vec2f, size: vec2f, roll: f32, pitch: f32, yaw: f32, canvasSize: vec2f) -> vec4f {
+      fn getNDCPosition(vertexPos: vec2f, pos: vec2f, size: vec2f, roll: f32, pitch: f32, yaw: f32, canvasSize: vec2f, ignoreWorld: f32) -> vec4f {
         let localPixelPos = vertexPos * size;
         let center = size * 0.5;
         let translatedPos = localPixelPos - center;
         let local3D = vec3f(translatedPos.x, translatedPos.y, 0.0);
 
-        let worldRotatedLocal = rotate3D(local3D, world.rotation.z, world.rotation.x, world.rotation.y);
+        let worldEffect = 1.0 - ignoreWorld;
+        let worldRotatedLocal = rotate3D(local3D, world.rotation.z * worldEffect, world.rotation.x * worldEffect, world.rotation.y * worldEffect);
         let rotated3D = rotate3D(worldRotatedLocal, roll, pitch, yaw);
 
         let cameraDist = max(canvasSize.x, canvasSize.y) * 1.2;
@@ -559,7 +566,7 @@ export default class WebGPUCanvas {
         let p_yaw = inst.transform2.z;
         let canvasSize = vec2f(inst.transform2.w, inst.transform3.x);
 
-        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize);
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.transform3.y);
         return Out(ndc, uv);
       }
 
@@ -594,7 +601,7 @@ export default class WebGPUCanvas {
         let p_yaw = inst.transform2.z;
         let canvasSize = vec2f(inst.transform2.w, inst.tiling.x);
 
-        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize);
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.offset.y);
         let tiledUV = uv * inst.tiling.yz + vec2f(inst.tiling.w, inst.offset.x);
         return Out(ndc, tiledUV);
       }
@@ -631,7 +638,7 @@ export default class WebGPUCanvas {
         let p_yaw = inst.transform2.z;
         let canvasSize = inst.transform3.xy;
 
-        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize);
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.transform3.z);
         return Out(ndc, uv, i);
       }
 

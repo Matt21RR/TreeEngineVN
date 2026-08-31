@@ -143,7 +143,8 @@ class GraphObject extends GraphObjectDataType{
       fontSize: 0,
       margin: { horizontal: 0, vertical: 0 },
       value: null
-    }
+    },
+    ignoreWorldRotation: 0
   };
 
   static atribsNames = [];
