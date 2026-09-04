@@ -295,6 +295,7 @@ class Canvas extends React.Component<CanvasProps>{
         cam.position.yaw ?? 0,
         cam.position.roll ?? 0
       );
+      RenderMisc.setWorldCameraPos(cam.origin.x, cam.origin.y);
       RenderMisc.render();
 
       if(this.showFps){

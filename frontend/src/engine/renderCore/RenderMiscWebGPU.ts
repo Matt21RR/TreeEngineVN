@@ -145,4 +145,7 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
   setWorldRotation(pitch: number, yaw: number, roll: number){
     this.WebGPURendererInstance.setWorldRotation(pitch, yaw, roll);
   }
+  setWorldCameraPos(x: number, y: number){
+    this.WebGPURendererInstance.setWorldCameraPos(x, y);
+  }
 }

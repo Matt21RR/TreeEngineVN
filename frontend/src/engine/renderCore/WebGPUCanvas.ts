@@ -42,7 +42,7 @@ export default class WebGPUCanvas {
   private rectInstanceBuffer!: GPUBuffer;
 
   private worldDataBuffer!: GPUBuffer;
-  private worldDataValues = new Float32Array(4);
+  private worldDataValues = new Float32Array(8);
 
   //*Persistent CPU-side staging (no per-frame allocations)
   private imageStaging!: Float32Array;
@@ -142,6 +142,14 @@ export default class WebGPUCanvas {
     this.device.queue.writeBuffer(this.worldDataBuffer, 0, this.worldDataValues);
   }
 
+  setWorldCameraPos(x: number, y: number) {
+    this.worldDataValues[4] = x;
+    this.worldDataValues[5] = y;
+    this.worldDataValues[6] = 0;
+    this.worldDataValues[7] = 0;
+    this.device.queue.writeBuffer(this.worldDataBuffer, 0, this.worldDataValues);
+  }
+
   private createBuffers() {
     const vertexData = new Float32Array([
       0, 0, 0, 0,
@@ -176,7 +184,7 @@ export default class WebGPUCanvas {
     this.rectStaging    = new Float32Array(this.MAX_INSTANCES * this.RECT_FLOATS_PER_INSTANCE);
 
     this.worldDataBuffer = this.device.createBuffer({
-      size: 16,
+      size: 32,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
   }
@@ -499,6 +507,7 @@ export default class WebGPUCanvas {
     const commonWGSLTransforms = `
       struct WorldData {
         rotation: vec4f,
+        cameraOrigin: vec4f,
       };
       @group(0) @binding(1) var<uniform> world: WorldData;
 
@@ -533,8 +542,19 @@ export default class WebGPUCanvas {
         let rotated3D = rotate3D(worldRotatedLocal, roll, pitch, yaw);
 
         let cameraDist = max(canvasSize.x, canvasSize.y) * 1.2;
-        let perspectiveScale = cameraDist / (cameraDist + rotated3D.z);
-        let worldPixelPos = vec2f(rotated3D.x, rotated3D.y) * perspectiveScale + center + pos;
+
+        var final3D = rotated3D;
+        if (worldEffect > 0.5) {
+          let objCenter = pos + size * 0.5;
+          let camCenter = world.cameraOrigin.xy * canvasSize;
+          let offset = objCenter - camCenter;
+          let viewPitch = offset.y / cameraDist;
+          let viewYaw = -offset.x / cameraDist;
+          final3D = rotate3D(rotated3D, 0.0, viewPitch, viewYaw);
+        }
+
+        let perspectiveScale = cameraDist / (cameraDist + final3D.z);
+        let worldPixelPos = vec2f(final3D.x, final3D.y) * perspectiveScale + center + pos;
 
         let ndcX = (worldPixelPos.x / canvasSize.x) * 2.0 - 1.0;
         let ndcY = (worldPixelPos.y / canvasSize.y) * -2.0 + 1.0;
