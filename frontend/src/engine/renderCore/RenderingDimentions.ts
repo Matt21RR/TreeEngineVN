@@ -79,7 +79,21 @@ export function generateObjectsDisplayDimentions(
 
     const developmentRatio = canvasResolutionHeight/engine.developmentDeviceHeight;
     const perspectiveDiffHelper = (1/camera.maxZ) - 1;
-    const toAddSizeHelper = (camera.position.angle*canvasResolutionHeight*camera.maxZ) / canvasResolutionHeight;
+    //L5: FOV vertical explicito. Sin fov se reproduce la focal historica exacta
+    //(H^2/W): camera.position.angle queda como campo legacy sin uso en el calculo.
+    const legacyFov = 2*Math.atan(canvasResolutionWidth/(2*canvasResolutionHeight));
+    const fovRaw = camera.fov ?? legacyFov;
+    const fov = Math.min(Math.max(fovRaw, 0.01), Math.PI - 0.01);
+    const focalPx = (canvasResolutionHeight*0.5)/Math.tan(fov*0.5);
+    const toAddSizeHelper = focalPx/canvasResolutionHeight;
+    //Centro optico horizontal en unidades mundo. Antes hardcodeado a 0.88889
+    //(= 1.777/2, solo correcto en 16:9); en cualquier otro aspect desplazaba
+    //toda la escena lateralmente de forma dependiente de la profundidad.
+    const halfAspectWidth = canvasResolutionWidth/canvasResolutionHeight/2;
+    //Near plane en unidades mundo: con objectZ -> 0 la escala 1/Z diverge a
+    //infinito y en negativo espejea; por debajo de esto se descarta el objeto
+    //(la camara esta pegada/atravesando su plano).
+    const NEAR_PLANE = 0.02;
     const cameraOriginYDelta = (cameraOriginY-0.5)*canvasResolutionHeight;
     const finalCameraHorizontalPixelOrigin = (camera.origin.x-0.5)*canvasResolutionWidth;
 
@@ -115,33 +129,44 @@ export function generateObjectsDisplayDimentions(
         const texRef: EngTexture|null = solvedTexture ?? (textureName ? textureManager.getTexture(textureName) : null);
 
         const parentRef = gObject._parentRef;
+        //L4: el hijo hereda posicion Y escala del padre (offsets en espacio del padre)
+        let parentScaleAccum = 1;
         if(parentRef){
           const parentRaw: GraphObject = parentRef._rawSelf ?? parentRef;
           if(nDicoSet.has(parentRaw._id)){
             const parentPack = parentRaw.dimentionsPack;
             originX = parentPack.base.x;
             originY = parentPack.base.y;
+            parentScaleAccum = parentRaw._accomulatedScale;
           }
         }
 
-        let worldX = gObject._x + originX;
-        let worldY = gObject._y + originY;
+        let worldX = gObject._x * parentScaleAccum + originX;
+        let worldY = gObject._y * parentScaleAccum + originY;
         let worldZ = accumZ;
 
         if (hasWorldRotation && !gObject._ignoreParallax) {
           const camPosX = camera.position.x;
           const camPosY = camera.position.y;
           const camPosZ = camera.position.z;
+          //Pivote de rotacion: el ojo en perspectiva (girar la camara sin paralaje),
+          //camera.position en orto (rama intacta). El ojo es el punto que la
+          //proyeccion lleva al centro optico: eye = cam + (halfAspect-.5, originY-.5, -.56).
+          //Rotar sobre camera.position lo dejaba 0.56 delante y 0.39 al lado,
+          //y el giro parecia orbital "mas adelante" en vez de giro de camara.
+          const pivotX = cameraUsePerspective ? -camCenterX + halfAspectWidth : camPosX;
+          const pivotY = cameraUsePerspective ? -camCenterY + cameraOriginY : camPosY;
+          const pivotZ = cameraUsePerspective ? -camCenterZ : camPosZ;
           const rotated = rotate3DJS(
-            [worldX - camPosX, worldY - camPosY, worldZ - camPosZ],
+            [worldX - pivotX, worldY - pivotY, worldZ - pivotZ],
             worldRoll, worldPitch, worldYaw
           );
-          worldX = rotated[0] + camPosX;
-          worldY = rotated[1] + camPosY;
-          worldZ = rotated[2] + camPosZ;
+          worldX = rotated[0] + pivotX;
+          worldY = rotated[1] + pivotY;
+          worldZ = rotated[2] + pivotZ;
         }
 
-        const isBehindCamera = worldZ + camCenterZ < 0;
+        const isBehindCamera = worldZ + camCenterZ < NEAR_PLANE;
         //*Equivalence-safe fast path: repeating the behind-camera check with the
         //same accumulated z and an unchanged camera yields the same discard.
         if(isBehindCamera && !recalculateAll && gObject._behindStamp === accumZ){
@@ -165,7 +190,7 @@ export function generateObjectsDisplayDimentions(
           additionY = camCenterY;
         }
 
-        let objectScale = gObject._scale;
+        let objectScale = gObject._accomulatedScale;
 
         let perspectiveScale = 0.99;
 
@@ -196,7 +221,20 @@ export function generateObjectsDisplayDimentions(
 
           if(!gObject._repeatPattern){
             dimentionsPack.repeatPattern = false;
-            if(cornerX > canvasResolutionWidth || cornerY > canvasResolutionHeight || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
+            //La GPU rota los vertices (roll/pitch/yaw propios + rotacion mundo):
+            //la caja sin rotar subestima los pixeles reales y produce pop-in/out
+            //al rotar. Se descarta con el cuadrado que contiene cualquier rotacion
+            //x1.5 de margen por el estiramiento de perspectiva por vertice.
+            let cullX = cornerX, cullY = cornerY, cullW = objectWidth, cullH = objectHeight;
+            if(gObject._rotate !== 0 || gObject._pitch !== 0 || gObject._yaw !== 0 ||
+               (hasWorldRotation && !gObject._ignoreParallax)){
+              const halfDiag = 0.75*Math.sqrt(objectWidth*objectWidth + objectHeight*objectHeight) + 2;
+              cullX = cornerX + objectWidth*0.5 - halfDiag;
+              cullY = cornerY + objectHeight*0.5 - halfDiag;
+              cullW = halfDiag*2;
+              cullH = halfDiag*2;
+            }
+            if(cullX > canvasResolutionWidth || cullY > canvasResolutionHeight || (cullX + cullW) < 0 || (cullY + cullH)<0){
               gObject._pendingRenderingRecalculation = true;
               continue;
             }
@@ -221,6 +259,9 @@ export function generateObjectsDisplayDimentions(
           dimentionsPack.yaw = gObject._yaw;
           dimentionsPack.roll = gObject._rotate;
           dimentionsPack.ignoreWorldRotation = gObject._ignoreParallax ? 1 : 0;
+          //Orto: sin perspectiva por vertice (la GPU conserva su foreshorten local historico)
+          dimentionsPack.perspDepth.z = 0;
+          dimentionsPack.perspDepth.p = 0;
 
         }else{
           let objectLeft = worldX + camCenterX;
@@ -250,7 +291,7 @@ export function generateObjectsDisplayDimentions(
           objectLeft *= perspectiveLayer;
           objectTop *= perspectiveLayer;
           //now add the originof the perspectiveLayer
-          objectLeft += -(perspectiveLayer-canvasResolutionHeight)*(0.88889); // 1.77/2 :display horizontal center
+          objectLeft += -(perspectiveLayer-canvasResolutionHeight)*halfAspectWidth; // display horizontal center
           objectTop += -(perspectiveLayer-canvasResolutionHeight)*cameraOriginY;
 
           let objectWidth = canvasResolutionWidth*objectScale*gObject._widthScale;
@@ -276,7 +317,20 @@ export function generateObjectsDisplayDimentions(
 
           if(!gObject._repeatPattern){
             dimentionsPack.repeatPattern = false;
-            if(cornerX > canvasResolutionWidth || cornerY > canvasResolutionHeight || (cornerX + objectWidth) < 0 || (cornerY + objectHeight)<0){
+            //La GPU rota los vertices (roll/pitch/yaw propios + rotacion mundo):
+            //la caja sin rotar subestima los pixeles reales y produce pop-in/out
+            //al rotar. Se descarta con el cuadrado que contiene cualquier rotacion
+            //x1.5 de margen por el estiramiento de perspectiva por vertice.
+            let cullX = cornerX, cullY = cornerY, cullW = objectWidth, cullH = objectHeight;
+            if(gObject._rotate !== 0 || gObject._pitch !== 0 || gObject._yaw !== 0 ||
+               (hasWorldRotation && !gObject._ignoreParallax)){
+              const halfDiag = 0.75*Math.sqrt(objectWidth*objectWidth + objectHeight*objectHeight) + 2;
+              cullX = cornerX + objectWidth*0.5 - halfDiag;
+              cullY = cornerY + objectHeight*0.5 - halfDiag;
+              cullW = halfDiag*2;
+              cullH = halfDiag*2;
+            }
+            if(cullX > canvasResolutionWidth || cullY > canvasResolutionHeight || (cullX + cullW) < 0 || (cullY + cullH)<0){
               gObject._pendingRenderingRecalculation = true;
               continue;
             }
@@ -301,6 +355,10 @@ export function generateObjectsDisplayDimentions(
           dimentionsPack.yaw = gObject._yaw;
           dimentionsPack.roll = gObject._rotate;
           dimentionsPack.ignoreWorldRotation = gObject._ignoreParallax ? 1 : 0;
+          //Profundidad real del centro + px por unidad mundo: la GPU proyecta
+          //cada vertice con Zc/Zv en vez del heuristico cameraDist.
+          dimentionsPack.perspDepth.z = objectZ;
+          dimentionsPack.perspDepth.p = perspectiveLayer;
         }
 
         //TODO: texts requires continous recomputing

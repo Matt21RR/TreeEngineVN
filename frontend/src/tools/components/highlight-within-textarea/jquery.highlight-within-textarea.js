@@ -165,6 +165,9 @@ HighlightWithinTextarea.prototype = {
 				} else {
 					range.className = custom.className;
 				}
+				if (custom.title) {
+					range.title = custom.title;
+				}
 			});
 		}
 		return ranges;
@@ -227,7 +230,8 @@ HighlightWithinTextarea.prototype = {
 			boundaries.push({
 				type: 'start',
 				index: range[0],
-				className: range.className
+				className: range.className,
+				title: range.title
 			});
 			boundaries.push({
 				type: 'stop',
@@ -275,10 +279,11 @@ HighlightWithinTextarea.prototype = {
 		// replace start tokens with opening <mark> tags with class name
 		input = input.replace(/\{\{hwt-mark-start\|(\d+)\}\}/g, function(match, submatch) {
 			const className = boundaries[+submatch].className;
+			const titleAttribute = boundaries[+submatch].title ? ' title="' + boundaries[+submatch].title.replace(/\"/g, '&quot;') + '"' : '';
 			if (className) {
-				return '<span class="' + className + '">';
+				return '<span class="' + className + '"' + titleAttribute + '>';
 			} else {
-				return '<span>';
+				return '<span' + titleAttribute + '>';
 			}
 		});
 

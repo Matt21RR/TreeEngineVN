@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 
 import {SelectedFileProperties} from './FileExplorer.tsx';
 import { Request, RequestFile, RequestFileWithMime } from '../../wailsjs/go/main/App.js';
-import { Button1, IconButton } from './components/Buttons.tsx';
+import { IconButton, ToolbarButton } from './components/Buttons.tsx';
 
 type MultimediaProps = {
   setSelected: (indexFiles: number) => void;
@@ -45,7 +45,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
     const route = info.route;
     Request({route: route, action: "update", content: content})
     .then((response) => {
-      Swal.fire("Guardado", "", "success");
+      Swal.fire("Saved", "", "success");
       return JSON.parse(response);
     });
   }
@@ -62,36 +62,28 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
           onControl={{Enter:(e)=>{
             e.preventDefault(); 
           }}}
+          bottomRightSlot={
+            <ToolbarButton
+              text="Save changes"
+              action={()=>{
+                Swal.fire({
+                  text: 'Are you sure want to save the changes done to "'+name+'"?',
+                  showDenyButton: false,
+                  showConfirmButton: true,
+                  confirmButtonColor:"green",
+                  showCancelButton: true,
+                  confirmButtonText: "Yes",
+                  cancelButtonText: "Cancel",
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    const text = $("#"+editorId).val() as string;
+                    updateTextContent(text);
+                  }
+                });
+              }}
+            />
+          }
         />
-        
-        
-        
-        <Button1 
-          text="Save changes" 
-          style="absolute bottom-0 right-5"
-          action={()=>{
-            Swal.fire({
-              text: 'Are you sure want to save the changes done to "'+name+'"?',
-              showDenyButton: false,
-              showConfirmButton: true,
-              confirmButtonColor:"green",
-              showCancelButton: true,
-              confirmButtonText: "Yes",
-              cancelButtonText: "Cancel",
-            }).then((result) => {
-              if (result.isConfirmed) {
-                const text = $("#"+editorId).val() as string;
-                updateTextContent(text);
-              }
-            });
-          }}/>
-        
-        <Button1 
-          text="Show Guide" 
-          style="absolute bottom-0 right-26"
-          action={()=>{
-            
-          }}/>
       </div>
     );
   }

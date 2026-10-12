@@ -46,6 +46,7 @@
     "@types/prismjs": "^1.26.6",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
-    "@webgpu/types": "^0.1.69"
+    "@webgpu/types": "^0.1.69",
+    "playwright-core": "^1.62.1"
   }
 }

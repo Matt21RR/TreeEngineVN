@@ -6,6 +6,8 @@ import './highlight-within-textarea/jquery.highlight-within-textarea.css';
 
 import icons from "./Icons.ts";
 
+export const smallToolbarButtonClass = "text-[13px] leading-none px-1.5 py-1 rounded bg-neutral-800/80 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-700 border border-neutral-600"
+
 type BaseButtonProps = {
   style?:string,
   hide?:boolean,
@@ -31,15 +33,37 @@ type Button1Props = BaseButtonProps & {
   color?:string,
 }
 
-export function Button1 (props: Button1Props){
+type ToolbarButtonProps = BaseButtonProps & {
+  extraClass?:string,
+  title?:string
+}
+
+export function ToolbarButton (props: ToolbarButtonProps){
   return(
-    <div 
-      className={`cursor-pointer p-0.5 rounded-sm ${props.color || "bg-teal-700"} text-white w-fit h-fit text-[12px] ${props.style ?? "mx-0.5 my-1"} ${props.hide ? "hidden":""}`} 
+    <button
+      type="button"
+      title={props.title}
+      className={`${smallToolbarButtonClass} ${props.extraClass ?? ""} ${props.style ?? "mx-0.5 my-1"} ${props.hide ? "hidden":""}`}
       onClick={()=>{props.action?.()}}
       onMouseEnter={()=>{props.enter?.();}}
-      onMouseLeave={()=>{props.leave?.();}}>
+      onMouseLeave={()=>{props.leave?.();}}
+      style={{ cursor: "pointer" }}>
       {props.text}
-    </div>
+    </button>
+  );
+}
+
+export function Button1 (props: Button1Props){
+  return(
+    <ToolbarButton
+      text={props.text}
+      action={props.action}
+      enter={props.enter}
+      leave={props.leave}
+      hide={props.hide}
+      style={props.style}
+      extraClass={props.color}
+    />
   );
 }
 

@@ -23,6 +23,10 @@ export type ObjectRenderingData = {
   },
   /** 0 = apply world rotation in GPU, 1 = skip it (UI elements) */
   ignoreWorldRotation?: number,
+  /** Profundidad real para perspectiva por vertice en GPU.
+   *  z = profundidad mundo del centro (misma unidad que objectZ);
+   *  p = pixeles por unidad mundo en el centro (0 = ortografico: sin perspectiva). */
+  perspDepth: { z: number; p: number },
   id:string,
   repeatPattern:boolean,
   solvedTexture:EngTexture|null,

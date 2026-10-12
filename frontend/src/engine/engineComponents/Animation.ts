@@ -240,6 +240,12 @@ class Animation{
       //captura previa en lugar de releer todas las propiedades del objeto (dump),
       //evita miles de dumps sincronizados en un mismo frame con muchos objetos
       Object.assign(this.#from, this.#settled);
+      if(this.alteringCamera){
+        //setKeyFrame asigna el keyframe ANIDADO (sub-objetos): re-aplanar a rutas
+        //para que basicAttributesSetter resuelva this.#to["ruta/sub"] (sin esto: NaN)
+        this.#to = ExtendedObjects.buildObjectsWithRoutes(this.#to);
+        this.#toKeys = Object.keys(this.#to).filter(toKey => toKey != "onComplete");
+      }
       return;
     }
     if(isNaN(this.#startedAt) || usingKeyframes){

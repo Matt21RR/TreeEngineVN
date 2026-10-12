@@ -149,10 +149,12 @@ export default function EngineTools(props:EngineToolsProps){
   }
 
   const cameraControls = () => {
-    const camera = props.engine?.camera;
-    if(!camera){
+    const engine = props.engine;
+    const camera = engine?.camera;
+    if(!engine || !camera){
       return <div className="text-white">Engine not ready.</div>;
     }
+    const sens = engine.inputManager?.rotationSensitivity ?? 0.005;
 
     return (
       <div className="flex flex-col text-white">
@@ -196,6 +198,16 @@ export default function EngineTools(props:EngineToolsProps){
           <IconButton icon="minus" action={()=>{camera.position.roll = (camera.position.roll ?? 0) - Math.PI/180 * 5; forceUpdate();}}/>
           <IconButton icon="plus" action={()=>{camera.position.roll = (camera.position.roll ?? 0) + Math.PI/180 * 5; forceUpdate();}}/>
           {( (camera.position.roll ?? 0) * 180 / Math.PI ).toFixed(1)}°
+        </div>
+        <div className="flex gap-2">
+          Sensibilidad rueda:
+          <IconButton icon="minus" action={()=>{if(engine.inputManager){engine.inputManager.rotationSensitivity = Math.max(0.0005, sens - 0.001); forceUpdate();}}}/>
+          <IconButton icon="plus" action={()=>{if(engine.inputManager){engine.inputManager.rotationSensitivity = Math.min(0.05, sens + 0.001); forceUpdate();}}}/>
+          {sens.toFixed(4)} rad/px
+        </div>
+        <div className="flex gap-2">
+          <Button1 text="Reset vista" action={()=>{engine.resetWorldRotation(); forceUpdate();}}/>
+          <span>Yaw: {( (camera.position.yaw ?? 0) * 180 / Math.PI ).toFixed(1)}° Pitch: {( (camera.position.pitch ?? 0) * 180 / Math.PI ).toFixed(1)}°</span>
         </div>
 
       </div>

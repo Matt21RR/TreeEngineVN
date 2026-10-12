@@ -184,6 +184,11 @@ class ChaosInterpreter {
     return this.instructionsDesintegrator(script,true,true) as string;
   }
 
+  //Transpiles an exact piece of script (independently of scene/module scopes), with the same routine-wrapping behaviour as the full script interpretation
+  fragmentKreator(script:string){
+    return this.instructionsDesintegrator(script,true,false) as string;
+  }
+
   //Useful for tokenization script checking, to check if the script have syntax errors before trying to interpretate it
   tokenization(script:string){
     script += "\n"; //To avoid the last line to be ignored
@@ -228,6 +233,172 @@ class ChaosInterpreter {
       }
     }
     return res;
+  }
+
+  //Collects the writing errors of a script as absolute char spans, for editor squiggles
+  checkScriptForErrors(script:string): Array<ScriptErrorSpan>{
+    const errors: Array<ScriptErrorSpan> = [];
+    script += "\n"; //To avoid the last line to be ignored
+    const tokenList = this.lexer(script);
+    const abs = this.preParser(tokenList, [], errors);
+
+    const pushError = (charStart:number, charEnd:number, message:string) => {
+      if(charStart >= 0){
+        const lineStart = script.lastIndexOf("\n", charStart - 1) + 1;
+        const lineEndIndex = script.indexOf("\n", charEnd);
+        errors.push({
+          charStart,
+          charEnd,
+          message,
+          line: (script.substring(0, lineStart).match(/\n/g) ?? []).length,
+          lineStart,
+          lineEnd: lineEndIndex == -1 ? script.length : lineEndIndex
+        });
+      }
+    };
+
+    for (const instructionEntry of abs) {
+      if(Array.isArray(instructionEntry)){
+        //Filter spaces identically to interpretateInstruction
+        const instruction = (instructionEntry as Instruction).filter((tk)=>{
+          return Array.isArray(tk) || ((tk as Token).type != TokenType.space);
+        });
+        const flatTokens = arrayFlatter(instruction as Array<any>).filter(tk=>{
+          return !Array.isArray(tk) && (tk instanceof Token) && (tk as Token).type != TokenType.space;
+        });
+        if(flatTokens.length == 0){ continue; }
+        if(flatTokens.some(tk=>{
+          return (tk as Token).type == TokenType.jsCode;
+        })){ continue; }
+
+        const charIndexes = flatTokens.map(tk=>(tk as Token).charIndex).filter(charIndex=>charIndex >= 0);
+        if(charIndexes.length == 0){ continue; }
+        const charStart = Math.min(...charIndexes);
+        const charEnd = Math.max(...flatTokens
+          .filter(tk=>(tk as Token).charIndex >= 0)
+          .map(tk=>{
+            return (tk as Token).charIndex + String((tk as Token).value).length;
+          }));
+
+        const lineStart = script.lastIndexOf("\n", charStart - 1) + 1;
+        const lineText = script.substring(lineStart).split("\n")[0];
+        if(lineText.trim().startsWith("//")){ continue; }
+
+        let matched = false;
+        for (const supportedInstruction of supportedInstructions) {
+          //checkOnly: validation without interpretate (no string building, no console logging)
+          //@ts-ignore
+          const resCheck = (supportedInstruction).check(instruction as Instruction, this, true, true);
+          if(resCheck.match){
+            matched = true;
+            break;
+          }
+        }
+        if(!matched){
+          pushError(charStart, charEnd, this.buildUnknownInstructionMessage(instruction as Instruction));
+        }
+      }else if(instructionEntry instanceof Token){
+        if((instructionEntry as Token).type == TokenType.jsCode){ continue; }
+        pushError(
+          (instructionEntry as Token).charIndex,
+          (instructionEntry as Token).charIndex + String((instructionEntry as Token).value).length,
+          "Unknown or unsupported instruction"
+        );
+      }
+    }
+    return errors;
+  }
+
+  private static instructionHumanNames: Array<[string,string]> = [
+    ["CreateInstruction", "new (creation)"],
+    ["DecisionInstruction", "ask"],
+    ["DialogInstruction", "- (dialog)"],
+    ["IncludeInstruction", "include"],
+    ["ModuleDefinitionInstruction", "module"],
+    ["NodeDefinitionInstruction", "node"],
+    ["JumpToInstruction", "jumpto"],
+    ["SetSpeakerInstruction", "says"],
+    ["StructureEndInstruction", "end"],
+    ["NarrationInstruction", "narration"],
+    ["ResumeInstruction", "resume"],
+    ["RunInstruction", "run"],
+    ["SceneDefinitionInstruction", "scene"],
+    ["SetInstruction", "set"],
+    ["DeleteInstruction", "delete"],
+    ["WaitInstruction", "wait"],
+    ["MoveActorInstruction", "move"],
+    ["EmotionChangeInstruction", "gets"],
+    ["ArriveInstruction", "arrives"],
+    ["SoundInstruction", "sound"]
+  ];
+
+  private static knownKeywords: Array<string> = [
+    "scene", "module", "node", "end", "ends", "include", "run", "jumpto",
+    "set", "delete", "sound", "wait", "resume", "ask", "move", "arrives",
+    "arrive", "gets", "says", "new"
+  ];
+
+  private buildUnknownInstructionMessage(instruction: Instruction): string {
+    //First word of the line: family hint and typo suggestion
+    const firstToken = instruction[0] as Token;
+    const firstWord = (String(firstToken?.value ?? "")).trim().toLowerCase();
+    const firstWordIsKnown = ChaosInterpreter.knownKeywords.includes(firstWord);
+    const suggestion = ChaosInterpreter.knownKeywords.find(keyword=>{
+      if (this.levenshteinDistance(firstWord, keyword) <= 2) { return true; }
+      //Typo in the prefix of a longer keyword
+      return firstWord.length >= 2 && this.levenshteinDistance(firstWord, keyword.substring(0, firstWord.length)) <= 2;
+    });
+
+    if (!firstWordIsKnown && suggestion != null) {
+      return `Unrecognized instruction: "${firstWord}" — did you mean "${suggestion}"?`;
+    }
+
+    //Deepest failure hint from the builders
+    const namedFailures: Array<{depth:number, expected:string, got:string, keyword:string}> = [];
+    for (const supportedInstruction of supportedInstructions) {
+      const failure = (supportedInstruction as any).getFailure?.() ?? null;
+      if (failure == null) { continue; }
+      const found = ChaosInterpreter.instructionHumanNames.find(([className])=>className == supportedInstruction.constructor.name);
+      const keyword = found ? found[1] : supportedInstruction.constructor.name;
+      namedFailures.push({...failure, keyword});
+    }
+
+    //Prefer the failure of the builder whose keyword matches the first word of the line
+    const keywordMatching = namedFailures.filter(failure=>{
+      const keywordMainWord = failure.keyword.split(" ")[0].toLowerCase();
+      return keywordMainWord == firstWord;
+    });
+    if (keywordMatching.length > 0) {
+      namedFailures.length = 0;
+      namedFailures.push(...keywordMatching);
+    }
+
+    const deepestFailure = namedFailures[namedFailures.length - 1];
+    if (deepestFailure != null) {
+      const expectedText = deepestFailure.expected ? deepestFailure.expected : "unexpected value";
+      return `Invalid syntax for "${deepestFailure.keyword}": at token ${deepestFailure.depth} ${expectedText}, but got ${deepestFailure.got}`;
+    }
+    return "Unknown or unsupported instruction";
+  }
+
+  private levenshteinDistance(a: string, b: string): number {
+    if (a.length == 0) { return b.length; }
+    if (b.length == 0) { return a.length; }
+    const previousRow = new Array(a.length + 1).fill(0).map((_,i)=>i);
+    for (let row = 1; row <= b.length; row++) {
+      let lastDiagonal = previousRow[0];
+      previousRow[0] = row;
+      for (let col = 1; col <= a.length; col++) {
+        const temp = previousRow[col];
+        previousRow[col] = Math.min(
+          previousRow[col] + 1,
+          previousRow[col - 1] + 1,
+          lastDiagonal + (b[row - 1] == a[col - 1] ? 0 : 1)
+        );
+        lastDiagonal = temp;
+      }
+    }
+    return previousRow[a.length];
   }
 
   private instructionsDesintegrator(script:string, ignoreSceneOrModuleDefinitionCheck = false, recursiveMode=false){
@@ -282,8 +453,10 @@ class ChaosInterpreter {
     const regex = /((\d+\.?\d*)|(\.\d*)|"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`|([^\w\s])|(\s{1,})|(\w+)|[=();,{}"'`])/g;
 
     // Apply regex to split the string
-    const result = script.match(regex);
-    const tokenList = (result as RegExpMatchArray).map((val,index)=>{
+    const matches = Array.from(script.matchAll(regex)) as Array<RegExpMatchArray>;
+    const tokenList = matches.map((match,index)=>{
+          const val = match[0];
+          const charIndex = match.index ?? -1;
           let symbol: TokenType;
           if(val.match(/\n{1,}/)){
             symbol=TokenType.lineBreak;
@@ -305,7 +478,7 @@ class ChaosInterpreter {
             symbol=TokenType.word;//Probably ;)
           }
 
-          return new Token(val,symbol,index);
+          return new Token(val,symbol,index,charIndex);
       });
 
       return tokenList;
@@ -314,7 +487,7 @@ class ChaosInterpreter {
     return arrayFlatter(tokenList).map(token=>{return token.value}).join("");
   }
 
-  private preParser(tokenList:Array<Token>, bracketsPile:Array<Token> = []) : [Instruction, number]|Instruction{
+  private preParser(tokenList:Array<Token>, bracketsPile:Array<Token> = [], errorCollector: Array<{charStart:number, charEnd:number, message:string}> = null) : [Instruction, number]|Instruction{
     let abs:Instruction = new Instruction();
     let acum:Instruction = bracketsPile.map(a=>a) as Instruction;
     let isJsCode = false;
@@ -325,7 +498,7 @@ class ChaosInterpreter {
       const token = tokenList[idx];
       if(token.type == TokenType.openBracket){
         // bracketCounter++;
-        let [res, checked] = this.preParser(tokenList.slice(idx+1), [token]) as [Instruction, number];
+        let [res, checked] = this.preParser(tokenList.slice(idx+1), [token], errorCollector) as [Instruction, number];
         loopsDone += checked;
         idx += checked;
         acum.push(res);
@@ -348,6 +521,13 @@ class ChaosInterpreter {
             }
           }else{
             console.error(`Syntax error: ${token.value} in token ${token.index}, expected ${latestBracketInPile.value}`);
+            if(errorCollector != null){
+              errorCollector.push({
+                charStart: token.charIndex,
+                charEnd: token.charIndex + String(token.value).length,
+                message: `Syntax error: ${token.value}, expected ${latestBracketInPile.value}`
+              });
+            }
             //TODO: Add a throw error
             break;
           }
@@ -547,6 +727,15 @@ class ChaosInterpreter {
 
     return {scenes,modules};
   }
+}
+
+export type ScriptErrorSpan = {
+  charStart: number,
+  charEnd: number,
+  message: string,
+  line: number,
+  lineStart: number,
+  lineEnd: number
 }
 
 type Interpretation = {

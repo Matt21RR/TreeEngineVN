@@ -1,4 +1,5 @@
 import { Dictionary } from "../../../global.ts";
+import { arrayFlatter } from "../../logic/Misc.ts";
 import InstructionInterface from "../InstructionInterface.ts";
 import { TokenType } from "../Token.ts";
 
@@ -25,7 +26,6 @@ class SetInstruction extends InstructionInterface{
           //Set Engine camera position.x += yoink.val
           //Set Engine camera position[axis] += yoink.val
           3:{type:TokenType.word, result: (tokens)=>{
-            console.log(tokens)
             let property = "";
             let endPropertyDef = false;
             let operation = "";
@@ -33,15 +33,15 @@ class SetInstruction extends InstructionInterface{
             let endOperationDef = false;
             tokens.slice(3).forEach((token)=>{
               if(token.type != TokenType.operator && !endPropertyDef){
-                property += token.value;
+                property += this.tokenTextValue(token);
               }
               else if(token.type == TokenType.operator && !endOperationDef){
                 endPropertyDef = true;
-                operation += token.value;
+                operation += this.tokenTextValue(token);
               }
               else{
                 endOperationDef = true;
-                value += token.value;
+                value += this.tokenTextValue(token);
               }
             });
             return {
@@ -144,6 +144,15 @@ class SetInstruction extends InstructionInterface{
       );
     }
     return res.join(" \n ");
+  }
+
+  /**
+   * Texto de un token o de un bracket-group anidado (Instruction: array de tokens sin .value propio).
+   * Necesario para reconstruir literales {objeto} / [array] en la parte de valor de la instruccion.
+   */
+  private tokenTextValue(token:any): string{
+    if(Array.isArray(token)) return arrayFlatter(token).map((t:any)=>t.value).join("");
+    return String(token?.value ?? "");
   }
 }
 

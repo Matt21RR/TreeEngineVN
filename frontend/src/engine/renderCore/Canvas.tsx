@@ -296,6 +296,10 @@ class Canvas extends React.Component<CanvasProps>{
         cam.position.roll ?? 0
       );
       RenderMisc.setWorldCameraPos(cam.origin.x, cam.origin.y);
+      //Mismo near que RenderingDimentions (NEAR_PLANE) para oclusion coherente CPU/GPU
+      RenderMisc.setDepthRange(0.02, cam.maxZ ?? 10000);
+      RenderMisc.setGlobalBlur(context as any, cam.globalBlur ?? 0);
+      RenderMisc.setGlobalRgbSplit(context as any, cam.globalRgbSplit ?? null);
       RenderMisc.render();
 
       if(this.showFps){

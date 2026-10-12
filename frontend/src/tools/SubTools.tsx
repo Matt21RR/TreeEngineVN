@@ -147,15 +147,15 @@ class ObjectEditor  extends React.Component<ObjectEditorProps> {
               showConfirmButton: true,
               confirmButtonColor:"green",
               showCancelButton: true,
-              confirmButtonText: "Clonar",
-              cancelButtonText: "Cancelar",
+              confirmButtonText: "Clone",
+              cancelButtonText: "Cancel",
               input:"text"
             }).then((cloneId) => {
               if (cloneId.isConfirmed && cloneId.value != "") {
                 if(eng.graphArray.exist(cloneId.value)){
                   Swal.fire({
                     title: 'Error!',
-                    text: 'Ya existe un GraphObject con tal id',
+                    text: 'A GraphObject with that id already exists',
                     icon: 'error',
                     confirmButtonText: 'Cool'
                   })
@@ -237,7 +237,7 @@ class ObjectEditor  extends React.Component<ObjectEditorProps> {
         script += `\t ${key} : ${value},\n`
       }
     });
-    script += "});";
+    script += "})";
     return script;
   }
 
@@ -247,10 +247,7 @@ class ObjectEditor  extends React.Component<ObjectEditorProps> {
               action={()=>{
                 Swal.fire({
                   title: `Creation Script for ${this.props.selectedObject}`,
-                  html: `
-                        <textarea spellcheck="false" class="h-96 w-full border rounded-md overflow-y-auto resize-none bg-stone-50">
-                          ${this.generateCreationScriptFromProperties()}
-                        </textarea>
+                  html: `<textarea spellcheck="false" class="h-96 w-full border rounded-md overflow-y-auto resize-none bg-stone-50">${this.generateCreationScriptFromProperties()}</textarea>
                         <span class="text-[16px] leading-3 text-gray-800">
                           This is the creation script for the selected GraphObject with its current properties values.
                           You can copy and paste this script in your project to create the GraphObject with the same properties values as the current one.
@@ -430,8 +427,8 @@ class ObjectsE extends React.Component<ObjectsEProps> {
                   showConfirmButton: true,
                   confirmButtonColor:"green",
                   showCancelButton: true,
-                  confirmButtonText: "Crear",
-                  cancelButtonText: "Cancelar",
+                  confirmButtonText: "Create",
+                  cancelButtonText: "Cancel",
                   input:"text"
                 }).then((result) => {
                   if (result.isConfirmed && result.value != "") {
@@ -452,15 +449,15 @@ class ObjectsE extends React.Component<ObjectsEProps> {
                   showConfirmButton: true,
                   confirmButtonColor:"green",
                   showCancelButton: true,
-                  confirmButtonText: "Clonar",
-                  cancelButtonText: "Cancelar",
+                  confirmButtonText: "Clone",
+                  cancelButtonText: "Cancel",
                   input:"text"
                 }).then((targetId) => {
                   if (targetId.isConfirmed && targetId.value != "") {
                     if(!eng.graphArray.exist(targetId.value)){
                       Swal.fire({
                         title: 'Error!',
-                        text: 'No existe un GraphObject con tal id',
+                        text: 'There is no GraphObject with that id',
                         icon: 'error',
                         confirmButtonText: 'Cool'
                       })
@@ -471,15 +468,15 @@ class ObjectsE extends React.Component<ObjectsEProps> {
                         showConfirmButton: true,
                         confirmButtonColor:"green",
                         showCancelButton: true,
-                        confirmButtonText: "Clonar",
-                        cancelButtonText: "Cancelar",
+                        confirmButtonText: "Clone",
+                        cancelButtonText: "Cancel",
                         input:"text"
                       }).then((cloneId) => {
                         if (cloneId.isConfirmed && cloneId.value != "") {
                           if(eng.graphArray.exist(cloneId.value)){
                             Swal.fire({
                               title: 'Error!',
-                              text: 'Ya existe un GraphObject con tal id',
+                              text: 'A GraphObject with that id already exists',
                               icon: 'error',
                               confirmButtonText: 'Cool'
                             })
@@ -506,15 +503,15 @@ class ObjectsE extends React.Component<ObjectsEProps> {
               showConfirmButton: true,
               confirmButtonColor:"green",
               showCancelButton: true,
-              confirmButtonText: "Clonar",
-              cancelButtonText: "Cancelar",
+              confirmButtonText: "Clone",
+              cancelButtonText: "Cancel",
               input:"text"
             }).then((cloneId) => {
               if (cloneId.isConfirmed && cloneId.value != "") {
                 if(eng.graphArray.exist(cloneId.value)){
                   Swal.fire({
                     title: 'Error!',
-                    text: 'Ya existe un GraphObject con tal id',
+                    text: 'A GraphObject with that id already exists',
                     icon: 'error',
                     confirmButtonText: 'Cool'
                   })

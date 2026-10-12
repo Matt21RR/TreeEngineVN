@@ -123,7 +123,7 @@ class InputList extends React.Component<InputListProps, InputListState> {
       this.selected = value;
       this.forceUpdate();
     }else{
-      window.alert("Compurebe que existan las propiedades action, value, y options para esta implementación del componente");
+      window.alert("Verify that the action, value, and options properties exist for this implementation of the component");
     }
   }
   calcScrollAutoDisplace(){
@@ -169,7 +169,7 @@ class InputList extends React.Component<InputListProps, InputListState> {
     }
   }
   render() {
-    let placeholder = (this.props.placeholder ?? 'Seleccionar');
+    let placeholder = (this.props.placeholder ?? 'Select');
     let textValue = this.selected != null ? this.props.options[this.selected] : placeholder;
     if(this.selected == -1){
       textValue = "";
@@ -177,7 +177,7 @@ class InputList extends React.Component<InputListProps, InputListState> {
     let height = "h-[28px] ";
     let contStyle = " w-[217px]";
     let fatherStyle = '';
-    let eStyle = " fixed ";
+    let eStyle = " absolute ";
     return (
       <div className={contStyle + " h-7 flex m-1 relative"}>
         <div className={"  "+ eStyle}>

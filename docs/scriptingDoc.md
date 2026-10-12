@@ -1,3 +1,36 @@
+# Engine (camera post-process)
+
+Fullscreen camera post-process. WebGPU client only (Canvas2D no-op).
+
+```js
+set Engine camera globalBlur = 256
+```
+
+- **globalBlur**: *`number`* radius in px of the fullscreen dual kawase blur (0 = off).
+
+```js
+set Engine camera globalRgbSplit = {channels:{r:{angle:180,mag:1},g:{angle:90,mag:0},b:{angle:0,mag:1}},maxMag:12}
+```
+
+- **globalRgbSplit**: *`object|null`* fullscreen rgb split (default `{channels:{},maxMag:0}` = off).
+  - **channels**: per channel `r`/`g`/`b` (missing channel = mag 0 = resting). A present channel without `angle` falls back to per-channel defaults: r=180, g=90, b=0.
+    - **angle**: *`number`* in degrees. 0=right, 90=down, 180=left, 270=up (0..360).
+    - **mag**: *`number`* 0..1. Real channel magnitude = mag \* maxMag px.
+  - **maxMag**: *`number`* max magnitude in screen px. The effect only runs if `maxMag != 0` and the `mag` of some channel is `> 0`.
+
+To disable it, prefer to reassign the zeroed defaults instead of `null`
+(assigning `null` works at runtime, but leaves a `null` inside the camera object,
+and the internal flatten of `ExtendedObjects` when animating the camera does not tolerate it):
+
+```js
+set Engine camera globalRgbSplit = {channels:{},maxMag:0}
+```
+
+```js
+// Example: soft vertical fringes, red going up (270) and blue going down (90)
+set Engine camera globalRgbSplit = {channels:{r:{angle:270,mag:0.6},g:{angle:0,mag:0},b:{angle:90,mag:0.6}},maxMag:8}
+```
+
 # GraphObject
 
 ## Creation Command
@@ -45,11 +78,6 @@ z = 0;
 scale = 1;
 widthScale = 1;
 heightScale = 1;
-useEngineUnits = !("parent" in graphInfo); // for scale
-rotate = 0; // deg
-// ignoreParallax forces the object to ignore the camera parallax movement
-ignoreParallax = !("z" in graphInfo);
-ignoreParallax = "ignoreParallax" in graphInfo ? graphInfo.ignoreParallax : this._ignoreParallax;
 ```
 
 # KeyboardTrigger
@@ -70,8 +98,6 @@ new KeyboardTrigger(keyboardShorcut..., behaviors...)
 
 - `onHold`
 - `onRelease`
-- `onRelease`
-
 
 <br>
 
@@ -244,7 +270,6 @@ id = new Actor(properties...)
 > emotions: Dictionary<GraphArray>
 > ```
 
-
 <br>
 
 ---
@@ -252,7 +277,7 @@ id = new Actor(properties...)
 # **Edition Command (for any element type except Sound)**
 
 ```python
-Set elementType id properties...
+set elementType id properties...
 ```
 
 - **elementType**: *`string`* — Element type
@@ -262,11 +287,12 @@ Set elementType id properties...
 <br>
 
 ---
+
 # Sound
 ## Edition Command
 
 ```ts
-Sound id properties...
+sound id properties...
 ```
 - **id**: *`string`*
 - **properties**: *`Dictionary<any>`*
@@ -280,7 +306,7 @@ Sound id properties...
 ## Action Command
 
 ```ts
-Sound id action
+sound id action
 ```
 - **id**: *`string`*
 - **action**: *`string`*
@@ -302,40 +328,40 @@ Sound id action
 ## Wait Command
 
 ```ts
-Wait time
+wait time
 ```
 - **time**: *`number`* - Time in ms until resume the commands excecution
 
 ## Stop and Resume Commands
 
 ```ts
-Wait
+wait
 ```
 
 ```ts
-Resume
+resume
 ```
 > [!NOTE] 
-> You may have already suspected this, but just to clarify... yes, “continue” is a reserved word in JavaScript. Therefore, to avoid unexpected problems, “resume” is used instead.
+> You may have already suspected this, but just to clarify... yes, "continue" is a reserved word in JavaScript. Therefore, to avoid unexpected problems, "resume" is used instead.
 
 ## How to use Wait, Stop and Resume commands in an script
 
-Each command written in a script will be stacked and executed in FIFO (first in, first out) order asynchronously, meaning that the engine will not wait for the command actions to be executed before moving on to the next command. This can be inconvenient when working with animations or when you want, for example, to play a sound for x seconds and, after those x seconds, display something on the screen.
+Each command written in a script will be stacked and executed in FIFO (first in, first out) order asynchronously, meaning that the engine will not wait for a command's actions to finish before moving on to the next command. This can be inconvenient when working with animations or when you want, for example, to play a sound for x seconds and, after those x seconds, display something on the screen.
 
-For cases such as these, where you must wait for one action to finish before moving on to the next, the *`Wait`* or *`Stop`* and *`Resume`* commands are used.
+For cases such as these, where you must wait for one action to finish before moving on to the next, the *`wait`* and *`resume`* commands are used.
 
-### A use case (example) for the Wait command
+### A use case (example) for the wait command
 
 Suppose you need to play a sound for a certain amount of time and then stop it.
 
 ```ts
-  Sound "introduction" play
-  Wait 2500
-  Sound "introduction" stop
+  sound "introduction" play
+  wait 2500
+  sound "introduction" stop
 ```
-The first command starts playing a sound, in this case ‘introduction’. The second command tells the engine to pause the sequential execution of commands for 2500ms. After 2500ms, the engine will resume sequential command execution and execute the third command, which stops playing the ‘introduction’ sound.
+The first command starts playing a sound, in this case 'introduction'. The second command tells the engine to pause the sequential execution of commands for 2500ms. After 2500ms, the engine will resume sequential command execution and execute the third command, which stops playing the 'introduction' sound.
 
-### A use case (example) for the Stop and Resume commands
+### A use case (example) for the stop and resume commands
 
 It is not always possible to know exactly how long it will take before the sequential execution of commands can or should continue.
 This can occur with chained animations, events activated by triggers, among others.
@@ -344,20 +370,20 @@ This can occur with chained animations, events activated by triggers, among othe
 acceptDealTrigger = new Trigger ({
   relatedTo: "acceptDealButton",
   onRelease:()=>{
-    Resume
+    resume
   }
 })
-Wait
+wait
 
-//when the command excecution will be resumed, will continue here
-Delete Trigger "acceptDealTrigger" 
-Delete GraphObject "acceptDealButton"
-Sound "dealWasAccepted" play
+//when the command excecution will be resumed, it will continue here
+delete Trigger "acceptDealTrigger" 
+delete GraphObject "acceptDealButton"
+sound "dealWasAccepted" play
 ```
 According to the previous command, the engine will do:
 
-1. Creates a trigger named "acceptDealTrigger" that's linked to a button called "acceptDealButton". When the button is released, it executes the Resume command, resuming the sequential excecution of commands with the command delete (#3).
-2. Wait command pauses sequential execution of commands until the trigger fires (when the user releases the button).
+1. Creates a trigger named "acceptDealTrigger" that's linked to a button called "acceptDealButton". When the button is released, it executes the resume command, resuming the sequential excecution of commands with the command delete (#3).
+2. The wait command pauses sequential execution of commands until the trigger fires (when the user releases the button).
 3. Delete the trigger "acceptDealTrigger"
 4. Delete the button, removing the "acceptDealButton" GraphObject from the scene
 5. Play the sound "dealWasAccepted"
@@ -371,13 +397,13 @@ This allows to mix the game engine script commands with javascript code. The pos
 
 ## Javascript outside a script command
 
-Simply type “@” as the first character of the line, followed by a space, and then type the JavaScript code you want to execute.
+Simply type "@" as the first character of the line, followed by a space, and then type the JavaScript code you want to execute.
 
 ```ts
 @ console.log( Math.random() );
 ```
 
-If the JavaScript code you want to add to your script takes up more than one line, you can write the code as a variable or constant that stores a lambda function with the code inside, and then execute that lambda function by using the “@” symbol again on the next line to call that function.
+If the JavaScript code you want to add to your script takes up more than one line, you can write the code as a variable or constant that stores a lambda function with the code inside, and then execute that lambda function by using the "@" symbol again on the next line to call that function.
 
 ```ts
 //Create a lambda function with the code inside
@@ -418,47 +444,47 @@ You can also insert engine script commands within JavaScript code. This can be u
 ## Scenes and Nodes
 ### Scene Scope Definition:
 ```ts
-Scene sceneName
+scene sceneName
   //script commands of the scene
   ...
-End Scene
+end scene
 ```
 ### Scene Run Command
 ```ts
-Run sceneName
+run sceneName
 ```
 
 ### Node Scope Definition
 ```ts
-  Node nodeName
+  node: nodeName
     //script commands of the node
     ...
-  End Node
+  node ends
 ```
 > [!NOTE]
 > the creation of a node requires to be inside a scene, and the node will only be active when the scene is active. This allows you to create different nodes for different parts of the same scene, and activate them as needed.
 
-### Node JumpTo (Run) Commmand
+### Node JumpTo (Run) Command
 ```ts
-JumpTo nodeName
+jumpto nodeName
 ```
 Also you can (theorically, i'm implemented it but not checked if this works well) jump directly to a node in another scene using this: 
 ```ts
-Run sceneName -> nodeName
+run sceneName -> nodeName
 ```
 
 ## Modules
 A module is a bunch of script commands and code that can be reused inside any scene.
 ### Module Scope Definition
 ```ts
-Module moduleName
+module moduleName
   //script commands of the module
   ...
-End Module
+end module
 ```
 ### Module Include Command
 The content of a module is straightly copied where you use the include command.
 
 ```ts
-Include moodule
+include "moduleName"
 ```

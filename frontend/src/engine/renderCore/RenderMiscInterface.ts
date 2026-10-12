@@ -1,6 +1,7 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { TextLine } from "../logic/Misc.ts";
 import EngTexture from "./EngTexture.ts";
+import { RgbSplitParams } from "./RgbSplit.ts";
 
 export abstract class RenderMiscForDebugInterface<T extends CanvasRenderingContext2D|GPUCanvasContext>{
   abstract drawObjectLimits(ctx:T, object: ObjectRenderingData, canvasResolution: {width:number, height:number}, cameraZ:number) : void;
@@ -20,6 +21,8 @@ export default abstract class RenderMiscInterface<T extends CanvasRenderingConte
   abstract clearCanvas(ctx:T) : void;
   abstract setOpacity(ctx:T, opacity:number) : void;
   abstract setFilter(ctx:T, filter:string) : void;
+  abstract setGlobalBlur(ctx:T, radiusPx:number) : void;
+  abstract setGlobalRgbSplit(ctx:T, params:RgbSplitParams|null) : void;
   abstract drawImage(texture: EngTexture, object:ObjectRenderingData, ctx:T) : void;
   
   abstract createRepeatPattern(texture: ImageBitmap, repeatOption: string, ctx:T) : any; //TODO: RepeatPattern blocks AnimatedTextures and viceversa

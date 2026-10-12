@@ -1,6 +1,7 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { TextLine, wrapText } from "../logic/Misc.ts";
 import RenderMiscInterface, { RenderMiscForDebugInterface } from "./RenderMiscInterface.ts";
+import { RgbSplitParams } from "./RgbSplit.ts";
 
 class RenderMiscForDebug extends RenderMiscForDebugInterface<CanvasRenderingContext2D>{
   drawObjectLimits(ctx:CanvasRenderingContext2D, object: ObjectRenderingData, canvasResolution: {width:number, height:number}, cameraZ:number){
@@ -170,6 +171,12 @@ export default class RenderMiscCanvas2D extends RenderMiscForDebug implements Re
   }
   setFilter(ctx: CanvasRenderingContext2D, filter:string){
     ctx.filter = filter;
+  }
+  setGlobalBlur(ctx: CanvasRenderingContext2D, radiusPx:number){
+    //no-op: dual kawase blur solo en el cliente WebGPU
+  }
+  setGlobalRgbSplit(ctx: CanvasRenderingContext2D, params:RgbSplitParams|null){
+    //no-op: rgb split solo en el cliente WebGPU
   }
 
   private rotateTransform(ctx:CanvasRenderingContext2D, originX:number, originY:number, rotation:number){

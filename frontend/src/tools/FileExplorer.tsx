@@ -208,7 +208,7 @@ class FileExplorer extends React.Component{
                 confirmButtonColor:"green",
                 showCancelButton: true,
                 confirmButtonText: "Create",
-                cancelButtonText: "Cancelar",
+                cancelButtonText: "Cancel",
                 input:"text"
               }).then((result) => {
                 if (result.isConfirmed && result.value != "") {
@@ -226,7 +226,7 @@ class FileExplorer extends React.Component{
                 confirmButtonColor:"green",
                 showCancelButton: true,
                 confirmButtonText: "Create",
-                cancelButtonText: "Cancelar",
+                cancelButtonText: "Cancel",
                 input:"text"
               }).then((result) => {
                 if (result.isConfirmed && result.value != "") {
@@ -275,7 +275,7 @@ class FileExplorer extends React.Component{
                   confirmButtonColor:"green",
                   showCancelButton: true,
                   confirmButtonText: "Rename",
-                  cancelButtonText: "Cancelar",
+                  cancelButtonText: "Cancel",
                   input:"text"
                 }).then((result) => {
                   if (result.isConfirmed && result.value != "") {

@@ -27,8 +27,9 @@ function ensureStampCapacity(size: number) {
 /**
  * Genera el orden de calculo como referencias directas a los GraphObject.
  * El resultado se cachea y solo se regenera cuando cambia la estructura del
- * arbol (push/remove/wipe/enabled/parent/z). La iteracion parte de
+ * arbol (push/remove/wipe/enabled/parent/z/scale). La iteracion parte de
  * enabledIds para respetar exactamente el orden historico.
+ * Ademas acumula z y escala (L4: el hijo hereda tamano y offsets del padre).
  */
 function generateCalculationOrder(graphArray: RenList<GraphObject>): CalculationOrder {
   const version = graphArray.structureVersion;
@@ -63,11 +64,14 @@ function generateCalculationOrder(graphArray: RenList<GraphObject>): Calculation
     }
 
     let parentZ = current ? asRaw(current)._accomulatedZ : 0;
+    let parentScale = current ? asRaw(current)._accomulatedScale : 1;
 
     for (let j = stack.length - 1; j >= 0; j--) {
       const node = stack[j];
       node._accomulatedZ = node._z + parentZ;
       parentZ = node._accomulatedZ;
+      node._accomulatedScale = node._scale * parentScale;
+      parentScale = node._accomulatedScale;
 
       const nh = node._renHandle;
       if (nh >= 0 && nh < stampArr.length) stampArr[nh] = stampId;

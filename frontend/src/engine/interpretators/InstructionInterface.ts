@@ -13,8 +13,61 @@ interface TokenCondition{
   result?:(tokens: Array<Token>)=>Dictionary,
 }
 
+export type LastFailureReason = {
+  depth: number,
+  expected: string,
+  got: string
+} | null;
+
 type TokenPattern = {
   [key: number]: TokenCondition | Array<TokenPattern>;
+};
+
+const tokenTypeNames: Dictionary<string> = {
+  [TokenType.lineBreak]: "line break",
+  [TokenType.text]: "quoted text",
+  [TokenType.operator]: "operator",
+  [TokenType.number]: "number",
+  [TokenType.openBracket]: "block opening ( { [",
+  [TokenType.closeBracket]: "block closing ) } ]",
+  [TokenType.separator]: "separator ( , . ; : )",
+  [TokenType.space]: "space",
+  [TokenType.word]: "word/identifier",
+  [TokenType.jsCode]: "javascript code"
+};
+
+const describeCondition = (tokenCondition: TokenCondition): string => {
+  if (tokenCondition.wordMatch) {
+    return `expected the word "${tokenCondition.wordMatch}"`;
+  }
+  const parts: Array<string> = [];
+  if (tokenCondition.isArray) {
+    parts.push("expected a block between braces or brackets {…}/[…]");
+  }
+  if (tokenCondition.type) {
+    if (Array.isArray(tokenCondition.type)) {
+      parts.push("expected " + tokenCondition.type.map(type=>tokenTypeNames[type]).join(" or "));
+    } else {
+      parts.push("expected " + tokenTypeNames[tokenCondition.type]);
+    }
+  }
+  if (parts.length == 0 && tokenCondition.instructionLength) {
+    parts.push(`the instruction must have ${tokenCondition.instructionLength} tokens`);
+  }
+  if (parts.length == 0) {
+    parts.push("expected a condition on the token");
+  }
+  return parts.join(", ");
+};
+
+const describeToken = (token: Token | undefined): string => {
+  if (token == undefined) {
+    return "end of instruction";
+  }
+  if (token.type == TokenType.lineBreak) {
+    return "end of line";
+  }
+  return `"${String(token.value).trim()}"`;
 };
 
 abstract class InstructionInterface{
@@ -22,8 +75,24 @@ abstract class InstructionInterface{
   protected abstract interpretate(isInRoutineMode:boolean, extractedData:Dictionary):(string|Dictionary);
   protected agrupable = false;
 
+  private lastFailure: LastFailureReason = null;
+
+  getFailure(): LastFailureReason {
+    return this.lastFailure;
+  }
+
   isAgrupable(){
     return this.agrupable;
+  }
+
+  private recordFailure(idx: number, token: any, tokenCondition: TokenCondition | Array<TokenCondition>) {
+    if (Array.isArray(tokenCondition)) { return; }
+    if (this.lastFailure != null && this.lastFailure.depth > idx) { return; }
+    this.lastFailure = {
+      depth: idx,
+      expected: describeCondition(tokenCondition),
+      got: describeToken(token as Token | undefined)
+    };
   }
 
   protected conditionsChecker(instruction: Instruction, conditions: TokenPattern | Array<TokenPattern>): Dictionary{
@@ -41,6 +110,7 @@ abstract class InstructionInterface{
       // console.log("Checking condition for token ", idx, " with condition ", condition);
       const token = instruction[Number(idx)];
       if(token === undefined){//there is no token in the instruction for this condition, so it can't be of this type
+        this.recordFailure(Number(idx), undefined, condition as TokenCondition);
         break;
       }
 
@@ -49,29 +119,36 @@ abstract class InstructionInterface{
       }else{
         const tokenCondition = condition as TokenCondition;
         if(tokenCondition.isArray && !Array.isArray(token)){
+            this.recordFailure(Number(idx), token, condition);
             break;
         }else if(!tokenCondition.isArray && Array.isArray(token) && (tokenCondition.type || tokenCondition.wordMatch)){
+            this.recordFailure(Number(idx), token, condition);
             break;
         }
         if(tokenCondition.type){
           if(Array.isArray(tokenCondition.type)){
             if(!(tokenCondition.type as Array<TokenType>).includes((token as Token).type)){
+              this.recordFailure(Number(idx), token, condition);
               break;
             }
           }else if((token as Token).type != tokenCondition.type){
+            this.recordFailure(Number(idx), token, condition);
             break;
           }
         }
         if(tokenCondition.wordMatch && ((token as Token).value.toLowerCase() != tokenCondition.wordMatch.toLowerCase()) ){
+            this.recordFailure(Number(idx), token, condition);
             break;
         }
         if(tokenCondition.instructionLength){
           if(Array.isArray(instruction) && (instruction.length != tokenCondition.instructionLength)){
+            this.recordFailure(Number(idx), token, condition);
             break;
           }
         }
         if(tokenCondition.condition){
           if(!tokenCondition.condition(token as Token, instruction as Array<Token>)){
+            this.recordFailure(Number(idx), token, condition);
             break;
           }
         }
@@ -108,7 +185,8 @@ abstract class InstructionInterface{
     }
   }
 
-  check(instruction, chaosReference:Chaos, isInRoutineMode:boolean){
+  check(instruction, chaosReference:Chaos, isInRoutineMode:boolean, checkOnly = false){
+    this.lastFailure = null;
     let strParams = "";
     if (Array.isArray((instruction as Instruction).at(-1))){
       strParams = this.getStrParamsFromInstruction(instruction);
@@ -117,6 +195,9 @@ abstract class InstructionInterface{
 
     const extractedData = this.isOfThisType(instruction);
     if(extractedData.match){
+      if (checkOnly) {
+        return {match:true, result:null}
+      }
       extractedData["value"] = strParams;
       extractedData["chaosReference"] = chaosReference;
       const interpretation = this.interpretate(isInRoutineMode,extractedData);

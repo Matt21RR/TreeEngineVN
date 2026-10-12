@@ -3,6 +3,7 @@ import { colorToRGBA, TextLine } from "../logic/Misc.ts";
 import RenderMiscInterface, { RenderMiscForDebugInterface } from "./RenderMiscInterface.ts";
 import EngTexture from "./EngTexture.ts";
 import WebGPUCanvas, { RepeatMode } from "./WebGPUCanvas.ts";
+import { RgbSplitParams } from "./RgbSplit.ts";
 
 class RenderMiscForDebug extends RenderMiscForDebugInterface<GPUCanvasContext>{
   drawObjectLimits(ctx:GPUCanvasContext, object: ObjectRenderingData, canvasResolution: {width:number, height:number}, cameraZ:number){}
@@ -66,7 +67,13 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
     
   }
   setFilter(ctx: GPUCanvasContext, filter:string){
-    
+
+  }
+  setGlobalBlur(ctx: GPUCanvasContext, radiusPx:number){
+    this.WebGPURendererInstance.setBlurRadius(radiusPx);
+  }
+  setGlobalRgbSplit(ctx: GPUCanvasContext, params:RgbSplitParams|null){
+    this.WebGPURendererInstance.setRgbSplit(params);
   }
   drawImage(texture: EngTexture, object:ObjectRenderingData, ctx:GPUCanvasContext){
     this.WebGPURendererInstance.queueImage({
@@ -79,6 +86,8 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
       pitch: object.pitch,
       yaw: object.yaw,
       roll: object.roll,
+      depthZ: object.perspDepth.z,
+      depthP: object.perspDepth.p,
       ignoreWorldRotation: object.ignoreWorldRotation ?? 0});
   }
   //*************************** DOES NOTHING *****************************************/
@@ -102,6 +111,8 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
       yaw: object.yaw,
       roll: object.roll,
       ignoreWorldRotation: object.ignoreWorldRotation ?? 0,
+      depthZ: object.perspDepth.z,
+      depthP: object.perspDepth.p,
       tileWidth: object.width,
       tileHeight: object.height
     }, repeatOption as RepeatMode);
@@ -118,6 +129,8 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
       yaw: object.yaw,
       roll: object.roll,
       ignoreWorldRotation: object.ignoreWorldRotation ?? 0,
+      depthZ: object.perspDepth.z,
+      depthP: object.perspDepth.p,
       borderColor: colorToRGBA(boxColor),
       fillColor: colorToRGBA(boxColor),
     });
@@ -147,5 +160,8 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
   }
   setWorldCameraPos(x: number, y: number){
     this.WebGPURendererInstance.setWorldCameraPos(x, y);
+  }
+  setDepthRange(near: number, maxZ: number){
+    this.WebGPURendererInstance.setDepthRange(near, maxZ);
   }
 }

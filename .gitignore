@@ -10,3 +10,16 @@ frontend/package-lock.json
 frontend/BOTTLENECK_ANALYSIS.md
 frontend/wailsjs/go/main/App.d.ts
 frontend/wailsjs/go/main/App.js
+
+# Harnesses y codigo de pruebas (no versionar)
+frontend/animationtest.html
+frontend/blurtest.html
+frontend/mouserotatetest.html
+frontend/projrepro.html
+frontend/repro.html
+frontend/rgbsplittest.html
+frontend/scriptsettest.html
+frontend/snapharness.html
+frontend/scripts-dev/
+frontend/src/dev/
+perf/

@@ -60,7 +60,10 @@ function FormattedCodeBlock({ codeString, language = 'javascript' }: { codeStrin
   );
 }
 
-export default function InterpretedDataViewer({ interpretedData }: { interpretedData: InterpretedData }) {
+export default function InterpretedDataViewer(
+  { interpretedData, selectionInterpretation }:
+  { interpretedData: InterpretedData, selectionInterpretation?: string | null }
+) {
 
   const scenesDataViewer = () => {
     return (
@@ -123,8 +126,17 @@ export default function InterpretedDataViewer({ interpretedData }: { interpreted
 
   return (
     <div className="flex flex-col w-full h-full gap-6 p-4 text-white overflow-y-auto">
-      {(Object.keys(interpretedData.scenes).length > 0) ? scenesDataViewer() : null}
-      {(Object.keys(interpretedData.modules).length > 0) ? modulesDataViewer() : null}
+      {(selectionInterpretation != null) ? (
+        <>
+          <h2 className="text-2xl font-bold text-blue-400">Selection</h2>
+          <FormattedCodeBlock codeString={selectionInterpretation} language="javascript" />
+        </>
+      ) : (
+        <>
+          {(Object.keys(interpretedData.scenes).length > 0) ? scenesDataViewer() : null}
+          {(Object.keys(interpretedData.modules).length > 0) ? modulesDataViewer() : null}
+        </>
+      )}
     </div>
   )
 }

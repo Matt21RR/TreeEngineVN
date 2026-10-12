@@ -1,3 +1,6 @@
+import DualKawaseBlur from "./DualKawaseBlur.ts";
+import RgbSplit, { computeRgbSplitOffsets, RgbSplitOffsets, RgbSplitParams } from "./RgbSplit.ts";
+
 export type RepeatMode = "repeat" | "repeat-x" | "repeat-y";
 
 interface DrawParams {
@@ -9,6 +12,10 @@ interface DrawParams {
   yaw?: number;
   roll?: number;
   ignoreWorldRotation?: number;
+  /** Profundidad mundo del centro + px por unidad mundo (perspectiva real por vertice).
+   *  depthP = 0 => ortografico (foreshorten local historico). */
+  depthZ?: number;
+  depthP?: number;
   fillColor?: [number, number, number, number];
   borderColor?: [number, number, number, number];
   borderWidth?: number;
@@ -32,17 +39,60 @@ export default class WebGPUCanvas {
   private patternPipeline!: GPURenderPipeline;
   private shapePipeline!: GPURenderPipeline;
 
+  //*Variantes sin depth test/write para runs HUD (ignoreParallax = bypass total).
+  //Mismo shader, distinto estado: el depth queda intacto y el painter manda.
+  private textureNoDepthPipeline!: GPURenderPipeline;
+  private patternNoDepthPipeline!: GPURenderPipeline;
+  private shapeNoDepthPipeline!: GPURenderPipeline;
+
   private textureCache = new Map<string, { view: GPUTextureView; bindGroup: GPUBindGroup; patternBindGroup: GPUBindGroup }>();
   private sampler!: GPUSampler;
 
   private vertexBuffer!: GPUBuffer;
+
+  //*Post-proceso fullscreen: dual kawase blur (activado solo si blurRadius > 0)
+  private dualKawase = new DualKawaseBlur();
+  private _blurRadius = 0;
+
+  //*Post-proceso fullscreen: rgb split (activado si hay params con maxMag > 0)
+  private rgbSplit = new RgbSplit();
+  private _rgbSplitParams: RgbSplitParams | null = null;
+  private _rgbSplitOffsets: RgbSplitOffsets = { r: [0, 0], g: [0, 0], b: [0, 0] };
+
+  setBlurRadius(radiusPx: number) {
+    this._blurRadius = Math.max(radiusPx || 0, 0);
+  }
+
+  get blurRadius() {
+    return this._blurRadius;
+  }
+
+  setRgbSplit(params: RgbSplitParams | null) {
+    this._rgbSplitParams = params;
+    this._rgbSplitOffsets = computeRgbSplitOffsets(params ?? { channels: {}, maxMag: 0 });
+  }
+
+  //activo solo si maxMag != 0 y algun canal tiene magnitud > 0
+  get rgbSplitActive() {
+    const p = this._rgbSplitParams;
+    if (!p || !((p.maxMag || 0) > 0)) return false;
+    const ch = p.channels ?? {};
+    return (ch.r?.mag ?? 0) > 0 || (ch.g?.mag ?? 0) > 0 || (ch.b?.mag ?? 0) > 0;
+  }
 
   private imageInstanceBuffer!: GPUBuffer;
   private patternInstanceBuffer!: GPUBuffer;
   private rectInstanceBuffer!: GPUBuffer;
 
   private worldDataBuffer!: GPUBuffer;
-  private worldDataValues = new Float32Array(8);
+  //rotation(4) + cameraOrigin(4) + depthParams[near, invFar, 0, 0](4)
+  private worldDataValues = new Float32Array(12);
+
+  //*Depth buffer para oclusion por fragmento (siempre tamano del canvas)
+  private depthTexture: GPUTexture | null = null;
+  private depthView: GPUTextureView | null = null;
+  private depthW = 0;
+  private depthH = 0;
 
   //*Persistent CPU-side staging (no per-frame allocations)
   private imageStaging!: Float32Array;
@@ -53,20 +103,19 @@ export default class WebGPUCanvas {
   private imageGlobalBindGroup!: GPUBindGroup;
   private patternGlobalBindGroup!: GPUBindGroup;
   private rectGlobalBindGroup!: GPUBindGroup;
+  private imageNoDepthBindGroup!: GPUBindGroup;
+  private patternNoDepthBindGroup!: GPUBindGroup;
+  private rectNoDepthBindGroup!: GPUBindGroup;
 
   private queue: QueuedItem[] = [];
   private MAX_INSTANCES = 40000;
 
   // Stride de 16 floats (64 bytes).
   private readonly FLOATS_PER_INSTANCE = 16;
-  //*Los rects llevan stride propio de 20 floats: roll+pitch+yaw+borderW y canvas en transform3
-  private readonly RECT_FLOATS_PER_INSTANCE = 20;
+  //*Los rects llevan stride propio de 24 floats: roll+pitch+yaw+borderW, canvas+ignore, fill, border y profundidad
+  private readonly RECT_FLOATS_PER_INSTANCE = 24;
 
   //*Scratch state reused across batches to avoid allocations in the hot path
-  private groupCounts = new Map<string, number>();
-  private groupFirst = new Map<string, number>();
-  private groupCursor = new Map<string, number>();
-  private groupOrder: string[] = [];
   private drawCallPool: DrawCallRef[] = [];
   private drawCallCount = 0;
 
@@ -121,6 +170,8 @@ export default class WebGPUCanvas {
 
     this.createBuffers();
     this.createPipelines();
+    this.dualKawase.init(this.device, this.format);
+    this.rgbSplit.init(this.device, this.format);
   }
 
   setResolution(width: number, height: number) {
@@ -147,6 +198,14 @@ export default class WebGPUCanvas {
     this.worldDataValues[5] = y;
     this.worldDataValues[6] = 0;
     this.worldDataValues[7] = 0;
+    this.device.queue.writeBuffer(this.worldDataBuffer, 0, this.worldDataValues);
+  }
+
+  setDepthRange(near: number, maxZ: number) {
+    this.worldDataValues[8] = Math.max(near || 0, 1e-6);
+    this.worldDataValues[9] = 1 / Math.max(maxZ || 1, 1e-6);
+    this.worldDataValues[10] = 0;
+    this.worldDataValues[11] = 0;
     this.device.queue.writeBuffer(this.worldDataBuffer, 0, this.worldDataValues);
   }
 
@@ -184,9 +243,24 @@ export default class WebGPUCanvas {
     this.rectStaging    = new Float32Array(this.MAX_INSTANCES * this.RECT_FLOATS_PER_INSTANCE);
 
     this.worldDataBuffer = this.device.createBuffer({
-      size: 32,
+      size: 48,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
+  }
+
+  //Crea o recrea el depth buffer al tamano del canvas (lazy: el resize de
+  //canvas no siempre reconfigura el contexto, asi se evita mismatch).
+  private ensureDepthTarget(w: number, h: number) {
+    if (this.depthTexture && this.depthW === w && this.depthH === h) return;
+    if (this.depthTexture) this.depthTexture.destroy();
+    this.depthTexture = this.device.createTexture({
+      size: [w, h],
+      format: "depth24plus",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    this.depthView = this.depthTexture.createView();
+    this.depthW = w;
+    this.depthH = h;
   }
 
   async preloadImage(image: ImageBitmap, id: string) {
@@ -253,6 +327,8 @@ export default class WebGPUCanvas {
         yaw: params.yaw,
         roll: params.roll,
         ignoreWorldRotation: params.ignoreWorldRotation,
+        depthZ: params.depthZ,
+        depthP: params.depthP,
         fillColor: [uvScaleX, uvScaleY, uvOffsetX, uvOffsetY]
       }
     });
@@ -267,13 +343,35 @@ export default class WebGPUCanvas {
     this.rectUsed = 0;
 
     const commandEncoder = this.device.createCommandEncoder();
+
+    const swapchainView = this.context.getCurrentTexture().createView();
+    let passView = swapchainView;
+    let targetW = canvas.width;
+    let targetH = canvas.height;
+    let splitOffscreen: "scene" | "chain" | null = null;
+    if (this._blurRadius > 0.05 || this.rgbSplitActive) {
+      //el blur SIEMPRE lee de su propio scene target (record usa bind groups fijos internos);
+      //el split usa el suyo solo cuando corre sin blur, y un intermedio cuando encadena
+      passView = this._blurRadius > 0.05
+        ? this.dualKawase.getSceneTarget(canvas.width, canvas.height)
+        : this.rgbSplit.getSceneTarget(canvas.width, canvas.height);
+      splitOffscreen = this.rgbSplitActive && this._blurRadius > 0.05 ? "chain" : (this.rgbSplitActive ? "scene" : null);
+    }
+
+    this.ensureDepthTarget(canvas.width, canvas.height);
     const passEncoder = commandEncoder.beginRenderPass({
       colorAttachments: [{
-        view: this.context.getCurrentTexture().createView(),
+        view: passView,
         clearValue: { r: 0, g: 0, b: 0, a: 0 },
         loadOp: "clear",
         storeOp: "store",
-      }]
+      }],
+      depthStencilAttachment: {
+        view: this.depthView!,
+        depthClearValue: 1.0,
+        depthLoadOp: "clear",
+        depthStoreOp: "discard",
+      }
     });
 
     passEncoder.setViewport(0, 0, canvas.width, canvas.height, 0, 1);
@@ -282,6 +380,20 @@ export default class WebGPUCanvas {
     this.processQueueInOrder(passEncoder, canvas.width, canvas.height);
 
     passEncoder.end();
+
+    if (passView !== swapchainView) {
+      //blur -> (rgbSplit si ambos activos: escena->blur->intermedio->split->swapchain)
+      if (splitOffscreen === "chain") {
+        const midView = this.rgbSplit.getIntermediate(targetW, targetH);
+        this.dualKawase.record(commandEncoder, passView, midView, this._blurRadius, targetW, targetH, this.vertexBuffer);
+        this.rgbSplit.record(commandEncoder, midView, swapchainView, this._rgbSplitOffsets, targetW, targetH, this.vertexBuffer);
+      } else if (splitOffscreen === "scene") {
+        this.rgbSplit.record(commandEncoder, passView, swapchainView, this._rgbSplitOffsets, targetW, targetH, this.vertexBuffer);
+      } else {
+        this.dualKawase.record(commandEncoder, passView, swapchainView, this._blurRadius, targetW, targetH, this.vertexBuffer);
+      }
+    }
+
     this.device.queue.submit([commandEncoder.finish()]);
 
     this.queue.length = 0;
@@ -290,22 +402,30 @@ export default class WebGPUCanvas {
   private processQueueInOrder(pass: GPURenderPassEncoder, cw: number, ch: number) {
     if (this.queue.length === 0) return;
 
-    const runs: Array<{ type: string; start: number; end: number }> = [];
+    //Runs HUD (ignoreParallax) van separados: usan pipelines sin depth
+    //(bypass total) y no deben mezclarse con runs con depth en un mismo batch.
+    const runKey = (i: number) =>
+      this.queue[i].type + ((this.queue[i].params.ignoreWorldRotation ?? 0) !== 0 ? ":hud" : "");
+    const runs: Array<{ type: string; hud: boolean; start: number; end: number }> = [];
     let runStart = 0;
-    let currentType: string | null = null;
+    let currentKey: string | null = null;
+    let currentType = "";
+    let currentHud = false;
 
     for (let i = 0; i < this.queue.length; i++) {
-      const itemType = this.queue[i].type;
-      if (currentType !== null && currentType !== itemType) {
-        this.processBatch(pass, currentType, runStart, i, cw, ch);
-        runs.push({ type: currentType, start: runStart, end: i });
+      const key = runKey(i);
+      if (currentKey !== null && currentKey !== key) {
+        this.processBatch(pass, currentType, currentHud, runStart, i, cw, ch);
+        runs.push({ type: currentType, hud: currentHud, start: runStart, end: i });
         runStart = i;
       }
-      currentType = itemType;
+      currentKey = key;
+      currentType = this.queue[i].type;
+      currentHud = key.endsWith(":hud");
     }
-    if (currentType !== null) {
-      this.processBatch(pass, currentType, runStart, this.queue.length, cw, ch);
-      runs.push({ type: currentType, start: runStart, end: this.queue.length });
+    if (currentKey !== null) {
+      this.processBatch(pass, currentType, currentHud, runStart, this.queue.length, cw, ch);
+      runs.push({ type: currentType, hud: currentHud, start: runStart, end: this.queue.length });
     }
 
     //*Diagnostics
@@ -329,7 +449,7 @@ export default class WebGPUCanvas {
     }
   }
 
-  private processBatch(pass: GPURenderPassEncoder, type: string, startIdx: number, endIdx: number, cw: number, ch: number) {
+  private processBatch(pass: GPURenderPassEncoder, type: string, noDepth: boolean, startIdx: number, endIdx: number, cw: number, ch: number) {
     if (endIdx <= startIdx) return;
 
     let slotBase: number;
@@ -353,20 +473,22 @@ export default class WebGPUCanvas {
 
     if (type === 'image') {
       this.imageUsed += count;
-      this.processGroupedBatch(pass, this.imageStaging, this.imageInstanceBuffer, this.imageGlobalBindGroup, startIdx, clampedEnd, cw, ch, false, slotBase);
+      this.processGroupedBatch(pass, this.imageStaging, this.imageInstanceBuffer, this.imageGlobalBindGroup, this.imageNoDepthBindGroup, startIdx, clampedEnd, cw, ch, false, noDepth, slotBase);
     } else if (type === 'pattern') {
       this.patternUsed += count;
-      this.processGroupedBatch(pass, this.patternStaging, this.patternInstanceBuffer, this.patternGlobalBindGroup, startIdx, clampedEnd, cw, ch, true, slotBase);
+      this.processGroupedBatch(pass, this.patternStaging, this.patternInstanceBuffer, this.patternGlobalBindGroup, this.patternNoDepthBindGroup, startIdx, clampedEnd, cw, ch, true, noDepth, slotBase);
     } else {
       this.rectUsed += count;
-      this.processRectBatch(pass, startIdx, clampedEnd, cw, ch, slotBase);
+      this.processRectBatch(pass, startIdx, clampedEnd, cw, ch, noDepth, slotBase);
     }
   }
 
   /**
-   * Escribe las instancias de un rango del queue agrupadas por textura,
-   * preservando el orden de primera aparicion (identico al comportamiento previo)
-   * y emitiento un draw call por grupo.
+   * Escribe las instancias de un rango del queue en ORDEN ESTRICTO de cola
+   * (painter's algorithm: lejos -> cerca) y emite un draw por segmento
+   * contiguo de misma textura. Agrupar por textura reordenando rompia la
+   * oclusion: una instancia lejana se dibujaba junto a una cercana tapando
+   * a objetos intermedios de otra textura.
    * slotBase es el offset absoluto (en instancias) dentro del instanceBuffer donde
    * inicia este run: los slots se acumulan durante todo el frame porque solo hay
    * un submit al final de render().
@@ -376,48 +498,39 @@ export default class WebGPUCanvas {
     staging: Float32Array,
     instanceBuffer: GPUBuffer,
     globalBindGroup: GPUBindGroup,
+    noDepthBindGroup: GPUBindGroup,
     startIdx: number,
     endIdx: number,
     cw: number,
     ch: number,
     isPattern: boolean,
+    noDepth: boolean,
     slotBase: number
   ) {
     const queue = this.queue;
-    const counts = this.groupCounts;
-    const firstOf = this.groupFirst;
-    const cursor = this.groupCursor;
-    const order = this.groupOrder;
-    counts.clear(); firstOf.clear(); cursor.clear(); order.length = 0;
     this.drawCallCount = 0;
 
-    for (let i = startIdx; i < endIdx; i++) {
-      const id = queue[i].params.id!;
-      const known = counts.get(id);
-      if (known === undefined) {
-        counts.set(id, 1);
-        firstOf.set(id, 0);
-        order.push(id);
-      } else {
-        counts.set(id, known + 1);
-      }
-    }
-
-    let acc = slotBase;
-    for (let k = 0; k < order.length; k++) {
-      const id = order[k];
-      firstOf.set(id, acc);
-      cursor.set(id, acc);
-      const c = counts.get(id)!;
-      this.drawCallPool[this.drawCallCount++] = { id, firstInstance: acc, count: c };
-      acc += c;
-    }
+    //Segmentos contiguos de misma textura, en orden de cola (estable).
+    //Cada segmento ocupa slots consecutivos: slot = slotBase + (i - startIdx).
+    let segId = queue[startIdx].params.id!;
+    let segStart = slotBase;
+    let segCount = 0;
+    const pushSegment = () => {
+      this.drawCallPool[this.drawCallCount++] = { id: segId, firstInstance: segStart, count: segCount };
+    };
 
     const FLOATS = this.FLOATS_PER_INSTANCE;
     for (let i = startIdx; i < endIdx; i++) {
       const p = queue[i].params;
-      const offset = cursor.get(p.id!)! * FLOATS;
-      cursor.set(p.id!, offset / FLOATS + 1);
+      const id = p.id!;
+      if (id !== segId) {
+        pushSegment();
+        segId = id;
+        segStart = slotBase + (i - startIdx);
+        segCount = 0;
+      }
+      segCount++;
+      const offset = (slotBase + (i - startIdx)) * FLOATS;
 
       staging[offset + 0] = p.x;
       staging[offset + 1] = p.y;
@@ -434,25 +547,31 @@ export default class WebGPUCanvas {
         staging[offset + 11] = p.fillColor![2]; // uvOffsetX
         staging[offset + 12] = p.fillColor![3]; // uvOffsetY
         staging[offset + 13] = p.ignoreWorldRotation ?? 0; // offset.y → ignoreWorld flag
+        staging[offset + 14] = p.depthZ ?? 0; // offset.z → profundidad centro (mundo)
+        staging[offset + 15] = p.depthP ?? 0; // offset.w → px por unidad mundo (0 = orto)
       } else {
         staging[offset + 9] = p.ignoreWorldRotation ?? 0; // transform3.y → ignoreWorld flag
+        staging[offset + 10] = p.depthZ ?? 0; // transform3.z → profundidad centro (mundo)
+        staging[offset + 11] = p.depthP ?? 0; // transform3.w → px por unidad mundo (0 = orto)
       }
     }
+    pushSegment();
 
+    const totalInstances = endIdx - startIdx;
     this.device.queue.writeBuffer(
       instanceBuffer,
       slotBase * FLOATS * 4,
       staging,
       slotBase * FLOATS,
-      (acc - slotBase) * FLOATS
+      totalInstances * FLOATS
     );
 
     if (isPattern) {
-      pass.setPipeline(this.patternPipeline);
+      pass.setPipeline(noDepth ? this.patternNoDepthPipeline : this.patternPipeline);
     } else {
-      pass.setPipeline(this.texturePipeline);
+      pass.setPipeline(noDepth ? this.textureNoDepthPipeline : this.texturePipeline);
     }
-    pass.setBindGroup(0, globalBindGroup);
+    pass.setBindGroup(0, noDepth ? noDepthBindGroup : globalBindGroup);
 
     for (let d = 0; d < this.drawCallCount; d++) {
       const dc = this.drawCallPool[d];
@@ -464,7 +583,7 @@ export default class WebGPUCanvas {
     }
   }
 
-  private processRectBatch(pass: GPURenderPassEncoder, startIdx: number, endIdx: number, cw: number, ch: number, slotBase: number) {
+  private processRectBatch(pass: GPURenderPassEncoder, startIdx: number, endIdx: number, cw: number, ch: number, noDepth: boolean, slotBase: number) {
     const queue = this.queue;
     const data = this.rectStaging;
     const FLOATS = this.RECT_FLOATS_PER_INSTANCE;
@@ -494,11 +613,14 @@ export default class WebGPUCanvas {
       data[offset + 17] = item.borderColor![1] / 255;
       data[offset + 18] = item.borderColor![2] / 255;
       data[offset + 19] = item.borderColor![3] / 255;
+
+      data[offset + 20] = item.depthZ ?? 0; // depth.x → profundidad centro (mundo)
+      data[offset + 21] = item.depthP ?? 0; // depth.y → px por unidad mundo (0 = orto)
     }
 
     this.device.queue.writeBuffer(this.rectInstanceBuffer, slotBase * FLOATS * 4, data, slotBase * FLOATS, count * FLOATS);
-    pass.setPipeline(this.shapePipeline);
-    pass.setBindGroup(0, this.rectGlobalBindGroup);
+    pass.setPipeline(noDepth ? this.shapeNoDepthPipeline : this.shapePipeline);
+    pass.setBindGroup(0, noDepth ? this.rectNoDepthBindGroup : this.rectGlobalBindGroup);
     pass.draw(6, count, 0, slotBase);
     this.diagDraw("rect", undefined, slotBase, count);
   }
@@ -508,6 +630,7 @@ export default class WebGPUCanvas {
       struct WorldData {
         rotation: vec4f,
         cameraOrigin: vec4f,
+        depthParams: vec4f, // [near, invFar, 0, 0]
       };
       @group(0) @binding(1) var<uniform> world: WorldData;
 
@@ -531,34 +654,66 @@ export default class WebGPUCanvas {
         return vec3f(x3, y3, z2);
       }
 
-      fn getNDCPosition(vertexPos: vec2f, pos: vec2f, size: vec2f, roll: f32, pitch: f32, yaw: f32, canvasSize: vec2f, ignoreWorld: f32) -> vec4f {
+      fn getNDCPosition(vertexPos: vec2f, pos: vec2f, size: vec2f, roll: f32, pitch: f32, yaw: f32, canvasSize: vec2f, ignoreWorld: f32, zCenter: f32, pxPerWorld: f32, zvOut: ptr<function, f32>) -> vec4f {
         let localPixelPos = vertexPos * size;
         let center = size * 0.5;
         let translatedPos = localPixelPos - center;
         let local3D = vec3f(translatedPos.x, translatedPos.y, 0.0);
 
+        //La CPU ya proyecta el CENTRO del billboard con perspectiva real (pinhole).
+        //Aqui solo se rotan los offsets locales (orientacion), nunca se re-proyecta:
+        //rotar por offset en pantalla seria una segunda proyeccion fantasma que
+        //deforma los quads descentrados y se vuelve loca al acercar la camara.
+        //Orden estandar model-matrix: primero la orientacion propia del objeto
+        //(roll/pitch/yaw) y despues la rotacion de mundo. Al reves (mundo primero)
+        //ninguna orientacion local estatica seguia pegada al mundo al orbitar:
+        //p.ej. pitch=90 (suelo) se levantaba como pared al girar yaw.
+        //Con R_world=R_local=I el resultado es bit-identico al anterior.
         let worldEffect = 1.0 - ignoreWorld;
-        let worldRotatedLocal = rotate3D(local3D, world.rotation.z * worldEffect, world.rotation.x * worldEffect, world.rotation.y * worldEffect);
-        let rotated3D = rotate3D(worldRotatedLocal, roll, pitch, yaw);
+        let localRotated = rotate3D(local3D, roll, pitch, yaw);
+        let rotated3D = rotate3D(localRotated, world.rotation.z * worldEffect, world.rotation.x * worldEffect, world.rotation.y * worldEffect);
 
         let cameraDist = max(canvasSize.x, canvasSize.y) * 1.2;
 
-        var final3D = rotated3D;
-        if (worldEffect > 0.5) {
-          let objCenter = pos + size * 0.5;
-          let camCenter = world.cameraOrigin.xy * canvasSize;
-          let offset = objCenter - camCenter;
-          let viewPitch = offset.y / cameraDist;
-          let viewYaw = -offset.x / cameraDist;
-          final3D = rotate3D(rotated3D, 0.0, viewPitch, viewYaw);
+        //Proyeccion exacta del mismo modelo por vertice: v = c0 + r·((Cc-c0)+o),
+        //con r = P(Zv)/P(Zc). Sin profundidad (pxPerWorld = 0, modo orto) se
+        //conserva el foreshorten local historico. Tras el near plane no se
+        //clampea: w<=0 deja que el hardware recorte y el FS descarta por zv
+        //(corte nitido, sin streaks).
+        //wClip = Zv/Zc activa interpolacion UV con correccion perspectiva;
+        //zClip mapea 1/Z entre near y far para el depth buffer.
+        let final3D = rotated3D;
+        var persp = cameraDist / (cameraDist + final3D.z);
+        var wClip = 1.0;
+        var zClip = 0.0;
+        var worldPixelPos = vec2f(final3D.x, final3D.y) * persp + center + pos;
+        //*zvOut: 1e10 por defecto (orto) -> el FS nunca descarta; en perspectiva
+        //se escribe la Z mundo real del vertice para descarte tras el near.
+        if (pxPerWorld > 0.0) {
+          let near = world.depthParams.x;
+          let invFar = world.depthParams.y;
+          //Zv real SIN clamp: si un vertice queda tras camara (w<=0) el hardware
+          //recorta el triangulo; los fragmentos tras el near se descartan en FS.
+          //Clampear aqui los aplastaba contra el near generando streaks.
+          let zRaw = zCenter + final3D.z / pxPerWorld;
+          *zvOut = zRaw;
+          //Proyeccion exacta del mismo modelo: v = c0 + (P(Zv)/P(Zc))·((Cc-c0)+o).
+          //Asi dos cartas adyacentes evaluan su borde compartido con la misma
+          //profundidad y el borde coincide al girar (antes: grietas de ~60px).
+          //Con Zv=Zc, r=1 y es bit-identico al codigo anterior.
+          let zForR = max(zRaw, near * 0.25);
+          let r = (1.0 / zForR - invFar) / max(1.0 / zCenter - invFar, 1e-6);
+          let c0 = vec2f(canvasSize.x * 0.5, canvasSize.y * world.cameraOrigin.y);
+          worldPixelPos = c0 + r * ((pos + center - c0) + vec2f(final3D.x, final3D.y));
+          wClip = zRaw / zCenter;
+          let zVert = max(zRaw, near);
+          let invNear = 1.0 / near;
+          zClip = clamp(1.0 - ((1.0 / zVert) - invFar) / (invNear - invFar), 0.0, 1.0);
         }
-
-        let perspectiveScale = cameraDist / (cameraDist + final3D.z);
-        let worldPixelPos = vec2f(final3D.x, final3D.y) * perspectiveScale + center + pos;
 
         let ndcX = (worldPixelPos.x / canvasSize.x) * 2.0 - 1.0;
         let ndcY = (worldPixelPos.y / canvasSize.y) * -2.0 + 1.0;
-        return vec4f(ndcX, ndcY, 0.0, 1.0);
+        return vec4f(ndcX * wClip, ndcY * wClip, zClip * wClip, wClip);
       }
     `;
 
@@ -567,13 +722,13 @@ export default class WebGPUCanvas {
       struct InstImage {
         transform1: vec4f, // [x, y, width, height]
         transform2: vec4f, // [roll, pitch, yaw, canvasWidth]
-        transform3: vec4f, // [canvasHeight, 0, 0, 0]
+        transform3: vec4f, // [canvasHeight, ignoreWorld, zCenter, pxPerWorld]
         _pad: vec4f
       };
       struct DataImage { instances: array<InstImage> };
       @group(0) @binding(0) var<storage, read> data: DataImage;
 
-      struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f };
+      struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f, @location(1) zv: f32 };
       
       ${commonWGSLTransforms}
 
@@ -586,14 +741,20 @@ export default class WebGPUCanvas {
         let p_yaw = inst.transform2.z;
         let canvasSize = vec2f(inst.transform2.w, inst.transform3.x);
 
-        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.transform3.y);
-        return Out(ndc, uv);
+        var zvLin: f32 = 1e10;
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.transform3.y, inst.transform3.z, inst.transform3.w, &zvLin);
+        return Out(ndc, uv, zvLin);
       }
 
       @group(1) @binding(0) var s: sampler;
       @group(1) @binding(1) var t: texture_2d<f32>;
-      @fragment fn fs(@location(0) uv: vec2f) -> @location(0) vec4f {
-        return textureSample(t, s, uv);
+      @fragment fn fs(@location(0) uv: vec2f, @location(1) zv: f32) -> @location(0) vec4f {
+        //Corte nitido tras el near plane (zv interpola con correccion perspectiva,
+        //igual que w): sin esto los vertices clampados generaban streaks.
+        if (zv < world.depthParams.x) { discard; }
+        let c = textureSample(t, s, uv);
+        if (c.a < 0.015) { discard; }
+        return c;
       }
     `;
 
@@ -603,12 +764,12 @@ export default class WebGPUCanvas {
         transform1: vec4f, // [x, y, width, height]
         transform2: vec4f, // [roll, pitch, yaw, canvasWidth]
         tiling: vec4f,     // [canvasHeight, uvScaleX, uvScaleY, uvOffsetX]
-        offset: vec4f      // [uvOffsetY, 0,0,0]
+        offset: vec4f      // [uvOffsetY, ignoreWorld, zCenter, pxPerWorld]
       };
       struct DataPattern { instances: array<InstPattern> };
       @group(0) @binding(0) var<storage, read> data: DataPattern;
 
-      struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f };
+      struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f, @location(1) zv: f32 };
 
       ${commonWGSLTransforms}
 
@@ -621,15 +782,21 @@ export default class WebGPUCanvas {
         let p_yaw = inst.transform2.z;
         let canvasSize = vec2f(inst.transform2.w, inst.tiling.x);
 
-        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.offset.y);
+        var zvLin: f32 = 1e10;
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.offset.y, inst.offset.z, inst.offset.w, &zvLin);
         let tiledUV = uv * inst.tiling.yz + vec2f(inst.tiling.w, inst.offset.x);
-        return Out(ndc, tiledUV);
+        return Out(ndc, tiledUV, zvLin);
       }
 
       @group(1) @binding(0) var s: sampler;
       @group(1) @binding(1) var t: texture_2d<f32>;
-      @fragment fn fs(@location(0) uv: vec2f) -> @location(0) vec4f {
-        return textureSample(t, s, uv);
+      @fragment fn fs(@location(0) uv: vec2f, @location(1) zv: f32) -> @location(0) vec4f {
+        //Corte nitido tras el near plane (zv interpola con correccion perspectiva,
+        //igual que w): sin esto los vertices clampados generaban streaks.
+        if (zv < world.depthParams.x) { discard; }
+        let c = textureSample(t, s, uv);
+        if (c.a < 0.015) { discard; }
+        return c;
       }
     `;
 
@@ -638,14 +805,15 @@ export default class WebGPUCanvas {
       struct InstRect {
         transform1: vec4f, // [x, y, width, height]
         transform2: vec4f, // [roll, pitch, yaw, borderWidth(normalized)]
-        transform3: vec4f, // [canvasWidth, canvasHeight, 0, 0]
+        transform3: vec4f, // [canvasWidth, canvasHeight, ignoreWorld, 0]
         fill: vec4f,       // [r, g, b, a]
-        border: vec4f      // [r, g, b, a]
+        border: vec4f,      // [r, g, b, a]
+        depth: vec4f        // [zCenter, pxPerWorld, 0, 0]
       };
       struct DataRect { instances: array<InstRect> };
       @group(0) @binding(0) var<storage, read> data: DataRect;
 
-      struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f, @location(1) @interpolate(flat) id: u32 };
+      struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f, @location(1) @interpolate(flat) id: u32, @location(2) zv: f32 };
 
       ${commonWGSLTransforms}
 
@@ -658,18 +826,22 @@ export default class WebGPUCanvas {
         let p_yaw = inst.transform2.z;
         let canvasSize = inst.transform3.xy;
 
-        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.transform3.z);
-        return Out(ndc, uv, i);
+        var zvLin: f32 = 1e10;
+        let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.transform3.z, inst.depth.x, inst.depth.y, &zvLin);
+        return Out(ndc, uv, i, zvLin);
       }
 
       @fragment fn fs(in: Out) -> @location(0) vec4f {
+        if (in.zv < world.depthParams.x) { discard; }
         let inst = data.instances[in.id];
         let brdW = inst.transform2.w;
 
         let d = max(abs(in.uv.x - 0.5), abs(in.uv.y - 0.5)) * 2.0;
         if (d > 1.0) { discard; }
-        if (d > (1.0 - brdW * 2.0)) { return inst.border; }
-        return inst.fill;
+        var c: vec4f;
+        if (d > (1.0 - brdW * 2.0)) { c = inst.border; } else { c = inst.fill; }
+        if (c.a < 0.015) { discard; }
+        return c;
       }
     `;
 
@@ -686,24 +858,58 @@ export default class WebGPUCanvas {
       alpha: { srcFactor: "one",       dstFactor: "one-minus-src-alpha", operation: "add" }
     } as GPUBlendState;
 
+    //Depth por fragmento: LessEqual preserva el painter en coplanares y
+    //arregla planos intersectados/rotados donde el orden por centro miente.
+    const depthTest = {
+      format: "depth24plus",
+      depthWriteEnabled: true,
+      depthCompare: "less-equal",
+    } as GPUDepthStencilState;
+
+    const rectModule = this.device.createShaderModule({ code: rectShader });
+    const imageModule = this.device.createShaderModule({ code: imageShader });
+    const patternModule = this.device.createShaderModule({ code: patternShader });
 
     this.shapePipeline = this.device.createRenderPipeline({
       layout: "auto",
-      vertex:   { module: this.device.createShaderModule({ code: rectShader }),    entryPoint: "vs", buffers: [commonAttribs as any] },
-      fragment: { module: this.device.createShaderModule({ code: rectShader }),    entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
-      primitive: { topology: "triangle-list" }
+      vertex:   { module: rectModule,    entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: rectModule,    entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      primitive: { topology: "triangle-list" },
+      depthStencil: depthTest
     });
     this.texturePipeline = this.device.createRenderPipeline({
       layout: "auto",
-      vertex:   { module: this.device.createShaderModule({ code: imageShader }),   entryPoint: "vs", buffers: [commonAttribs as any] },
-      fragment: { module: this.device.createShaderModule({ code: imageShader }),   entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
-      primitive: { topology: "triangle-list" }
+      vertex:   { module: imageModule,   entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: imageModule,   entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      primitive: { topology: "triangle-list" },
+      depthStencil: depthTest
     });
 
     this.patternPipeline = this.device.createRenderPipeline({
       layout: "auto",
-      vertex:   { module: this.device.createShaderModule({ code: patternShader }), entryPoint: "vs", buffers: [commonAttribs as any] },
-      fragment: { module: this.device.createShaderModule({ code: patternShader }), entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      vertex:   { module: patternModule, entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: patternModule, entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      primitive: { topology: "triangle-list" },
+      depthStencil: depthTest
+    });
+
+    //HUD (ignoreParallax): mismo shader, sin depthStencil => bypass total de depth.
+    this.shapeNoDepthPipeline = this.device.createRenderPipeline({
+      layout: "auto",
+      vertex:   { module: rectModule,    entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: rectModule,    entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      primitive: { topology: "triangle-list" }
+    });
+    this.textureNoDepthPipeline = this.device.createRenderPipeline({
+      layout: "auto",
+      vertex:   { module: imageModule,   entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: imageModule,   entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      primitive: { topology: "triangle-list" }
+    });
+    this.patternNoDepthPipeline = this.device.createRenderPipeline({
+      layout: "auto",
+      vertex:   { module: patternModule, entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: patternModule, entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
       primitive: { topology: "triangle-list" }
     });
 
@@ -723,6 +929,27 @@ export default class WebGPUCanvas {
     });
     this.rectGlobalBindGroup = this.device.createBindGroup({
       layout: this.shapePipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.rectInstanceBuffer } },
+        { binding: 1, resource: { buffer: this.worldDataBuffer } },
+      ]
+    });
+    this.imageNoDepthBindGroup = this.device.createBindGroup({
+      layout: this.textureNoDepthPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.imageInstanceBuffer } },
+        { binding: 1, resource: { buffer: this.worldDataBuffer } },
+      ]
+    });
+    this.patternNoDepthBindGroup = this.device.createBindGroup({
+      layout: this.patternNoDepthPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.patternInstanceBuffer } },
+        { binding: 1, resource: { buffer: this.worldDataBuffer } },
+      ]
+    });
+    this.rectNoDepthBindGroup = this.device.createBindGroup({
+      layout: this.shapeNoDepthPipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: this.rectInstanceBuffer } },
         { binding: 1, resource: { buffer: this.worldDataBuffer } },

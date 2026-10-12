@@ -109,8 +109,15 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
   renderingOrderById: Array<string>;
   renderingOrderRefs: Array<GraphObject>;
   
-  mouse: { x: number; y: number; origin: any };
-  worldRotationQuat: [number, number, number, number];
+   mouse: { x: number; y: number; origin: any };
+   worldRotationQuat: [number, number, number, number];
+   //*Angulos Euler continuos (marco mundo, parametrizacion yaw-primero R = Rx * Ry):
+   //worldYaw con wrap [-PI,PI], worldPitch libre 360 (sin fold). Son la fuente de
+   //verdad; worldRotationQuat se reconstruye desde ellos (nunca al reves).
+   worldYaw: number;
+   worldPitch: number;
+   private lastPublishedYaw: number;
+   private lastPublishedPitch: number;
   //*Debug stuff
   noRenderedItemsCount: number;
   drawObjectLimits: boolean;
@@ -176,6 +183,10 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
     //MOUSE
     this.mouse = {x:0,y:0,origin:null};
     this.worldRotationQuat = [0, 0, 0, 1];
+    this.worldYaw = 0;
+    this.worldPitch = 0;
+    this.lastPublishedYaw = 0;
+    this.lastPublishedPitch = 0;
 
     //Debug values
     this.noRenderedItemsCount = 0;
@@ -284,8 +295,8 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
     } catch (error) {
       let timerInterval: number;
       Swal.fire({
-        title: "Error al ejecutar el script",
-        html: "compruebe la consola!",
+        title: "Error running the script",
+        html: "check the console!",
         timer: 1500,
         timerProgressBar: true,
         didOpen: () => {
@@ -367,7 +378,9 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
       },
       set(target, prop:string, value:any) {
         target[prop] = value;
-        SharedDisplayCalcs.getInstance().recalculateAll = true;
+        //globalBlur/globalRgbSplit son post-proceso: no invalidan el layout/colisiones (evita re-calc completo cada frame animado)
+        if(prop != "globalBlur" && prop != "globalRgbSplit")
+          SharedDisplayCalcs.getInstance().recalculateAll = true;
         return true;
       }
     };
@@ -386,8 +399,21 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
         pitch:0,
         yaw:0,
         roll:0}, handler),
-      usePerspective:false
+      usePerspective:false,
+      globalBlur:0,
+      //rgb split en reposo con defaults en ceros (un null aqui rompe el flatten
+      //de ExtendedObjects al animar la camara: Object.keys(null) lanza)
+      globalRgbSplit:{ channels: {}, maxMag: 0 }
     }, handler);
+
+    //La camara se recrea a identidad: el acumulador de rotacion debe reiniciarse
+    //tambien (si no, el proximo drag con rueda haria snap a la orientacion vieja).
+    this.worldRotationQuat = [0, 0, 0, 1];
+    this.worldYaw = 0;
+    this.worldPitch = 0;
+    this.lastPublishedYaw = 0;
+    this.lastPublishedPitch = 0;
+    this.inputManager.resetMouseState();
     
     this.calculationOrder = [];
 
@@ -634,31 +660,106 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
     ];
   }
 
+  private quatNormalize(q: [number,number,number,number]): [number,number,number,number] {
+    const len = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
+    return [q[0]/len, q[1]/len, q[2]/len, q[3]/len];
+  }
+
+  private wrapPiAngle(a: number): number {
+    return Math.atan2(Math.sin(a), Math.cos(a));
+  }
+
   private quatToEuler(q: [number,number,number,number]): {pitch:number, yaw:number, roll:number} {
-    const [x, y, z, w] = q;
+    //Extraccion YXZ consistente con rotate3DJS (R = Rz * Rx * Ry):
+    //  sinp = R21, yaw = atan2(-R20, R22), roll = atan2(-R01, R11).
+    const nq = this.quatNormalize(q);
+    const [x, y, z, w] = nq;
     const sinp = 2*(w*x + y*z);
-    const cosp = 1 - 2*(x*x + z*z);
-    const siny = 2*(w*y - x*z);
-    const cosy = 1 - 2*(x*x + y*y);
-    const sinr = 2*(w*z - x*y);
-    const cosr = 1 - 2*(x*x + z*z);
-    return {
-      pitch: Math.abs(sinp) >= 1 ? Math.sign(sinp)*Math.PI/2 : Math.asin(sinp),
-      yaw: Math.atan2(siny, cosy),
-      roll: Math.abs(sinr) >= 1 ? Math.sign(sinr)*Math.PI/2 : Math.atan2(sinr, cosr)
-    };
+    const clamped = Math.max(-1, Math.min(1, sinp));
+    const pitch = Math.asin(clamped);
+    let yaw: number, roll: number;
+    if (Math.abs(sinp) >= 0.999999) {
+      //Gimbal (pitch ~= +-90deg): yaw y roll quedan acoplados (solo su suma/
+      //diferencia es observable). Fijar roll = 0 y resolver yaw = atan2(R02, R00).
+      const r02 = 2*(x*z + w*y);
+      const r00 = 1 - 2*(y*y + z*z);
+      yaw = Math.atan2(r02, r00);
+      roll = 0;
+    } else {
+      const siny = 2*(w*y - x*z);
+      const cosy = 1 - 2*(x*x + y*y);
+      const sinr = 2*(w*z - x*y);
+      const cosr = 1 - 2*(x*x + z*z);
+      yaw = Math.atan2(siny, cosy);
+      roll = Math.atan2(sinr, cosr);
+    }
+    return { pitch, yaw, roll };
+  }
+
+  //Reconstruye el quat mundo desde angulos continuos (yaw-primero: q = qx * qy).
+  //Es la UNICA via de escritura del acumulador: nunca se integra por premultiplicado
+  //de deltas (eso generaba roll fantasma y deriva al proyectar a roll=0).
+  private eulerToWorldQuat(yaw: number, pitch: number): [number,number,number,number] {
+    const yawQuat = this.quatFromAxisAngle([0, 1, 0], yaw);
+    const pitchQuat = this.quatFromAxisAngle([1, 0, 0], pitch);
+    return this.quatNormalize(this.quatMultiply(pitchQuat, yawQuat));
+  }
+
+  //Escala de sensibilidad por ancho de display (misma velocidad angular a
+  //distinta resolucion). 1.0 si no hay canvas/state (tests).
+  private getRotationSensitivityScale(): number {
+    const base = this.inputManager?.rotationScaleBaseWidth ?? 1280;
+    const cssW = (this.state as any)?.engineDisplayRes?.width;
+    if (typeof cssW === "number" && cssW > 0) return base / cssW;
+    const bufW = (this.canvasRef as any)?.resolution?.width;
+    if (typeof bufW === "number" && bufW > 0) {
+      const dpr = (window as any)?.devicePixelRatio || 1;
+      return base / (bufW / dpr);
+    }
+    return 1;
+  }
+
+  private syncWorldAnglesFromCamera() {
+    const cam = this.camera?.position;
+    if (!cam) return;
+    const cy = cam.yaw ?? 0;
+    const cp = cam.pitch ?? 0;
+    if (Math.abs(cy - this.lastPublishedYaw) > 1e-12 || Math.abs(cp - this.lastPublishedPitch) > 1e-12) {
+      this.worldYaw = this.wrapPiAngle(cy);
+      this.worldPitch = cp;
+      this.worldRotationQuat = this.eulerToWorldQuat(this.worldYaw, this.worldPitch);
+      this.lastPublishedYaw = this.worldYaw;
+      this.lastPublishedPitch = this.worldPitch;
+    }
+  }
+
+  resetWorldRotation() {
+    this.worldRotationQuat = [0, 0, 0, 1];
+    this.worldYaw = 0;
+    this.worldPitch = 0;
+    this.lastPublishedYaw = 0;
+    this.lastPublishedPitch = 0;
+    if (this.camera?.position) {
+      this.camera.position.pitch = 0;
+      this.camera.position.yaw = 0;
+      this.camera.position.roll = 0;
+    }
   }
 
   applyWorldRotationFromMouse(deltaX: number, deltaY: number) {
-    const sensitivity = 0.005;
-    const yawQuat = this.quatFromAxisAngle([0, 1, 0], -deltaX * sensitivity);
-    const pitchQuat = this.quatFromAxisAngle([1, 0, 0], -deltaY * sensitivity);
-    const deltaQuat = this.quatMultiply(pitchQuat, yawQuat);
-    this.worldRotationQuat = this.quatMultiply(deltaQuat, this.worldRotationQuat);
-    const euler = this.quatToEuler(this.worldRotationQuat);
-    this.camera.position.pitch = euler.pitch;
-    this.camera.position.yaw = euler.yaw;
+    //FPS libre 360: yaw con wrap [-PI,PI], pitch sin clamp (loopings permitidos).
+    //Mismos signos que antes (arrastrar = mirar): -dx en yaw, -dy en pitch.
+    this.syncWorldAnglesFromCamera();
+    const baseSens = this.inputManager?.rotationSensitivity ?? 0.005;
+    const s = baseSens * this.getRotationSensitivityScale();
+    this.worldYaw = this.wrapPiAngle(this.worldYaw - deltaX * s);
+    this.worldPitch = this.worldPitch - deltaY * s;
+    this.worldRotationQuat = this.eulerToWorldQuat(this.worldYaw, this.worldPitch);
+    this.camera.position.pitch = this.worldPitch;
+    this.camera.position.yaw = this.worldYaw;
     this.camera.position.roll = 0;
+    this.lastPublishedYaw = this.worldYaw;
+    this.lastPublishedPitch = this.worldPitch;
   }
 
   render(){
@@ -781,7 +882,9 @@ class InputManager{
   private boundKeydown: (e: KeyboardEvent) => void;
   private boundKeyup: (e: KeyboardEvent) => void;
 
-  //*Mouse rotation stuff
+  //*Mouse rotation stuff (rueda pulsada = mirar alrededor, FPS libre 360)
+  rotationSensitivity: number = 0.005; //rad por px a 1280px de ancho (ver rotationScaleBaseWidth)
+  rotationScaleBaseWidth: number = 1280;
   private mouseState = {
     middleButton: false,
     lastX: 0, lastY: 0,
@@ -790,14 +893,17 @@ class InputManager{
   private boundMousedown: (e: MouseEvent) => void;
   private boundMouseup: (e: MouseEvent) => void;
   private boundMousemove: (e: MouseEvent) => void;
+  private boundAuxclick: (e: MouseEvent) => void;
+  private boundBlur: () => void;
 
   constructor(){
-    this.destroy();
     this.boundKeydown = this.onKeydown.bind(this);
     this.boundKeyup = this.onKeyup.bind(this);
     this.boundMousedown = this.onMousedown.bind(this);
     this.boundMouseup = this.onMouseup.bind(this);
     this.boundMousemove = this.onMousemove.bind(this);
+    this.boundAuxclick = this.onAuxclick.bind(this);
+    this.boundBlur = this.onBlurReset.bind(this);
 
     this.bind();
   }
@@ -805,6 +911,7 @@ class InputManager{
   cleaner(){
     this.keyboardTriggers = new RenList();
     this.pressedKeys = [];
+    this.resetMouseState();
   }
 
   onKeydown (e:KeyboardEvent){
@@ -848,20 +955,48 @@ class InputManager{
       this.mouseState.middleButton = true;
       this.mouseState.lastX = e.clientX;
       this.mouseState.lastY = e.clientY;
+      //Evita el autoscroll del navegador con boton central.
       e.preventDefault();
     }
   }
 
   onMouseup(e: MouseEvent){
-    if(e.button === 1) this.mouseState.middleButton = false;
+    if(e.button === 1) this.resetMouseState();
+  }
+
+  onAuxclick(e: MouseEvent){
+    //Cinturon y tirantes contra el autoscroll / menu de boton central.
+    if(e.button === 1) e.preventDefault();
+  }
+
+  onBlurReset(){
+    //Si la ventana pierde el foco con la rueda pulsada, el mouseup se pierde:
+    //soltar aqui evita rotacion fantasma al volver.
+    this.resetMouseState();
+  }
+
+  resetMouseState(){
+    this.mouseState.middleButton = false;
+    this.mouseState.deltaX = 0;
+    this.mouseState.deltaY = 0;
   }
 
   onMousemove(e: MouseEvent){
     if(this.mouseState.middleButton){
-      this.mouseState.deltaX += e.clientX - this.mouseState.lastX;
-      this.mouseState.deltaY += e.clientY - this.mouseState.lastY;
-      this.mouseState.lastX = e.clientX;
-      this.mouseState.lastY = e.clientY;
+      const dx = e.clientX - this.mouseState.lastX;
+      const dy = e.clientY - this.mouseState.lastY;
+      if(dx !== 0 || dy !== 0){
+        this.mouseState.deltaX += dx;
+        this.mouseState.deltaY += dy;
+        this.mouseState.lastX = e.clientX;
+        this.mouseState.lastY = e.clientY;
+      }else if(typeof (e as any).movementX === "number"){
+        //Fallback: mismo pixel pero con movimiento reportado (p.ej. captura de puntero).
+        const mdx = (e as any).movementX || 0;
+        const mdy = (e as any).movementY || 0;
+        this.mouseState.deltaX += mdx;
+        this.mouseState.deltaY += mdy;
+      }
     }
   }
 
@@ -869,18 +1004,24 @@ class InputManager{
     console.log("binding");
     document.body.addEventListener("keydown", this.boundKeydown as EventListener);
     document.body.addEventListener("keyup", this.boundKeyup as EventListener);
-    document.body.addEventListener("mousedown", this.boundMousedown as EventListener);
-    document.body.addEventListener("mouseup", this.boundMouseup as EventListener);
-    document.body.addEventListener("mousemove", this.boundMousemove as EventListener);
+    //Raton en window (no solo body): el mouseup fuera del body/canvas no debe
+    //dejar el boton central atascado en true.
+    window.addEventListener("mousedown", this.boundMousedown as EventListener);
+    window.addEventListener("mouseup", this.boundMouseup as EventListener);
+    window.addEventListener("mousemove", this.boundMousemove as EventListener);
+    window.addEventListener("auxclick", this.boundAuxclick as EventListener);
+    window.addEventListener("blur", this.boundBlur as EventListener);
   }
 
   destroy(){
     console.log("destroy");
     document.body.removeEventListener("keydown", this.boundKeydown as EventListener);
     document.body.removeEventListener("keyup", this.boundKeyup as EventListener);
-    document.body.removeEventListener("mousedown", this.boundMousedown as EventListener);
-    document.body.removeEventListener("mouseup", this.boundMouseup as EventListener);
-    document.body.removeEventListener("mousemove", this.boundMousemove as EventListener);
+    window.removeEventListener("mousedown", this.boundMousedown as EventListener);
+    window.removeEventListener("mouseup", this.boundMouseup as EventListener);
+    window.removeEventListener("mousemove", this.boundMousemove as EventListener);
+    window.removeEventListener("auxclick", this.boundAuxclick as EventListener);
+    window.removeEventListener("blur", this.boundBlur as EventListener);
   }
 
   update(engineRef: RenderEngine){

@@ -121,6 +121,7 @@ class GraphObject extends GraphObjectDataType{
   _childsRefs:Map<string,GraphObject> = new Map();
   
   _accomulatedZ:number; //Engine related var, dont changeit through a gamescript
+  _accomulatedScale:number = 1; // Jerarquia L4: escala propia x ancestros (1 = sin padre)
 
   _rawSelf:GraphObject; //unproxied reference assigned by Proxificator
   _renHandle:number = -1; //dense handle assigned by RenList
@@ -144,7 +145,8 @@ class GraphObject extends GraphObjectDataType{
       margin: { horizontal: 0, vertical: 0 },
       value: null
     },
-    ignoreWorldRotation: 0
+    ignoreWorldRotation: 0,
+    perspDepth: { z: 0, p: 0 }
   };
 
   static atribsNames = [];
@@ -485,6 +487,7 @@ class GraphObject extends GraphObjectDataType{
   get scale() {return this._scale;}
   set scale(x:any) {
     this._scale = parseFloat(x) || 0;
+    this.bumpStructureVersion();
   }
 
   get rotate() {return (this._rotate*180)/Math.PI;}
@@ -576,6 +579,9 @@ class GraphObject extends GraphObjectDataType{
 
   get accomulatedZ() {return this._accomulatedZ;}
   set accomulatedZ(x) {this._accomulatedZ = x;}
+
+  get accomulatedScale() {return this._accomulatedScale;}
+  set accomulatedScale(x) {this._accomulatedScale = x;}
 
 
   /**
