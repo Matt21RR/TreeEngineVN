@@ -178,6 +178,9 @@ export default class RenderMiscCanvas2D extends RenderMiscForDebug implements Re
   setGlobalRgbSplit(ctx: CanvasRenderingContext2D, params:RgbSplitParams|null){
     //no-op: rgb split solo en el cliente WebGPU
   }
+  setGlobalAnisotropy(ctx: CanvasRenderingContext2D, level:number){
+    //no-op: anisotropia solo en el cliente WebGPU
+  }
 
   private rotateTransform(ctx:CanvasRenderingContext2D, originX:number, originY:number, rotation:number){
     //ROTATION

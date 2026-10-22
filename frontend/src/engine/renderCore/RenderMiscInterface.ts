@@ -23,6 +23,7 @@ export default abstract class RenderMiscInterface<T extends CanvasRenderingConte
   abstract setFilter(ctx:T, filter:string) : void;
   abstract setGlobalBlur(ctx:T, radiusPx:number) : void;
   abstract setGlobalRgbSplit(ctx:T, params:RgbSplitParams|null) : void;
+  abstract setGlobalAnisotropy(ctx:T, level:number) : void;
   abstract drawImage(texture: EngTexture, object:ObjectRenderingData, ctx:T) : void;
   
   abstract createRepeatPattern(texture: ImageBitmap, repeatOption: string, ctx:T) : any; //TODO: RepeatPattern blocks AnimatedTextures and viceversa

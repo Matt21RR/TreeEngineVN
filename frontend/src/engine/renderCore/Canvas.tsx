@@ -300,6 +300,7 @@ class Canvas extends React.Component<CanvasProps>{
       RenderMisc.setDepthRange(0.02, cam.maxZ ?? 10000);
       RenderMisc.setGlobalBlur(context as any, cam.globalBlur ?? 0);
       RenderMisc.setGlobalRgbSplit(context as any, cam.globalRgbSplit ?? null);
+      RenderMisc.setGlobalAnisotropy(context as any, cam.globalAnisotropy ?? 2);
       RenderMisc.render();
 
       if(this.showFps){

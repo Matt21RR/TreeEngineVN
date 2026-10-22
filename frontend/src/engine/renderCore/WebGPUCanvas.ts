@@ -45,8 +45,16 @@ export default class WebGPUCanvas {
   private patternNoDepthPipeline!: GPURenderPipeline;
   private shapeNoDepthPipeline!: GPURenderPipeline;
 
-  private textureCache = new Map<string, { view: GPUTextureView; bindGroup: GPUBindGroup; patternBindGroup: GPUBindGroup }>();
+  private textureCache = new Map<string, { texture: GPUTexture; view: GPUTextureView; bindGroup: GPUBindGroup; patternBindGroup: GPUBindGroup }>();
+  //*Sampler de escena con filtrado anisotropico (solo image/pattern).
+  //mipmapFilter linear siempre: con anisotropia 1 queda trilineal.
   private sampler!: GPUSampler;
+  private _anisotropyLevel: number = 2;
+  private maxAnisotropyCap: number = 16;
+
+  //*Recursos para generar mipmaps en GPU (blit lineal clamp-to-edge).
+  private mipSampler!: GPUSampler;
+  private mipPipeline!: GPURenderPipeline;
 
   private vertexBuffer!: GPUBuffer;
 
@@ -78,6 +86,61 @@ export default class WebGPUCanvas {
     if (!p || !((p.maxMag || 0) > 0)) return false;
     const ch = p.channels ?? {};
     return (ch.r?.mag ?? 0) > 0 || (ch.g?.mag ?? 0) > 0 || (ch.b?.mag ?? 0) > 0;
+  }
+
+  //*Filtrado anisotropico de escena (image/pattern). 0/1 = off (mip 0,
+  //look original sin mipmaps), 2/4/8/16 = maxAnisotropy (clamp al limite
+  //del adapter). Default 2.
+  setAnisotropyLevel(level: number) {
+    const normalized = !level || level <= 1 ? 1 : Math.min(Math.floor(level), 16);
+    const allowed = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 4 ? 4 : normalized <= 8 ? 8 : 16;
+    if (allowed === this._anisotropyLevel && this.sampler) return;
+    this._anisotropyLevel = allowed;
+    if (!this.device) return;
+    this.sampler = this.createSceneSampler();
+    this.rebuildSceneBindGroups();
+  }
+
+  get anisotropyLevel() {
+    return this._anisotropyLevel;
+  }
+
+  private effectiveAnisotropy(): number {
+    if (this._anisotropyLevel <= 1) return 1;
+    return Math.min(this._anisotropyLevel, this.maxAnisotropyCap || 16);
+  }
+
+  private createSceneSampler(): GPUSampler {
+    //*Off (0/1): look original previo a la feature. lod clamp a 0 fuerza el
+    //mip 0 (la imagen base intacta) y desactiva el filtrado entre mips:
+    //mismo muestreo que cuando las texturas tenian un solo nivel.
+    if (this._anisotropyLevel <= 1) {
+      return this.device.createSampler({
+        magFilter: "linear", minFilter: "linear", mipmapFilter: "nearest",
+        maxAnisotropy: 1,
+        lodMinClamp: 0, lodMaxClamp: 0,
+        addressModeU: "repeat", addressModeV: "repeat",
+      });
+    }
+    return this.device.createSampler({
+      magFilter: "linear", minFilter: "linear", mipmapFilter: "linear",
+      maxAnisotropy: this.effectiveAnisotropy(),
+      lodMinClamp: 0, lodMaxClamp: 32,
+      addressModeU: "repeat", addressModeV: "repeat",
+    });
+  }
+
+  private rebuildSceneBindGroups() {
+    for (const entry of this.textureCache.values()) {
+      entry.bindGroup = this.device.createBindGroup({
+        layout: this.texturePipeline.getBindGroupLayout(1),
+        entries: [{ binding: 0, resource: this.sampler }, { binding: 1, resource: entry.view }],
+      });
+      entry.patternBindGroup = this.device.createBindGroup({
+        layout: this.patternPipeline.getBindGroupLayout(1),
+        entries: [{ binding: 0, resource: this.sampler }, { binding: 1, resource: entry.view }],
+      });
+    }
   }
 
   private imageInstanceBuffer!: GPUBuffer;
@@ -151,9 +214,11 @@ export default class WebGPUCanvas {
       alphaMode: "premultiplied",
     });
 
-    this.sampler = this.device.createSampler({
-      magFilter: "linear", minFilter: "linear",
-      addressModeU: "repeat", addressModeV: "repeat",
+    this.maxAnisotropyCap = Math.max((adapter?.limits as any)?.maxSamplerAnisotropy ?? 16, 1);
+    this.sampler = this.createSceneSampler();
+    this.mipSampler = this.device.createSampler({
+      magFilter: "linear", minFilter: "linear", mipmapFilter: "linear",
+      addressModeU: "clamp-to-edge", addressModeV: "clamp-to-edge",
     });
 
     //*Diagnostics hooks
@@ -264,16 +329,28 @@ export default class WebGPUCanvas {
   }
 
   async preloadImage(image: ImageBitmap, id: string) {
+    const mipLevelCount = Math.max(Math.floor(Math.log2(Math.max(image.width, image.height))) + 1, 1);
     const texture = this.device.createTexture({
       size: [image.width, image.height],
       format: "rgba8unorm",
+      mipLevelCount,
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
     });
-    this.device.queue.copyExternalImageToTexture({ source: image, flipY: false }, { texture }, [image.width, image.height]);
+    this.device.queue.copyExternalImageToTexture(
+      { source: image, flipY: false },
+      { texture, mipLevel: 0 },
+      [image.width, image.height]
+    );
+    if (mipLevelCount > 1) this.generateMipmaps(texture, image.width, image.height, mipLevelCount);
 
+    //*La vista cubre toda la cadena de mips: el sampler trilineal/anisotropico
+    //elige el lod por derivadas (mejora angulos rasantes en pitch/yaw).
     const view = texture.createView();
 
+    const prev = this.textureCache.get(id);
+    if (prev) prev.texture.destroy();
     this.textureCache.set(id, {
+      texture,
       view,
       bindGroup: this.device.createBindGroup({
         layout: this.texturePipeline.getBindGroupLayout(1),
@@ -284,6 +361,38 @@ export default class WebGPUCanvas {
         entries: [{ binding: 0, resource: this.sampler }, { binding: 1, resource: view }],
       }),
     });
+  }
+
+  //*Downsample en GPU: mip i se renderiza desde mip i-1 con filtro lineal.
+  //La textura ya tiene RENDER_ATTACHMENT, asi que cada nivel es renderizable.
+  private generateMipmaps(texture: GPUTexture, w: number, h: number, mipLevelCount: number) {
+    if (!this.mipPipeline || mipLevelCount <= 1) return;
+    const encoder = this.device.createCommandEncoder();
+    for (let i = 1; i < mipLevelCount; i++) {
+      const srcView = texture.createView({ baseMipLevel: i - 1, mipLevelCount: 1 });
+      const dstView = texture.createView({ baseMipLevel: i, mipLevelCount: 1 });
+      const dstW = Math.max(1, Math.floor(w / (1 << i)));
+      const dstH = Math.max(1, Math.floor(h / (1 << i)));
+      const bg = this.device.createBindGroup({
+        layout: this.mipPipeline.getBindGroupLayout(0),
+        entries: [{ binding: 0, resource: this.mipSampler }, { binding: 1, resource: srcView }],
+      });
+      const pass = encoder.beginRenderPass({
+        colorAttachments: [{
+          view: dstView,
+          loadOp: "clear",
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          storeOp: "store",
+        }],
+      });
+      pass.setPipeline(this.mipPipeline);
+      pass.setBindGroup(0, bg);
+      pass.setVertexBuffer(0, this.vertexBuffer);
+      pass.setViewport(0, 0, dstW, dstH, 0, 1);
+      pass.draw(6);
+      pass.end();
+    }
+    this.device.queue.submit([encoder.finish()]);
   }
 
   queueImage(params: DrawParams) {
@@ -893,23 +1002,53 @@ export default class WebGPUCanvas {
       depthStencil: depthTest
     });
 
-    //HUD (ignoreParallax): mismo shader, sin depthStencil => bypass total de depth.
+    //HUD (ignoreParallax): mismo shader, bypass total de depth (always + sin
+    //escritura). No se puede omitir depthStencil: el main pass SIEMPRE lleva
+    //depth attachment y pipeline/pass incompatibles invalidan el command buffer
+    //(frame entero descartado). Mismo formato para compatibilidad de attachment.
+    const depthBypass = {
+      format: "depth24plus",
+      depthWriteEnabled: false,
+      depthCompare: "always",
+    } as GPUDepthStencilState;
     this.shapeNoDepthPipeline = this.device.createRenderPipeline({
       layout: "auto",
       vertex:   { module: rectModule,    entryPoint: "vs", buffers: [commonAttribs as any] },
       fragment: { module: rectModule,    entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
-      primitive: { topology: "triangle-list" }
+      primitive: { topology: "triangle-list" },
+      depthStencil: depthBypass
     });
     this.textureNoDepthPipeline = this.device.createRenderPipeline({
       layout: "auto",
       vertex:   { module: imageModule,   entryPoint: "vs", buffers: [commonAttribs as any] },
       fragment: { module: imageModule,   entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
-      primitive: { topology: "triangle-list" }
+      primitive: { topology: "triangle-list" },
+      depthStencil: depthBypass
     });
     this.patternNoDepthPipeline = this.device.createRenderPipeline({
       layout: "auto",
       vertex:   { module: patternModule, entryPoint: "vs", buffers: [commonAttribs as any] },
       fragment: { module: patternModule, entryPoint: "fs", targets: [{ format: this.format, blend: blendAlpha }] },
+      primitive: { topology: "triangle-list" },
+      depthStencil: depthBypass
+    });
+
+    //*Blit lineal para generar mipmaps (texturas rgba8unorm, sin blend ni depth).
+    const mipModule = this.device.createShaderModule({ code: `
+      struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f };
+      @group(0) @binding(0) var s: sampler;
+      @group(0) @binding(1) var t: texture_2d<f32>;
+      @vertex fn vs(@location(0) pos: vec2f, @location(1) uv: vec2f) -> Out {
+        return Out(vec4f(pos.x * 2.0 - 1.0, 1.0 - pos.y * 2.0, 0.0, 1.0), uv);
+      }
+      @fragment fn fs(@location(0) uv: vec2f) -> @location(0) vec4f {
+        return textureSample(t, s, uv);
+      }
+    `});
+    this.mipPipeline = this.device.createRenderPipeline({
+      layout: "auto",
+      vertex: { module: mipModule, entryPoint: "vs", buffers: [commonAttribs as any] },
+      fragment: { module: mipModule, entryPoint: "fs", targets: [{ format: "rgba8unorm" }] },
       primitive: { topology: "triangle-list" }
     });
 

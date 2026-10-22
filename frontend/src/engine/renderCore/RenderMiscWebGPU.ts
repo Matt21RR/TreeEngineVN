@@ -75,6 +75,15 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
   setGlobalRgbSplit(ctx: GPUCanvasContext, params:RgbSplitParams|null){
     this.WebGPURendererInstance.setRgbSplit(params);
   }
+  setGlobalAnisotropy(ctx: GPUCanvasContext, level:number){
+    this.WebGPURendererInstance.setAnisotropyLevel(level);
+  }
+  setAnisotropyLevel(level: number){
+    this.WebGPURendererInstance.setAnisotropyLevel(level);
+  }
+  get anisotropyLevel(){
+    return this.WebGPURendererInstance.anisotropyLevel;
+  }
   drawImage(texture: EngTexture, object:ObjectRenderingData, ctx:GPUCanvasContext){
     this.WebGPURendererInstance.queueImage({
       id:texture.id,

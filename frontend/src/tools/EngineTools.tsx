@@ -214,6 +214,37 @@ export default function EngineTools(props:EngineToolsProps){
     );
   }
 
+  //*Niveles discretos del range: el input nativo no soporta pasos no uniformes.
+  const ANISO_LEVELS = [0, 2, 4, 8, 16];
+
+  const graphicsControls = () => {
+    const engine = props.engine;
+    const camera = engine?.camera;
+    if(!engine || !camera){
+      return <div className="text-white">Engine not ready.</div>;
+    }
+    const current = camera.globalAnisotropy ?? 2;
+    const index = Math.max(ANISO_LEVELS.indexOf(current), 0);
+    return (
+      <div className="flex flex-col text-white">
+        <div className="flex gap-2 items-center">
+          <span>Anisotropía: {(current <= 1) ? "Off (original)" : `${current}x`}</span>
+          <input
+            type="range"
+            min={0}
+            max={ANISO_LEVELS.length - 1}
+            step={1}
+            value={index}
+            onChange={(e)=>{
+              camera.globalAnisotropy = ANISO_LEVELS[Number(e.target.value)] ?? 2;
+              forceUpdate();
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   const buttons = () => {
     const engine = props.engine;
     if(!engine){
@@ -263,5 +294,7 @@ export default function EngineTools(props:EngineToolsProps){
     <hr className="text-gray-200 my-1"/>
     {speedControls()}
     {cameraControls()}
+    <hr className="text-gray-200 my-1"/>
+    {graphicsControls()}
   </div>)
 }

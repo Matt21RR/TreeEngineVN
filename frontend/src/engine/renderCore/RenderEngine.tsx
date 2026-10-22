@@ -378,8 +378,8 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
       },
       set(target, prop:string, value:any) {
         target[prop] = value;
-        //globalBlur/globalRgbSplit son post-proceso: no invalidan el layout/colisiones (evita re-calc completo cada frame animado)
-        if(prop != "globalBlur" && prop != "globalRgbSplit")
+        //globalBlur/globalRgbSplit/globalAnisotropy son muestreo: no invalidan el layout/colisiones (evita re-calc completo cada frame animado)
+        if(prop != "globalBlur" && prop != "globalRgbSplit" && prop != "globalAnisotropy")
           SharedDisplayCalcs.getInstance().recalculateAll = true;
         return true;
       }
@@ -401,6 +401,7 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
         roll:0}, handler),
       usePerspective:false,
       globalBlur:0,
+      globalAnisotropy:2,
       //rgb split en reposo con defaults en ceros (un null aqui rompe el flatten
       //de ExtendedObjects al animar la camara: Object.keys(null) lanza)
       globalRgbSplit:{ channels: {}, maxMag: 0 }
