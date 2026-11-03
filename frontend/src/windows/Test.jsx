@@ -5,6 +5,7 @@ import { ObjectsE } from "../tools/SubTools";
 import EngineTools from "../tools/EngineTools";
 import { FileExplorer } from "../tools/FileExplorer";
 import TexturesE from "../tools/TexturesE.tsx";
+import ModelsE from "../tools/ModelsE.tsx";
 import TriggersE from "../tools/TriggersE.tsx";
 import Guide from "../tools/Guide.tsx";
 
@@ -39,7 +40,7 @@ class Test extends React.Component{
         windows={{
           fileExplorer:{
             title:"File Explorer",
-            content:<FileExplorer/>,
+            content:<FileExplorer engine={engine}/>,
             disabled:engine == null
           },
           triggers:{
@@ -67,6 +68,11 @@ class Test extends React.Component{
           textures:{
             title:"Textures",
             content:<TexturesE/>,
+            disabled:engine == null
+          },
+          models:{
+            title:"Models",
+            content:<ModelsE engine={engine}/>,
             disabled:engine == null
           },
           guide:{

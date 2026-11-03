@@ -1,4 +1,4 @@
-import { arrayFlatter } from "../logic/Misc.ts";
+import { arrayFlatter, decodeBase64Utf8 } from "../logic/Misc.ts";
 import Token, { TokenType } from "./Token.ts";
 import Instruction from "./Instruction.ts";
 import AgrupableInstructionInterface from "./AgrupableInstructionInterface.ts";
@@ -29,6 +29,8 @@ class ChaosInterpreter {
   modules:Dictionary<string>
   scriptsUrls:Dictionary<string>
   projectRoot:string
+  //*Cached load of every project script (modules needed by "include"), reused by previewKreator
+  private scriptsLoadedPromise: Promise<null> | null = null;
   constructor(){
     this.scenes = {};
     this.modules = {}; //The modules only have a code body, no nodes
@@ -42,6 +44,12 @@ class ChaosInterpreter {
     this.scenes = {};
     this.modules = {};
     this.scriptsUrls = {};
+    this.scriptsLoadedPromise = null;
+  }
+
+  //*Forces the next previewKreator to reload the project scripts (e.g. after saving a script)
+  invalidateScriptsCache(){
+    this.scriptsLoadedPromise = null;
   }
 
   invokeSupportedInstruction(instructionType: string){
@@ -53,6 +61,9 @@ class ChaosInterpreter {
   }
   private getTexture(){
     return this.projectRoot + "textures/textures.json";
+  }
+  private getModel(){
+    return this.projectRoot + "models/models.json";
   }
   listScripts(): Promise<Dictionary>{
     const self = this;
@@ -70,6 +81,7 @@ class ChaosInterpreter {
         .catch(err=>{
           console.error(err)
           console.warn("Running engine without scripts dictionary!!!");
+          resolve({});
         });
     })
   }
@@ -90,7 +102,7 @@ class ChaosInterpreter {
                 return self.buildProcessPromise(scriptFileName)
               }
             );
-          self.processWithRetry(h, MAX_NESTED_DEPENDENCY_REPROCESS).then(()=>{
+          return self.processWithRetry(h, MAX_NESTED_DEPENDENCY_REPROCESS).then(()=>{
             resolve(null);
           })
         })
@@ -134,28 +146,23 @@ class ChaosInterpreter {
           maxRetries - 1
         );
       }
+      if (reprocessPile.length > 0) {
+        console.error(`${reprocessPile.length} script(s) dropped: unresolved dependencies after ${MAX_NESTED_DEPENDENCY_REPROCESS} retries`, result.rejects.map((r:any)=>r.details));
+      }
     });
   }
 
   private interpretateFile(scriptFileName:string): Promise<null>{
-    console.log(scriptFileName);
-    const self = this;
-    const jsonPath = `${self.projectRoot}scripts/${scriptFileName}`;
+    const jsonPath = `${this.projectRoot}scripts/${scriptFileName}`;
 
-    return new Promise((resolve, reject)=>{
-      RequestFile(jsonPath)
-        .then(res=> atob(res))
-        .then(scriptData=>{
-          self.kreator(scriptData, false)
-            .then( (processedScenesAndModules)=>{
-              resolve(null);
-            })
-            .catch(err=>{
-              console.error(`Error while interpreting the script ${scriptFileName}: `, err);
-              reject(err);
-            })
-      })
-    })
+    return RequestFile(jsonPath)
+      .then(res=> decodeBase64Utf8(res))
+      .then(scriptData=> this.kreator(scriptData, false))
+      .then(()=> null)
+      .catch(err=>{
+        console.error(`Error while interpreting the script ${scriptFileName}: `, err);
+        throw err;
+      });
   }
 
   kreator(script:string,loadAudioVisual = true):Promise<InterpretedData>{
@@ -177,6 +184,22 @@ class ChaosInterpreter {
             reject(error as InterpretationError);
           }
         })
+    });
+  }
+
+  //*Editor preview: interprets a script WITHOUT mutating this.scenes/this.modules and
+  //*without reloading every project script on each call (they are loaded once and cached,
+  //*so "include" still resolves modules).
+  previewKreator(script:string):Promise<InterpretedData>{
+    if(!this.scriptsLoadedPromise){
+      this.scriptsLoadedPromise = this.loadScripts(false)
+        .catch((err)=>{
+          console.warn("The scripts file couldn't be loaded for preview. Ignoring!!!", err);
+          return null;
+        });
+    }
+    return this.scriptsLoadedPromise.then(()=>{
+      return this.instructionsDesintegrator(script) as InterpretedData;
     });
   }
 
@@ -240,7 +263,25 @@ class ChaosInterpreter {
     const errors: Array<ScriptErrorSpan> = [];
     script += "\n"; //To avoid the last line to be ignored
     const tokenList = this.lexer(script);
-    const abs = this.preParser(tokenList, [], errors);
+    const bracketErrors: Array<{charStart:number, charEnd:number, message:string}> = [];
+    const abs = this.preParser(tokenList, [], bracketErrors);
+
+    //*Line start offsets, computed once: line lookup by binary search instead of re-scanning the script per error
+    let lineStarts: Array<number> | null = null;
+    const lineOf = (charIndex:number) => {
+      if(lineStarts == null){
+        lineStarts = [0];
+        for (let i = 0; i < script.length; i++) {
+          if(script.charCodeAt(i) == 10){ lineStarts.push(i + 1); }
+        }
+      }
+      let lo = 0, hi = lineStarts.length - 1;
+      while(lo < hi){
+        const mid = (lo + hi + 1) >> 1;
+        if(lineStarts[mid] <= charIndex){ lo = mid; }else{ hi = mid - 1; }
+      }
+      return lo;
+    };
 
     const pushError = (charStart:number, charEnd:number, message:string) => {
       if(charStart >= 0){
@@ -250,12 +291,14 @@ class ChaosInterpreter {
           charStart,
           charEnd,
           message,
-          line: (script.substring(0, lineStart).match(/\n/g) ?? []).length,
+          line: lineOf(lineStart),
           lineStart,
           lineEnd: lineEndIndex == -1 ? script.length : lineEndIndex
         });
       }
     };
+
+    bracketErrors.forEach(error=>pushError(error.charStart, error.charEnd, error.message));
 
     for (const instructionEntry of abs) {
       if(Array.isArray(instructionEntry)){
@@ -373,7 +416,10 @@ class ChaosInterpreter {
       namedFailures.push(...keywordMatching);
     }
 
-    const deepestFailure = namedFailures[namedFailures.length - 1];
+    const deepestFailure = namedFailures.reduce<typeof namedFailures[number] | undefined>(
+      (deepest, failure)=> (deepest == null || failure.depth >= deepest.depth) ? failure : deepest,
+      undefined
+    );
     if (deepestFailure != null) {
       const expectedText = deepestFailure.expected ? deepestFailure.expected : "unexpected value";
       return `Invalid syntax for "${deepestFailure.keyword}": at token ${deepestFailure.depth} ${expectedText}, but got ${deepestFailure.got}`;
@@ -450,7 +496,7 @@ class ChaosInterpreter {
 
   private lexer(script:string){
     // Regular expression to match words, punctuation, and special characters
-    const regex = /((\d+\.?\d*)|(\.\d*)|"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`|([^\w\s])|(\s{1,})|(\w+)|[=();,{}"'`])/g;
+    const regex = /(\/\/[^\n]*|(\d+\.?\d*)|(\.\d+)|"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`|([^\w\s])|(\s{1,})|(\w+)|[=();,{}"'`])/g;
 
     // Apply regex to split the string
     const matches = Array.from(script.matchAll(regex)) as Array<RegExpMatchArray>;
@@ -464,7 +510,7 @@ class ChaosInterpreter {
             symbol=TokenType.text;
           }else if(val.match(/[+\-*/%^=!<>&|]/)){
             symbol=TokenType.operator;
-          }else if(val.match(/(\d+\.?\d*)|(\.\d*)/)){
+          }else if(val.match(/^((\d+\.?\d*)|(\.\d+))$/)){
             symbol=TokenType.number;
           }else if(val.match(/[\(\{\[]/)){
             symbol=TokenType.openBracket;
@@ -479,7 +525,9 @@ class ChaosInterpreter {
           }
 
           return new Token(val,symbol,index,charIndex);
-      });
+      })
+      //Line comments are dropped here, so brackets/quotes inside them don't open blocks
+      .filter(token=>!(typeof token.value == "string" && token.value.startsWith("//")));
 
       return tokenList;
   }
@@ -487,18 +535,19 @@ class ChaosInterpreter {
     return arrayFlatter(tokenList).map(token=>{return token.value}).join("");
   }
 
-  private preParser(tokenList:Array<Token>, bracketsPile:Array<Token> = [], errorCollector: Array<{charStart:number, charEnd:number, message:string}> = null) : [Instruction, number]|Instruction{
+  //*startIdx: nested blocks read the same tokenList from an offset instead of copying it (avoids O(n²) slices)
+  private preParser(tokenList:Array<Token>, bracketsPile:Array<Token> = [], errorCollector: Array<{charStart:number, charEnd:number, message:string}> | null = null, startIdx = 0) : [Instruction, number]|Instruction{
     let abs:Instruction = new Instruction();
     let acum:Instruction = bracketsPile.map(a=>a) as Instruction;
     let isJsCode = false;
     let loopsDone = 0;
     let bracketCounter = bracketsPile.length;
-    for (let idx = 0; idx < tokenList.length; idx++) {
+    for (let idx = startIdx; idx < tokenList.length; idx++) {
       loopsDone++;
       const token = tokenList[idx];
       if(token.type == TokenType.openBracket){
         // bracketCounter++;
-        let [res, checked] = this.preParser(tokenList.slice(idx+1), [token], errorCollector) as [Instruction, number];
+        let [res, checked] = this.preParser(tokenList, [token], errorCollector, idx+1) as [Instruction, number];
         loopsDone += checked;
         idx += checked;
         acum.push(res);
@@ -507,32 +556,31 @@ class ChaosInterpreter {
       if(token.type == TokenType.closeBracket){
         const latestBracketInPile =  bracketsPile.at(-1);
         if(latestBracketInPile !== undefined){
-          if(
-            token.value == "]" && latestBracketInPile.value == "[" ||
-            token.value == "}" && latestBracketInPile.value == "{" ||
-            token.value == ")" && latestBracketInPile.value == "("
-          ){
-            acum.push(token);
-            bracketsPile.pop();
-            bracketCounter--;
-            if(bracketCounter == 0){
-              //TODO: Preventive check if the acum have script instructions
-              return [acum,loopsDone];
-            }
-          }else{
-            console.error(`Syntax error: ${token.value} in token ${token.index}, expected ${latestBracketInPile.value}`);
-            if(errorCollector != null){
-              errorCollector.push({
-                charStart: token.charIndex,
-                charEnd: token.charIndex + String(token.value).length,
-                message: `Syntax error: ${token.value}, expected ${latestBracketInPile.value}`
-              });
-            }
-            //TODO: Add a throw error
-            break;
+          const expectedClosing = ChaosInterpreter.closingBracketOf[latestBracketInPile.value];
+          if(token.value != expectedClosing){
+            console.error(`Syntax error: ${token.value} in token ${token.index}, expected ${expectedClosing}`);
+            errorCollector?.push({
+              charStart: token.charIndex,
+              charEnd: token.charIndex + String(token.value).length,
+              message: `Syntax error: "${token.value}", expected "${expectedClosing}"`
+            });
           }
+          //Even when mismatched, the block is closed here so the rest of the script keeps its structure
+          acum.push(token);
+          bracketsPile.pop();
+          bracketCounter--;
+          if(bracketCounter == 0){
+            return [acum,loopsDone];
+          }
+        }else{
+          console.error(`Syntax error: unexpected ${token.value} in token ${token.index}`);
+          errorCollector?.push({
+            charStart: token.charIndex,
+            charEnd: token.charIndex + String(token.value).length,
+            message: `Syntax error: unexpected "${token.value}" without a matching opening bracket`
+          });
+          continue;
         }
-
       }
       if(token.type == TokenType.lineBreak && bracketCounter == 0){ //Si hay un salto de linea y ttodos los brackets se han cerrado
         if(isJsCode){
@@ -584,7 +632,7 @@ class ChaosInterpreter {
           if(prevLineBreakFound){
             plausibleInstruction.reverse();
             //@ts-ignore
-            const interpretation = this.interpretateInstruction(plausibleInstruction, true);
+            const interpretation = this.interpretateInstruction(plausibleInstruction, true, true);
             if(interpretation.itWasAScriptInstruction){
               acum.splice((acum.length-1)-plausibleInstruction.length); //Remover todos los tokens que conforman la posible instrucción
               acum.push(
@@ -605,10 +653,23 @@ class ChaosInterpreter {
         continue;
       }
     }
+    if(bracketsPile.length > 0){
+      //End of script reached inside a block: the bracket was never closed
+      const openingBracket = bracketsPile[0];
+      console.error(`Syntax error: unclosed ${openingBracket.value} in token ${openingBracket.index}`);
+      errorCollector?.push({
+        charStart: openingBracket.charIndex,
+        charEnd: openingBracket.charIndex + String(openingBracket.value).length,
+        message: `Syntax error: "${openingBracket.value}" is never closed, expected "${ChaosInterpreter.closingBracketOf[openingBracket.value]}"`
+      });
+      return [acum, loopsDone];
+    }
     return abs;
   }
 
-  private interpretateInstruction(_instruction:Instruction,recursiveMode: boolean): Interpretation{
+  private static closingBracketOf: Dictionary<string> = {"(": ")", "[": "]", "{": "}"};
+
+  private interpretateInstruction(_instruction:Instruction,recursiveMode: boolean, insideBlock = false): Interpretation{
     let itWasAScriptInstruction = false;
     let result:Dictionary<any>|string|Instruction = _instruction;
     let matchName = ""; //TODO: change this, to handle the class or null reference
@@ -619,6 +680,8 @@ class ChaosInterpreter {
     const instruction = _instruction.filter(tk=>{return Array.isArray(tk)||((tk as Token).type != TokenType.space)});
 
     for (const supportedInstruction of supportedInstructions) {
+      //Some instructions (e.g. a lone "string" as narration) are ambiguous with plain JS inside {…}/[…] literals
+      if(insideBlock && !supportedInstruction.isAllowedInsideBlocks()){ continue; }
       //@ts-ignore
       const res = (supportedInstruction).check(instruction, this, !recursiveMode);
       if(res.match){
@@ -704,7 +767,7 @@ class ChaosInterpreter {
           scenes[tag] = {main:"", nodes:{}};
         }
 
-        else if(fillingScene && !fillingNode){
+        if(fillingScene && !fillingNode){
           scenes[tag].main+=interpretation.result+"\n";
         }else if(fillingScene && fillingNode){
           scenes[tag].nodes[nodeTag]+=interpretation.result+"\n";
@@ -720,7 +783,9 @@ class ChaosInterpreter {
       scenes.gameEntrypoint.main = 
       `engine.textureManager.loadTexture('${this.getTexture()}').then(()=>{
         engine.audioManager.loadSound('${this.getSound()}').then(()=>{
+          engine.modelManager.prepare('${this.getModel()}').then(()=>{
           ${scenes.gameEntrypoint.main}
+          });
         });
       });`
     }

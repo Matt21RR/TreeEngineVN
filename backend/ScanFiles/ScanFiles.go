@@ -32,6 +32,11 @@ var scriptExtensions = map[string]bool{
 	".txt":  true,
 }
 
+var modelExtensions = map[string]bool{
+	".glb":  true,
+	".gltf": true,
+}
+
 func isFromFileType(filename string, typeFile string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch typeFile {
@@ -41,6 +46,8 @@ func isFromFileType(filename string, typeFile string) bool {
 		return imageExtensions[ext]
 	case "script":
 		return scriptExtensions[ext]
+	case "model":
+		return modelExtensions[ext]
 	default:
 		return false
 	}

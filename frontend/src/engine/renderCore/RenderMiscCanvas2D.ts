@@ -2,6 +2,7 @@ import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { TextLine, wrapText } from "../logic/Misc.ts";
 import RenderMiscInterface, { RenderMiscForDebugInterface } from "./RenderMiscInterface.ts";
 import { RgbSplitParams } from "./RgbSplit.ts";
+import type { GridState, GridView } from "./GridHelper.ts";
 
 class RenderMiscForDebug extends RenderMiscForDebugInterface<CanvasRenderingContext2D>{
   drawObjectLimits(ctx:CanvasRenderingContext2D, object: ObjectRenderingData, canvasResolution: {width:number, height:number}, cameraZ:number){
@@ -181,6 +182,23 @@ export default class RenderMiscCanvas2D extends RenderMiscForDebug implements Re
   setGlobalAnisotropy(ctx: CanvasRenderingContext2D, level:number){
     //no-op: anisotropia solo en el cliente WebGPU
   }
+  setGlobalLighting(ctx: CanvasRenderingContext2D, mode:number){
+    //no-op: iluminacion Phong/Lambert solo en el cliente WebGPU
+  }
+  //*Tonemapping/exposicion/bloom: solo existen en el renderer WebGPU.
+  setGlobalToneMapping(ctx: CanvasRenderingContext2D, mode:string){}
+  setGlobalExposure(ctx: CanvasRenderingContext2D, exposure:number){}
+  setGlobalBloom(ctx: CanvasRenderingContext2D, bloom:{ enabled?: boolean; threshold?: number; intensity?: number; radius?: number } | null){}
+  setGlobalAO(ctx: CanvasRenderingContext2D, ao:{ enabled?: boolean; radius?: number; intensity?: number; bias?: number; power?: number; debug?: boolean } | null){}
+  setGlobalLightingParams(ctx: CanvasRenderingContext2D, params:{azim?:number;elev?:number;ambient?:number;shininess?:number;specStrength?:number;intensity?:number}){
+    //no-op: iluminacion Phong/Lambert solo en el cliente WebGPU
+  }
+  setGlobalLightingEye(ctx: CanvasRenderingContext2D, x:number, y:number, z:number){
+    //no-op: iluminacion Phong/Lambert solo en el cliente WebGPU
+  }
+  setGridState(ctx: CanvasRenderingContext2D, state:GridState|null, view:GridView|null){
+    //no-op: grid 3D solo en el cliente WebGPU
+  }
 
   private rotateTransform(ctx:CanvasRenderingContext2D, originX:number, originY:number, rotation:number){
     //ROTATION
@@ -248,6 +266,9 @@ export default class RenderMiscCanvas2D extends RenderMiscForDebug implements Re
     }else if(repeatOption == "repeat-y"){
       ctx.fillRect(object.corner.x, 0, object.width, displayHeight)
     }
+  }
+  //*Canvas2D es solo overlay de debug: los modelos 3D no se dibujan aqui.
+  drawMesh(modelId: string, ppu: number, object:ObjectRenderingData, ctx:CanvasRenderingContext2D){
   }
 
   drawRectangle(object:ObjectRenderingData, boxColor:string, ctx:CanvasRenderingContext2D){

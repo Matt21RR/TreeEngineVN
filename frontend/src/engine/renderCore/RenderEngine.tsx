@@ -16,10 +16,12 @@ import GraphObject from "../engineComponents/GraphObject.ts";
 import RenList from "../engineComponents/RenList.ts";
 import { KeyboardTrigger, Trigger } from "../engineComponents/Trigger.ts";
 
-import { getStr, lambdaConverter, TextLine } from "../logic/Misc.ts";
+import { decodeBase64Utf8, getStr, lambdaConverter, TextLine } from "../logic/Misc.ts";
 import EngTexture from "./EngTexture.ts";
 import { TextureAnim } from "../engineComponents/TextureAnim.ts";
 import { CodedRoutine } from "../engineComponents/CodedRoutine.ts";
+import ModelObject from "../engineComponents/ModelObject.ts";
+import ModelManager from "./ModelManager.ts";
 import { Chaos } from "../interpretators/ChaosInterpreter.ts";
 import { generateCalculationOrder, generateRenderingOrderFromRefs } from "./RenderingOrder.ts";
 
@@ -76,6 +78,7 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
     codedRoutine: typeof CodedRoutine;
     actor: typeof Actor;
     stageMark: typeof StageMark;
+    modelObject: typeof ModelObject;
   };
   //*Runtime information
   gameVars: Record<string, any>;
@@ -131,6 +134,8 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
   textureManager: TextureManager;
 
   audioManager: AudioManager;
+
+  modelManager: ModelManager;
   
   displayObserver: ResizeObserver;
   
@@ -172,13 +177,15 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
       keyboardTrigger : KeyboardTrigger,
       codedRoutine : CodedRoutine,
       actor : Actor,
-      stageMark : StageMark
+      stageMark : StageMark,
+      modelObject : ModelObject
     }
     this.gameVars = {};//Y guardar esto tambien
 
     //*Texture Fallback
     this.textureManager = new TextureManager();
     this.audioManager = new AudioManager();
+    this.modelManager = new ModelManager();
 
     //MOUSE
     this.mouse = {x:0,y:0,origin:null};
@@ -252,21 +259,17 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
     window.h = this.chaosInstance;
     
     RequestFile(scriptRoute)
-      .then(res => atob(res))
-      .then((scriptFile:string)=>{
-        // console.log(scriptFile);
-        this.chaosInstance.kreator(scriptFile)
-          .then(processedScenesAndModules=>processedScenesAndModules.scenes)
-          .then(scriptData=>{
-            console.log(scriptData)
-            this.runScript(sceneId);
-        })
-    })
-    .catch(err=>{ 
-      console.error(err);
-      console.warn("Running engine without main script");
-      this.setState({ isReady: true });
-    })
+      .then(res => decodeBase64Utf8(res))
+      //Returned so that interpretation errors also reach the catch below
+      .then((scriptFile:string)=> this.chaosInstance.kreator(scriptFile))
+      .then(()=>{
+        this.runScript(sceneId);
+      })
+      .catch(err=>{ 
+        console.error(err);
+        console.warn("Running engine without main script");
+        this.setState({ isReady: true });
+      })
   }
   refreshChaosAndRunScene(sceneId:string){
     this.chaosInstance.wipeData();
@@ -378,8 +381,10 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
       },
       set(target, prop:string, value:any) {
         target[prop] = value;
-        //globalBlur/globalRgbSplit/globalAnisotropy son muestreo: no invalidan el layout/colisiones (evita re-calc completo cada frame animado)
-        if(prop != "globalBlur" && prop != "globalRgbSplit" && prop != "globalAnisotropy")
+        //globalBlur/globalRgbSplit/globalAnisotropy/globalLighting/globalLight/globalPointLights/globalToneMapping/globalExposure/globalBloom/globalAO/showGrid/showGridXZ/showGridXY/showGridYZ/gridSize/gridDivisions/gridColor/gridOpacity/showAxes son muestreo/visual: no invalidan el layout/colisiones (evita re-calc completo cada frame animado)
+        if(prop != "globalBlur" && prop != "globalRgbSplit" && prop != "globalAnisotropy" && prop != "globalLighting" && prop != "globalLight" && prop != "globalPointLights"
+          && prop != "globalToneMapping" && prop != "globalExposure" && prop != "globalBloom" && prop != "globalAO"
+          && prop != "showGrid" && prop != "showGridXZ" && prop != "showGridXY" && prop != "showGridYZ" && prop != "gridSize" && prop != "gridDivisions" && prop != "gridColor" && prop != "gridOpacity" && prop != "showAxes")
           SharedDisplayCalcs.getInstance().recalculateAll = true;
         return true;
       }
@@ -390,6 +395,7 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
     this.camera = new Proxy({
       id:"engineCamera",
       maxZ:10000,
+      nearPlane:0.005,
       origin:new Proxy({x:.5,y:.5},handler),
       position:new Proxy({
         x:.5,
@@ -402,9 +408,26 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
       usePerspective:false,
       globalBlur:0,
       globalAnisotropy:2,
+      globalLighting:0,
+      globalLight:{ azim: 0.6, elev: 0.8, ambient: 0.35, shininess: 32, specStrength: 0.5, intensity: 1 },
+      globalToneMapping:"none",
+      globalExposure:1,
+      globalBloom:{ enabled: false, threshold: 1, intensity: 0.6, radius: 4 },
+      globalAO:{ enabled: false, radius: 0.05, intensity: 1, bias: 0.02, power: 1.5, debug: false },
+      globalPointLights:[],
       //rgb split en reposo con defaults en ceros (un null aqui rompe el flatten
       //de ExtendedObjects al animar la camara: Object.keys(null) lanza)
-      globalRgbSplit:{ channels: {}, maxMag: 0 }
+      globalRgbSplit:{ channels: {}, maxMag: 0 },
+      //grid 3D de ayuda: solo visual, apagado por defecto
+      showGrid:false,
+      showGridXZ:true,
+      showGridXY:false,
+      showGridYZ:false,
+      gridSize:4,
+      gridDivisions:16,
+      gridColor:"#8a93a6",
+      gridOpacity:0.5,
+      showAxes:true
     }, handler);
 
     //La camara se recrea a identidad: el acumulador de rotacion debe reiniciarse
@@ -457,6 +480,9 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
         const visibleRefs = SharedDisplayCalcs.getInstance().visibleRefs;
         for (let i = 0; i < visibleRefs.length; i++) {
           const ref = visibleRefs[i];
+          //*Modelos 3D fuera de colisiones (decision D4): su bbox 2D es solo
+          //aproximada y los triggers usan coordenadas de pantalla de sprites.
+          if ((ref as any)._model != null) continue;
           dimentionsObject[ref.id] = ref.dimentionsPack;
         }
 
@@ -491,7 +517,8 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
 
           const renderingData = gObject.dimentionsPack;
 
-          const texRef = renderingData.solvedTexture ?? ( gObject._textureName ? textureManager.getTexture(gObject._textureName,this.engineTime) : null ); //Null works as false / not assigned
+          const modelId: string | null = (gObject as any)._model ?? null;
+          const texRef = modelId ? null : renderingData.solvedTexture ?? ( gObject._textureName ? textureManager.getTexture(gObject._textureName,this.engineTime) : null ); //Null works as false / not assigned
           const strRef = gObject._text == null ? null : getStr(gObject._text);
 
           if(gObject._opacity == 0){
@@ -522,7 +549,11 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
               if(gObject.filterString != "none")
                 RenderMisc.setFilter(canvas.context, gObject.filterString);//if the element to render have filtering values != of the previous element
 
-              if(texRef){
+              if(modelId){
+                const meshPpu = renderingData.meshPpu ?? 0;
+                if(meshPpu > 0)
+                  RenderMisc.drawMesh(modelId, meshPpu, renderingData, canvas.context);
+              }else if(texRef){
                 if(gObject._repeatPattern){
                   RenderMisc.drawPattern(
                     texRef,
@@ -749,12 +780,12 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
 
   applyWorldRotationFromMouse(deltaX: number, deltaY: number) {
     //FPS libre 360: yaw con wrap [-PI,PI], pitch sin clamp (loopings permitidos).
-    //Mismos signos que antes (arrastrar = mirar): -dx en yaw, -dy en pitch.
+    //Yaw: -dx; pitch invertido: +dy (arrastrar abajo = bajar mirada).
     this.syncWorldAnglesFromCamera();
     const baseSens = this.inputManager?.rotationSensitivity ?? 0.005;
     const s = baseSens * this.getRotationSensitivityScale();
     this.worldYaw = this.wrapPiAngle(this.worldYaw - deltaX * s);
-    this.worldPitch = this.worldPitch - deltaY * s;
+    this.worldPitch = this.worldPitch + deltaY * s;
     this.worldRotationQuat = this.eulerToWorldQuat(this.worldYaw, this.worldPitch);
     this.camera.position.pitch = this.worldPitch;
     this.camera.position.yaw = this.worldYaw;
@@ -875,7 +906,7 @@ class AudioManager {
   }
 }
 
-class InputManager{
+export class InputManager{
   //*Keyboard Triggers stuff
   keyboardTriggers: RenList<KeyboardTrigger>;
   pressedKeys: string[];
@@ -886,6 +917,9 @@ class InputManager{
   //*Mouse rotation stuff (rueda pulsada = mirar alrededor, FPS libre 360)
   rotationSensitivity: number = 0.005; //rad por px a 1280px de ancho (ver rotationScaleBaseWidth)
   rotationScaleBaseWidth: number = 1280;
+  //*Vuelo con rueda pulsada (WASD + Shift/Space). Unidades mundo por segundo.
+  moveSpeed: number = 0.5;
+  private lastMoveAt: number = NaN;
   private mouseState = {
     middleButton: false,
     lastX: 0, lastY: 0,
@@ -917,6 +951,10 @@ class InputManager{
 
   onKeydown (e:KeyboardEvent){
     const keyCode = e.code;
+    //Espacio con rueda pulsada = subir: evitar scroll del navegador.
+    if(keyCode === "Space" && this.mouseState.middleButton){
+      e.preventDefault();
+    }
     const engine = RenderEngine.getInstance();
     if(this.pressedKeys.indexOf(keyCode) == -1){
       this.pressedKeys.push(keyCode);
@@ -1025,7 +1063,7 @@ class InputManager{
     window.removeEventListener("blur", this.boundBlur as EventListener);
   }
 
-  update(engineRef: RenderEngine){
+  update(engineRef: RenderEngine, dtOverrideMs?: number){
     const mix = this.pressedKeys.join(" ");
     if(this.keyboardTriggers.exist(mix) && (this.pressedKeys.length>1)){
       this.keyboardTriggers.get(mix).check(engineRef,"onHold");
@@ -1041,6 +1079,56 @@ class InputManager{
       this.mouseState.deltaX = 0;
       this.mouseState.deltaY = 0;
     }
+
+    this.applyFlyMovement(engineRef, dtOverrideMs);
+  }
+
+  //*Traslacion FPS-fly, solo con rueda pulsada. Direcciones en mundo,
+  //derivadas del mismo orden yaw->pitch->roll que rotate3DJS aplica al mundo:
+  //  forward = (-sin yaw * cos pitch, sin pitch, cos yaw * cos pitch)
+  //  right   = (cos yaw, 0, sin yaw)
+  //Vertical de MUNDO: el motor es Y-down (+Y = abajo en pantalla), asi que
+  //Space (subir en pantalla) RESTA y, y Shift (bajar) la suma.
+  private applyFlyMovement(engineRef: RenderEngine, dtOverrideMs?: number){
+    if(!this.mouseState.middleButton) return;
+    const keys = this.pressedKeys;
+    let f = 0, r = 0, u = 0; //adelante, derecha, arriba(pantalla)
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if(k === "KeyW") f += 1;
+      else if(k === "KeyS") f -= 1;
+      else if(k === "KeyD") r += 1;
+      else if(k === "KeyA") r -= 1;
+      else if(k === "Space") u += 1;
+      else if(k === "ShiftLeft" || k === "ShiftRight") u -= 1;
+    }
+    if(f === 0 && r === 0 && u === 0) return;
+    const now = window.performance.now();
+    let dt: number;
+    if(dtOverrideMs !== undefined){
+      dt = dtOverrideMs;
+      this.lastMoveAt = now;
+    }else{
+      dt = isNaN(this.lastMoveAt) ? 0 : now - this.lastMoveAt;
+      this.lastMoveAt = now;
+      if(dt > 100) dt = 100;
+      if(dt <= 0) return;
+    }
+    const pos = engineRef.camera.position;
+    const yaw = pos.yaw ?? 0;
+    const pitch = pos.pitch ?? 0;
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const cy = Math.cos(yaw), sy = Math.sin(yaw);
+    let dx = (-sy * cp) * f + cy * r;
+    let dy = sp * f - u;
+    let dz = (cy * cp) * f + sy * r;
+    //Normalizar para que las diagonales no vayan mas rapido:
+    const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    if(!(len > 0)) return;
+    const step = this.moveSpeed * (dt / 1000) / len;
+    pos.x += dx * step;
+    pos.y += dy * step;
+    pos.z += dz * step;
   }
 }
 

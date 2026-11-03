@@ -49,6 +49,13 @@ func (a * App) RequestFileWithMime(path string)(string,error){
 	return Request.RequestFileWithMime(path)
 }
 
+// GetAssetBaseURL devuelve la URL del servidor local de ./game (ver
+// backend/Request/AssetServer.go). El frontend la usa para descargar
+// binarios grandes (modelos .glb) por fetch directo en vez de base64.
+func (a * App) GetAssetBaseURL()(string,error){
+	return Request.StartGameFileServer()
+}
+
 func (a * App) ScanFiles(rootPath string, typeFile string) (map[string]string, error) {
 	fmt.Println("Scanning files in:", rootPath, "of type:", typeFile)
 	return ScanFiles.ScanFiles(rootPath, typeFile)

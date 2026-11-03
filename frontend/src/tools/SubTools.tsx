@@ -1,6 +1,7 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 
 import GraphObject from "../engine/engineComponents/GraphObject.ts";
+import ModelObject from "../engine/engineComponents/ModelObject.ts";
 import Swal from 'sweetalert2';
 import { RenderEngine } from '../engine/renderCore/RenderEngine.tsx';
 import InputCheck from './components/inputs/InputCheck.tsx';
@@ -195,14 +196,16 @@ class ObjectEditor  extends React.Component<ObjectEditorProps> {
   listProperties(){
     if(this.props.selectedObject != ""){
       const engine = this.props.engine;
+      const obj = engine.graphArray.get(this.props.selectedObject);
       let types;
       try {
-        types = GraphObject.dataTypes;  
+        //*Tipos del constructor real: GraphObject no declara "model" y el
+        //Property reventaba (types[key] undefined) al seleccionar un ModelObject.
+        types = (obj as any).constructor?.dataTypes ?? GraphObject.dataTypes;
       } catch (error) {
         this.props.setSelectedObject("");
         return;
       }
-      const obj = engine.graphArray.get(this.props.selectedObject);
       const objInfo = obj.dump();
 
       return(
@@ -222,10 +225,12 @@ class ObjectEditor  extends React.Component<ObjectEditorProps> {
   generateCreationScriptFromProperties(){
     const engine = this.props.engine;
 
-    const defaultObjectValues =  new GraphObject().dump();
     const obj = engine.graphArray.get(this.props.selectedObject);
+    const isModel = obj instanceof ModelObject;
+    const className = isModel ? "ModelObject" : "GraphObject";
+    const defaultObjectValues = isModel ? new ModelObject().dump() : new GraphObject().dump();
     const objInfo = obj.dump();
-    let script = `${obj.id} = new GraphObject({\n`;
+    let script = `${obj.id} = new ${className}({\n`;
     Object.keys(objInfo).forEach(key=>{
       if(key != "id" && JSON.stringify(objInfo[key]) != JSON.stringify(defaultObjectValues[key])){ // Only include properties that are different from the default values
         let value = objInfo[key];
@@ -322,8 +327,7 @@ class ObjectsE extends React.Component<ObjectsEProps> {
     let objects = engine.graphArray.objects;
     return(
       objects.map((graphObject)=>(
-
-        <Button1 text={graphObject.id} 
+        <Button1 text={(graphObject instanceof ModelObject ? "◆ " : "") + graphObject.id} 
           color={graphObject.enabled ? undefined : "bg-orange-400"}
           action={()=>{
             engine.objectsToDebug.clear();
@@ -352,14 +356,15 @@ class ObjectsE extends React.Component<ObjectsEProps> {
   listProperties(){
     if(this.selectedObject != ""){
       const engine = this.props.engine;
+      const obj = engine.graphArray.get(this.selectedObject);
       let types;
       try {
-        types = GraphObject.dataTypes;  
+        //*Tipos del constructor real (ver ObjectEditor.listProperties).
+        types = (obj as any)?.constructor?.dataTypes ?? GraphObject.dataTypes;
       } catch (error) {
         this.selectedObject = "";
         return;
       }
-      const obj = engine.graphArray.get(this.selectedObject);
       const objInfo = obj.dump();
 
       return(
@@ -383,12 +388,26 @@ class ObjectsE extends React.Component<ObjectsEProps> {
       action={()=>{
         this.blockMouseTriggerButton = true;
         this.forceUpdate();
+        //*Fallback para ModelObject: no estan en collisionLayer (D4), se
+        //prueba su bbox proyectada de atras hacia adelante (orden pintor).
+        const pickModel = (eng: RenderEngine, mouse:any, resolution:{width:number,height:number}):string|null => {
+          const mx = mouse.mX * resolution.width, my = mouse.mY * resolution.height;
+          const models = eng.graphArray.objects.filter(o => (o as any)._model != null && o.enabled);
+          for(let i = models.length - 1; i >= 0; i--){
+            const p = (models[i] as any).dimentionsPack;
+            if(!p || p.width <= 0) continue;
+            if(mx >= p.corner.x && mx <= p.corner.x + p.width && my >= p.corner.y && my <= p.corner.y){
+              return models[i].id;
+            }
+          }
+          return null;
+        };
         const triggerName = "dspTrg" + (performance.now()*Math.random()).toFixed(8).replaceAll(".","")
         const trigger = new Trigger({
           onMouseMove:(_,mouse)=>{
             let resolution = eng.canvasRef.resolution;
             const collisions = eng.collisionLayer.checkMouse(mouse.mX,mouse.mY,resolution);
-            const top = collisions.at(-1);
+            const top = collisions.at(-1) ?? pickModel(eng, mouse, resolution);
             eng.objectsToDebug.clear();
             eng.objectsToDebug.add(this.selectedObject);
             eng.objectsToDebug.add(top);
@@ -399,7 +418,7 @@ class ObjectsE extends React.Component<ObjectsEProps> {
 
             let resolution = eng.canvasRef.resolution;
             const collisions = eng.collisionLayer.checkMouse(mouse.mX,mouse.mY,resolution);
-            const top = collisions.at(-1);
+            const top = collisions.at(-1) ?? pickModel(eng, mouse, resolution);
             if(top){
               eng.objectsToDebug.clear();
               eng.objectsToDebug.add(top);
@@ -418,22 +437,44 @@ class ObjectsE extends React.Component<ObjectsEProps> {
   }
   creationButton(){
     const eng = this.props.engine;
-    return <Button1 
+    return <Button1
               text="create"
               action={()=>{
                 Swal.fire({
-                  text: "GraphObject id: ",
+                  text: "Object type: ",
                   showDenyButton: false,
                   showConfirmButton: true,
                   confirmButtonColor:"green",
                   showCancelButton: true,
-                  confirmButtonText: "Create",
+                  confirmButtonText: "Next",
                   cancelButtonText: "Cancel",
-                  input:"text"
-                }).then((result) => {
-                  if (result.isConfirmed && result.value != "") {
-                    eng.graphArray.push(new GraphObject({id:result.value, enabled:true}));
-                  }
+                  input: "select",
+                  inputOptions: {
+                    GraphObject: "GraphObject (2D)",
+                    ModelObject: "ModelObject (3D)"
+                  },
+                  inputValue: "GraphObject"
+                }).then((typeResult) => {
+                  if (!typeResult.isConfirmed) return;
+                  const className = typeResult.value === "ModelObject" ? "ModelObject" : "GraphObject";
+                  Swal.fire({
+                    text: `${className} id: `,
+                    showDenyButton: false,
+                    showConfirmButton: true,
+                    confirmButtonColor:"green",
+                    showCancelButton: true,
+                    confirmButtonText: "Create",
+                    cancelButtonText: "Cancel",
+                    input:"text"
+                  }).then((result) => {
+                    if (result.isConfirmed && result.value != "") {
+                      const data = {id:result.value, enabled:true};
+                      eng.graphArray.push(className === "ModelObject"
+                        ? new ModelObject(data)
+                        : new GraphObject(data));
+                      this.forceUpdate();
+                    }
+                  });
                 });
               }}
               />

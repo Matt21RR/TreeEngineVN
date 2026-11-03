@@ -27,6 +27,18 @@ export type ObjectRenderingData = {
    *  z = profundidad mundo del centro (misma unidad que objectZ);
    *  p = pixeles por unidad mundo en el centro (0 = ortografico: sin perspectiva). */
   perspDepth: { z: number; p: number },
+  /** Solo modelos 3D: pixeles por unidad modelo en el centro (0 = no es modelo). */
+  meshPpu?: number,
+  /** Solo modelos 3D en perspectiva: centro relativo al OJO (x, y, z en
+   *  unidades mundo, z = profundidad), k = px por unidad a Z = 1 y s = escala
+   *  modelo->mundo. La GPU proyecta cada vertice desde aqui, sin depender de
+   *  la proyeccion del centro. k = 0 = modo clasico (orto / centro proyectado). */
+  meshView: { x: number; y: number; z: number; k: number; s: number },
+  /** Solo modelos 3D: lado mayor de la caja proyectada en px (Infinity = ojo
+   *  dentro o caja cruzando el plano cercano). Base del descarte por tamano. */
+  meshScreenPx?: number,
+  /** Solo modelos 3D: px por unidad modelo para elegir LOD (0 = original). */
+  meshLodPx?: number,
   id:string,
   repeatPattern:boolean,
   solvedTexture:EngTexture|null,

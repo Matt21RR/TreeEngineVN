@@ -31,6 +31,66 @@ set Engine camera globalRgbSplit = {channels:{},maxMag:0}
 set Engine camera globalRgbSplit = {channels:{r:{angle:270,mag:0.6},g:{angle:0,mag:0},b:{angle:90,mag:0.6}},maxMag:8}
 ```
 
+# Engine (camera 3D model shading)
+
+Lighting, HDR tone mapping and bloom for **3D models** (`ModelObject`). WebGPU
+client only (Canvas2D no-op). Sprites and UI are never affected. Everything is
+off by default: existing scenes look the same.
+
+```js
+set Engine camera globalLighting = 3
+set Engine camera globalLight = {azim:0.6,elev:0.8,ambient:0.25,intensity:1.2}
+set Engine camera globalToneMapping = "aces"
+set Engine camera globalExposure = 1.2
+set Engine camera globalBloom = {enabled:true,threshold:0.8,intensity:0.8,radius:6}
+set Engine camera globalAO = {enabled:true,radius:0.05,intensity:1}
+```
+
+- **nearPlane**: *`number`* closest distance to the eye that is drawn, in world units (default `0.005`). Geometry closer than this is clipped. Lower it if you place the camera very close to (or inside) tiny-scaled models; raising it improves depth precision in very large scenes.
+- **globalLighting**: *`number`* 0 = unlit (default; base color + emissive), 1 = Lambert, 2 = Phong, 3 = PBR (GGX/Cook-Torrance with metallic-roughness and occlusion maps). Normal maps apply in modes 1–3.
+- **globalLight**: *`object`* directional light: `azim`/`elev` (radians), `ambient` (0–1), `shininess` and `specStrength` (Phong), `intensity` (PBR, default 1).
+- **globalToneMapping**: *`string`* `"none"` (default, plain clamp), `"aces"`, `"agx"` or `"neutral"` (Khronos PBR Neutral). Compresses lights brighter than 1 (e.g. emissive strength) instead of clipping them.
+- **globalExposure**: *`number`* multiplies the 3D lighting before tone mapping (default 1).
+- **globalBloom**: *`object`* glow around 3D models' lights brighter than `threshold` (after exposure). Default `{enabled:false,threshold:1,intensity:0.6,radius:4}`. `radius` is the blur radius in px. Toggling `enabled` rebuilds GPU pipelines (avoid toggling every frame; animate `intensity` instead).
+- **globalAO**: *`object`* screen-space ambient occlusion (SSAO) for 3D models: darkens the ambient light in corners, creases and contact areas. Default `{enabled:false,radius:0.05,intensity:1,bias:0.02,power:1.5,debug:false}`. `radius` is in world units (how far occluders count; the screen is about 1 unit wide, so typical values are 0.02–0.1), `bias` (0–0.9) reduces self-shadowing on curved surfaces, `power` sharpens the contrast and `debug:true` shows only the AO buffer, full screen in grayscale (white = no occlusion; sprites and backgrounds are hidden). Only affects lit modes (`globalLighting` 1–3), opaque/cutout surfaces (not translucent materials) and models that are not `ignoreWorldRotation`. It adds no extra geometry pass (models write a small G-buffer while they are drawn; the AO is computed and applied afterwards), and when disabled it costs nothing. Toggling `enabled` rebuilds GPU pipelines like `globalBloom` (animate `intensity` instead of toggling every frame).
+
+Model features read from the `.glb`: base color, emissive, metallic-roughness,
+occlusion and normal textures, vertex colors (`COLOR_0`), a second UV set
+(`TEXCOORD_1`, used by baked lightmaps through each texture's `texCoord`) and
+tangents (`TANGENT`; derived per pixel when missing) and per-texture
+`KHR_texture_transform` (offset, rotation, scale and `texCoord` override).
+
+# Engine (camera grid helper)
+
+Infinite 3D helper grid anchored to the world (Blender-style, with distance
+fade). WebGPU client only (Canvas2D no-op). Useful to visualize 3D space
+(depth, rotation, perspective).
+
+```js
+set Engine camera showGrid = true
+```
+
+- **showGrid**: *`boolean`* enables the grid (default `false`).
+- **showGridXZ**: *`boolean`* floor plane `y=0` (default `true`).
+- **showGridXY**: *`boolean`* frontal plane `z=0` (default `false`).
+- **showGridYZ**: *`boolean`* lateral plane `x=0` (default `false`).
+  The checks combine freely (several planes at once composite back-to-front).
+- **gridSize**: *`number`* reference scale in world units (default `4`, clamp 0.5..100). The grid is infinite: `gridSize/gridDivisions` sets the cell step and `gridSize` the fade range (crisp up to ~3x, gone by ~10x).
+- **gridDivisions**: *`number`* cells per `gridSize` unit (default `16`, clamp 2..64).
+- **gridColor**: *`string`* CSS color of the lines (default `"#8a93a6"`).
+- **gridOpacity**: *`number`* 0..1 (default `0.5`).
+- **showAxes**: *`boolean`* XYZ colored axes (X red, Y green, Z blue, default `true`). The axes extend to the fade range with the same distance fade as the grid.
+
+```js
+// Example: floor + side wall with axes for staging a scene
+set Engine camera showGridXZ = true
+set Engine camera showGridYZ = true
+set Engine camera gridSize = 6
+set Engine camera gridDivisions = 24
+set Engine camera showAxes = true
+set Engine camera showGrid = true
+```
+
 # GraphObject
 
 ## Creation Command
@@ -38,7 +98,6 @@ set Engine camera globalRgbSplit = {channels:{r:{angle:270,mag:0.6},g:{angle:0,m
 ```js
 id = new GraphObject(properties...)
 ```
-
 - **id**: *`string`*
 - **properties**: *`Dictionary<any>`*
 
@@ -79,6 +138,79 @@ scale = 1;
 widthScale = 1;
 heightScale = 1;
 ```
+
+# ModelObject
+
+3D prop estatico (GLB) renderizado por el pipeline `mesh` (unlit: `baseColor` sin luces).
+
+## Creation Command
+
+```js
+duck = new ModelObject({
+  enabled: true,
+  model: "duck",
+  x: 0.5,
+  y: 0.5,
+  z: 0,
+  scale: 0.15
+})
+```
+
+- **model**: *`string|null`* — id del modelo en `game/models/models.json`. Se carga **cuando hace falta** (ver *Carga de modelos* abajo).
+- **fitRadius**: *`number|null`* — radio deseado en unidades mundo: el modelo se escala para medir eso sea cual sea su tamaño real (sustituye a `scale`; útil para mostrar modelos de tamaños muy distintos con el mismo tamaño aparente, p. ej. `fitRadius: 0.3`).
+- Hereda posicion/rotacion/escala/padre/`Animation`/`Trigger` (visual) de `GraphObject`, con diferencias:
+  - **Sin textura 2D**: ignora `texture`, `repeat`, `text` y filtros 2D (`brightness`, `blur`, etc.).
+  - **Escala rigida**: 1 unidad del modelo = 1 unidad mundo; `widthScale`/`heightScale` no deforman (usar `scale`).
+  - **Sin colisiones**: no participa en `CollisionLayer` (los triggers asociados usan su caja 2D aproximada solo como referencia visual).
+
+### Carga de modelos (memoria)
+
+Los modelos no se cargan todos al iniciar: el arranque solo registra `models.json` y cada `ModelObject` pide su modelo cuando su centro está a menos de `lazyLoadDistance` del ojo (o, si ya se cargó alguna vez, cuando su caja vuelve a ser visible). Aparece al terminar su carga (en un worker, sin bloquear). Al superar el presupuesto de VRAM se liberan los modelos que llevan más tiempo sin verse (nunca los visibles) y se recargan solos si vuelven a verse.
+
+```js
+@ engine.modelManager.requestModel("tavern_baked")       // precargar uno antes de mostrarlo
+@ engine.modelManager.gpuBudget = 1024 * 1024 * 1024     // presupuesto de VRAM en bytes (default 1.5 GB)
+@ engine.modelManager.maxTextureSize = 1024              // lado máximo de texturas al cargar (default 2048, 0 = sin tope)
+@ engine.modelManager.lazyLoadDistance = 6               // distancia de carga de modelos nunca cargados (default 4)
+@ engine.modelManager.unloadModel("tavern_baked")        // liberar uno manualmente
+@ engine.modelManager.minScreenPx = 3                    // no dibujar ni cargar modelos que midan menos de esto en pantalla (px, 0 = off)
+```
+
+- `engine.modelManager.gpuBytesUsed()` devuelve la VRAM estimada en uso.
+- `engine.modelManager.preloadAll = true` restaura la precarga completa al arrancar (debe fijarse antes de que el motor ejecute la escena de entrada).
+- `maxTextureSize` se aplica a los modelos que se carguen a partir de ese momento.
+
+### LOD (niveles de detalle)
+
+Cada modelo se dibuja con versiones simplificadas (meshoptimizer) cuando está lejos: por cada parte se usa el nivel más simple cuya diferencia con el original no supere `lodMaxErrorPx` píxeles en pantalla. Los niveles se generan **una sola vez** y se guardan en `game/models/_lod/<archivo>.glb.lod`:
+
+- Al arrancar, el motor borra los `.lod` de modelos que ya no están en `models.json` y genera en segundo plano (sin bloquear ni usar VRAM) los de los modelos nuevos.
+- Si un `.glb` se reemplaza por otro con el mismo nombre, su `.lod` se detecta como inválido (hash) y se regenera al cargarlo.
+- Los `.lod` son assets más: distribúyelos con el juego para que no haya que generarlos en el equipo del jugador.
+
+```js
+@ engine.modelManager.lodMaxErrorPx = 1   // desviación máxima en pantalla (px) del nivel simplificado (0 = siempre el original)
+@ engine.modelManager.lodCache = "sync"   // "sync" (default): sincroniza al arrancar | "lazy": solo al cargar cada modelo | "off": en memoria, sin disco
+@ engine.modelManager.lodEnabled = false  // desactiva el LOD (se aplica a los modelos que se carguen después)
+```
+
+### Texturas comprimidas (BC7)
+
+Las texturas de los modelos se suben a la GPU comprimidas en BC7, que ocupa ~4 veces menos VRAM que RGBA8, y se cargan sin decodificar PNG/JPG. Codificarlas es lento (varios segundos por textura grande), así que se hace **una sola vez** y se guarda en `game/models/_tex/<archivo>.glb.tex`, igual que los LOD:
+
+- Al arrancar, el motor borra los `.tex` de modelos que ya no están en `models.json` y genera en segundo plano los de los modelos nuevos, usando varios workers. Mientras un modelo no tenga su `.tex`, se carga con RGBA8 como antes.
+- Un `.tex` se invalida si cambia el `.glb` (hash) o `maxTextureSize`, y se regenera.
+- Los `.tex` son assets más: distribúyelos con el juego. Ocupan algo más en disco que las imágenes originales.
+
+```js
+@ engine.modelManager.texCompression = "sync"   // "sync" (default): sincroniza al arrancar | "lazy": genera tras cargar cada modelo | "off": RGBA8 siempre
+```
+
+### Limitaciones
+
+- Solo GLB con primitivas TRIANGLES e imágenes embebidas (bufferView o `data:` URI).
+- Se ignora con warning: skins, animaciones, primitivas no-triangulo, imágenes con URI externa, `KHR_draco_mesh_compression`, `EXT_meshopt_compression`, `KHR_texture_basisu`.
+- Cada material visible de un modelo es al menos 1 draw por frame (los transparentes, 2-3): las primitivas que comparten material se dibujan juntas.
 
 # KeyboardTrigger
 

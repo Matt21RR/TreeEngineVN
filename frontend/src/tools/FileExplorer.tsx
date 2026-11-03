@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import Loading from './components/alerts.tsx';
 import byteSize from 'byte-size';
 import Multimedia from './Multimedia.tsx';
-import { OpenFileExplorer, Request } from '../../wailsjs/go/main/App.js';
+import { OpenFileExplorer, Request, RequestFile } from '../../wailsjs/go/main/App.js';
 import { Button1, IconButton, MenuButton } from './components/Buttons.tsx';
 
 type DirData = {
@@ -32,7 +32,7 @@ export type SelectedFileProperties = {
   actualContentLength:number
 }
 
-class FileExplorer extends React.Component{
+class FileExplorer extends React.Component<{engine?: any}>{
   gameContent
   fileIndexList
   fileIndexReverse
@@ -111,30 +111,79 @@ class FileExplorer extends React.Component{
     let filesList = [];
     let filesToUpload = 0;
 
-    const uploader = (file: File, processed = 0)=>{
-      readFileAsBase64(file).then(base64String=>{
-          Request({action:"upload",dir:this.actualRoute, file:base64String, filename:file.name})
-            .then(()=>{
-              console.log(this.actualRoute);
-              filesList.shift();
-              filesToUpload--;
-              this.uploadProgress.inStack = filesToUpload;
-              if(filesList.length != 0){
-                uploader(filesList[0], processed+1);
-              }else{
-                this.getHierarchy();
-              }
-            });
-        });
-    }
-
     if(e.dataTransfer.files){
       //*Proccess and pass to the next file
       filesList = [...e.dataTransfer.files];
       filesToUpload = filesList.length;
-      uploader(filesList[0]);
+      const uploadDir = this.actualRoute;
+      const uploadedNames = filesList.map((f: File) => f.name);
+      const onDone = () => {
+        this.getHierarchy();
+        this.autoIndexModels(uploadDir, uploadedNames);
+      };
+      const uploaderWrapped = (file: File, processed = 0)=>{
+        readFileAsBase64(file).then(base64String=>{
+            Request({action:"upload",dir:uploadDir, file:base64String, filename:file.name})
+              .then(()=>{
+                filesList.shift();
+                filesToUpload--;
+                this.uploadProgress.inStack = filesToUpload;
+                if(filesList.length != 0){
+                  uploaderWrapped(filesList[0], processed+1);
+                }else{
+                  onDone();
+                }
+              });
+          });
+      };
+      uploaderWrapped(filesList[0]);
     }
 
+  }
+  /**
+   * Registra automaticamente los .glb subidos a game/models en models.json
+   * y los precarga en el motor en caliente (si hay engine). Asi un modelo
+   * nuevo se comporta como los precargados en arranque (preview instantaneo
+   * via cache del motor en vez de pipeline lento en cada apertura).
+   */
+  autoIndexModels(uploadDir: string, uploadedNames: Array<string>){
+    const modelsDir = "./game/models";
+    if(uploadDir.replace(/\/$/, "") !== modelsDir) return;
+    const glbs = uploadedNames.filter(n => /\.glb$/i.test(n));
+    if(glbs.length == 0) return;
+    const indexRoute = modelsDir + "/models.json";
+    RequestFile(indexRoute)
+      .then(res => atob(res))
+      .then(text => JSON.parse(text))
+      .catch(() => ({}))
+      .then((index: Record<string, string>) => {
+        let changed = false;
+        glbs.forEach(fn => {
+          //*Misma convencion de claves que ScanFiles (sin extension).
+          const key = fn.replace(/\.[^.]+$/, "");
+          if(key in index){
+            if(index[key] !== "./" + fn) console.warn(`[FileExplorer] '${key}' ya existe en models.json (${index[key]}), no se sobrescribe.`);
+          }else{
+            index[key] = "./" + fn;
+            changed = true;
+          }
+        });
+        if(!changed) return null;
+        return Request({route: indexRoute, action: "update", content: JSON.stringify(index, null, "\t")});
+      })
+      .then((updated) => {
+        if(!updated) return;
+        console.info("[FileExplorer] models.json actualizado con: " + glbs.join(", "));
+        const eng = (this.props as any).engine;
+        if(eng?.modelManager){
+          //registra las entradas nuevas (carga perezosa: se cargan al usarse;
+          //con preloadAll se cargan ya)
+          eng.modelManager.prepare(indexRoute)
+            .then(()=>console.info("[FileExplorer] indice de modelos actualizado en caliente."))
+            .catch((err: any)=>Swal.fire("Error precargando modelos", String(err?.message ?? err).slice(0, 200), "error"));
+        }
+      })
+      .catch((err: any)=>Swal.fire("Error registrando modelos", String(err?.message ?? err).slice(0, 200), "error"));
   }
   rename(route:string, newName:string){
     let spl = route.split("/");
@@ -358,13 +407,14 @@ class FileExplorer extends React.Component{
     if(this.selected.show){
       return(
         <Multimedia 
+          key={this.selected.route}
           setSelected={(indexFiles:number)=>{
-              this.selected.show = false;
-              this.forceUpdate(()=>{
-                this.setSelected(this.fileIndexList[indexFiles]);
-                this.selected.show = true;
-                this.forceUpdate();
-              });
+            this.selected.show = false;
+            this.forceUpdate(()=>{
+              this.setSelected(this.fileIndexList[indexFiles]);
+              this.selected.show = true;
+              this.forceUpdate();
+            });
           }} 
           info={this.selected} 
           show={this.selected.show} 

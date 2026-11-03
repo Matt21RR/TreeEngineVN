@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import $ from "jquery";
 import InputScript from "./components/inputs/InputScript.tsx";
 import AudioPlayer from './AudioPlayer.tsx';
+import ModelViewer from './ModelViewer.tsx';
 import Swal from 'sweetalert2';
 
 import {SelectedFileProperties} from './FileExplorer.tsx';
 import { Request, RequestFile, RequestFileWithMime } from '../../wailsjs/go/main/App.js';
+import { decodeBase64Utf8 } from '../engine/logic/Misc.ts';
 import { IconButton, ToolbarButton } from './components/Buttons.tsx';
+import { RenderEngine } from '../engine/renderCore/RenderEngine.tsx';
 
 type MultimediaProps = {
   setSelected: (indexFiles: number) => void;
@@ -15,21 +18,90 @@ type MultimediaProps = {
   close: ()=>void
 }
 
+/** Visor .glb como componente (hooks propios): bytes via data-URL -> ModelViewer. */
+function ModelPreview({ src, name, engineModelId }: { src: string; name: string; engineModelId?: string }) {
+  const [bytes, setBytes] = useState<Uint8Array | null>(null);
+  const [loadError, setLoadError] = useState("");
+  //*Si el motor ya tiene el modelo parseado no se descarga nada (ver
+  //Multimedia: content queda vacio a proposito en ese caso).
+  const engineCached = !!engineModelId && !!(window as any).engineRef?.modelManager?.has(engineModelId);
+  console.info(`[ModelPreview] render '${name}' bytes=${!!bytes} engineModelId=${engineModelId} cached=${engineCached}`);
+  useEffect(() => {
+    if (engineModelId && (window as any).engineRef?.modelManager?.has(engineModelId)) return;
+    if (!src) return;
+    //*Fetch del data-URL con abort + marca de frescura (evita que un fetch
+    //lento pise bytes ya validos con otra cosa, p.ej. HTML).
+    const ctrl = new AbortController();
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(src, { signal: ctrl.signal });
+        if (!r.ok) throw new Error(`fetch: ${r.status}`);
+        const buf = await r.arrayBuffer();
+        if (alive) setBytes(new Uint8Array(buf));
+      } catch (e: any) {
+        if (alive && e?.name !== "AbortError") setLoadError(String(e?.message ?? e).slice(0, 160));
+      }
+    })();
+    return () => { alive = false; ctrl.abort(); };
+  }, [src, name, engineModelId]);
+  if (loadError) {
+    return <div className='mx-auto my-auto text-red-400 text-sm p-4'>No se pudo cargar: {loadError}</div>;
+  }
+  if (!bytes && !engineCached) {
+    return <div className='mx-auto my-auto text-white text-sm'>Cargando modelo...</div>;
+  }
+  return (
+    <div className='absolute inset-0 p-3 flex flex-col gap-2 overflow-hidden'>
+      <ModelViewer data={bytes ?? undefined} engineModelId={engineModelId} snippetId={engineModelId ?? name.replace(/\.[^.]+$/, "")} className="flex min-h-0 flex-1 flex-col" />
+    </div>
+  );
+}
+
+//*Indice de modelos cacheado (resuelve archivo -> id del motor).
+let modelsIndexCache: Promise<Record<string, string>> | null = null;
+function getModelsIndex(): Promise<Record<string, string>> {
+  if (!modelsIndexCache) {
+    modelsIndexCache = RequestFile(window.projectRoute + "models/models.json")
+      .then(res => atob(res))
+      .then(text => JSON.parse(text))
+      .catch(() => ({}));
+  }
+  return modelsIndexCache;
+}
+
 export default function Multimedia ({setSelected, info, show, close}: MultimediaProps) {
   const [activateSwitch, setActivateSwitch] = useState(true);
   const [content, setContent] = useState("");
   const [editorId, setEditorId] = useState("");
   const [mime, setMime] = useState("");
+  //*Id del modelo en models.json cuando el archivo es un .glb.
+  const [engineModelId, setEngineModelId] = useState<string | undefined>(undefined);
 
   useEffect(()=>{
     setEditorId("multimediaTextEditor" + String(window.performance.now()).replaceAll(".",""))
     const src = info.src;
     const mime = src.split(".").at(-1) == "json" ? "text" : info.mime;
     setMime(mime); //! Plausible err
+    if (/\.glb$/i.test(info.name)) {
+      //*Si el motor ya parseo este modelo, no descargar nada: el visor
+      //reutiliza el parseo (ahorra decenas de MB de transferencia+reparseo).
+      getModelsIndex().then(idx => {
+        const entry = Object.keys(idx).find(k => idx[k].replace("./", "") === info.name);
+        if (entry) setEngineModelId(entry);
+        const cached = entry && (window as any).engineRef?.modelManager?.has(entry);
+        if (cached) return;
+        RequestFileWithMime( "./" + src )
+          .then(res=>{
+            setContent(res);
+        });
+      });
+      return;
+    }
     if(mime == "text"){
       RequestFile( src )
         .then(res=>{
-          setContent(atob(res));
+          setContent(decodeBase64Utf8(res));
       });
     }else{
       console.warn(src);
@@ -39,12 +111,20 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
           setContent(res);
       });
     }
+    return () => { console.info(`[Multimedia] unmount '${info.name}'`); };
   }, [] );
+
+  //*Stable reference: a new object on every render made InputScript treat its props as changed
+  const scriptControls = useMemo(() => ({
+    Enter: (e: React.KeyboardEvent) => { e.preventDefault(); }
+  }), []);
 
   const updateTextContent = (content: string) => {
     const route = info.route;
     Request({route: route, action: "update", content: content})
     .then((response) => {
+      //*The editor preview caches the project scripts (for "include"): refresh them after saving
+      RenderEngine.getInstance()?.chaosInstance?.invalidateScriptsCache?.();
       Swal.fire("Saved", "", "success");
       return JSON.parse(response);
     });
@@ -59,9 +139,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
           fatherStyle={"bg-black bg-opacity-70"}
           defaultValue={content}
           id={editorId}
-          onControl={{Enter:(e)=>{
-            e.preventDefault(); 
-          }}}
+          onControl={scriptControls}
           bottomRightSlot={
             <ToolbarButton
               text="Save changes"
@@ -113,10 +191,31 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
       />
     );
   }
+  const unsupported = (src: string) => {
+    return(
+      <div className='mx-auto my-auto text-center text-white text-sm p-4'>
+        <div>Sin vista previa para este tipo de archivo</div>
+        <div className='text-xs text-gray-300 mt-1'>{info.name} ({mime || "mime desconocido"})</div>
+      </div>
+    );
+  }
   const switcher = (src: string) => {
     //if(show && mime != "" && activateSwitch && src != ""){
     if(show && mime != "" && activateSwitch){
-      return {text,audio,video,image}[mime](src);
+      //*Sin contenido aun: no montar nada (un fetch("") resolveria contra la
+      //propia pagina y envenenaria al visor 3D con HTML en vez del .glb).
+      if(!src && !engineModelId) return <>Cargando...</>;
+      //*Ruteo por extension para modelos: el mime olfateado por el backend
+      //para .glb es incierto (octet-stream u otro) y no debe tumbar el visor.
+      if (/\.glb$/i.test(info.name)) return <ModelPreview src={src} name={info.name} engineModelId={engineModelId} />;
+      if (/\.gltf$/i.test(info.name)) {
+        return <div className='mx-auto my-auto text-center text-white text-sm p-4'>
+          <div>Solo se soportan GLB binarios en el MVP (.gltf suelto no)</div>
+          <div className='text-xs text-gray-300 mt-1'>{info.name}</div>
+        </div>;
+      }
+      const renderer = {text,audio,video,image}[mime] ?? unsupported;
+      return renderer(src);
     }
     return <>No content to show {show? "true" : "false"} {mime}</>
   }

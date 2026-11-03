@@ -2,6 +2,7 @@ import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
 import { TextLine } from "../logic/Misc.ts";
 import EngTexture from "./EngTexture.ts";
 import { RgbSplitParams } from "./RgbSplit.ts";
+import type { GridState, GridView } from "./GridHelper.ts";
 
 export abstract class RenderMiscForDebugInterface<T extends CanvasRenderingContext2D|GPUCanvasContext>{
   abstract drawObjectLimits(ctx:T, object: ObjectRenderingData, canvasResolution: {width:number, height:number}, cameraZ:number) : void;
@@ -24,7 +25,20 @@ export default abstract class RenderMiscInterface<T extends CanvasRenderingConte
   abstract setGlobalBlur(ctx:T, radiusPx:number) : void;
   abstract setGlobalRgbSplit(ctx:T, params:RgbSplitParams|null) : void;
   abstract setGlobalAnisotropy(ctx:T, level:number) : void;
+  abstract setGlobalLighting(ctx:T, mode:number) : void;
+  abstract setGlobalLightingParams(ctx:T, params:{azim?:number;elev?:number;ambient?:number;shininess?:number;specStrength?:number;intensity?:number}) : void;
+  /** Tonemapping de mallas 3D ("none" | "aces" | "agx" | "neutral"). */
+  abstract setGlobalToneMapping(ctx:T, mode:string) : void;
+  /** Exposicion de mallas 3D (default 1). */
+  abstract setGlobalExposure(ctx:T, exposure:number) : void;
+  /** Bloom de mallas 3D (null = apagado). */
+  abstract setGlobalBloom(ctx:T, bloom:{ enabled?: boolean; threshold?: number; intensity?: number; radius?: number } | null) : void;
+  /** Oclusion ambiental SSAO de mallas 3D (null = apagado). */
+  abstract setGlobalAO(ctx:T, ao:{ enabled?: boolean; radius?: number; intensity?: number; bias?: number; power?: number; debug?: boolean } | null) : void;
+  abstract setGlobalLightingEye(ctx:T, x:number, y:number, z:number) : void;
+  abstract setGridState(ctx:T, state:GridState|null, view:GridView|null) : void;
   abstract drawImage(texture: EngTexture, object:ObjectRenderingData, ctx:T) : void;
+  abstract drawMesh(modelId: string, ppu: number, object:ObjectRenderingData, ctx:T) : void;
   
   abstract createRepeatPattern(texture: ImageBitmap, repeatOption: string, ctx:T) : any; //TODO: RepeatPattern blocks AnimatedTextures and viceversa
   abstract applyPatternTransformation( object:ObjectRenderingData ): void;

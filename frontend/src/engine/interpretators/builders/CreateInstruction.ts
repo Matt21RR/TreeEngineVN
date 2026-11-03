@@ -5,7 +5,7 @@ import { TokenType } from "../Token.ts";
 
 class CreateInstruction extends InstructionInterface{
   isOfThisType(instruction): Dictionary {
-    const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger", "Actor", "StageMark"];
+    const creatableObjects = ["GraphObject","ModelObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger", "Actor", "StageMark"];
     let result = this.conditionsChecker(instruction, {
       0: {type: [TokenType.word, TokenType.text]},
       1: {type: TokenType.operator, wordMatch: "="},
@@ -62,6 +62,12 @@ class CreateInstruction extends InstructionInterface{
           engine.graphArray.push(new engine.constructors.graphObject(${dynaVarName}))`
         );
         break;
+      case "ModelObject":
+        res.push(
+          `Object.assign(${dynaVarName} ,{id:${id}});
+          engine.graphArray.push(new engine.constructors.modelObject(${dynaVarName}))`
+        );
+        break;
       case "TextureAnim":
         res.push(
           `let data${dynaVarName} = {
@@ -69,10 +75,7 @@ class CreateInstruction extends InstructionInterface{
               id:${id}
           };
           Object.assign(data${dynaVarName},${dynaVarName}[1]);
-          console.log(engine.textureManager.textureAnims);
-          const zepto = new engine.constructors.textureAnim(data${dynaVarName});
-          console.log(zepto);
-          engine.textureManager.textureAnims.push(zepto);`
+          engine.textureManager.textureAnims.push(new engine.constructors.textureAnim(data${dynaVarName}));`
         );
         break;
       case "Trigger":

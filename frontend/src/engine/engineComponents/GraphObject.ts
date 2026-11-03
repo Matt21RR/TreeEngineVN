@@ -146,7 +146,11 @@ class GraphObject extends GraphObjectDataType{
       value: null
     },
     ignoreWorldRotation: 0,
-    perspDepth: { z: 0, p: 0 }
+    perspDepth: { z: 0, p: 0 },
+    meshPpu: 0,
+    meshView: { x: 0, y: 0, z: 0, k: 0, s: 0 },
+    meshScreenPx: 0,
+    meshLodPx: 0
   };
 
   static atribsNames = [];
@@ -155,7 +159,8 @@ class GraphObject extends GraphObjectDataType{
 
   constructor(graphInfo: Dictionary = {}){
     super();
-    GraphObject.atribsNames = getClassAttribs(this,Object.keys(GraphObject.dataTypes));//Todo: Consider do this once
+    const ctorDataTypes = (this.constructor as any).dataTypes ?? GraphObject.dataTypes;
+    GraphObject.atribsNames = getClassAttribs(this,Object.keys(ctorDataTypes));//Todo: Consider do this once
     this._id =              graphInfo.id ?? "error";
     this._enabled =         graphInfo.enabled ?? false;//exclude from calculation and renderin
 
@@ -593,7 +598,8 @@ class GraphObject extends GraphObjectDataType{
       throw new Error("the id for the clonning operation that uses the object with id '"+this._id+"' is not defined");
 
     let graphData = new Object();
-    GraphObject.atribsNames.forEach(element => {
+    const ctorDataTypes = (this.constructor as any).dataTypes ?? GraphObject.dataTypes;
+    getClassAttribs(this,Object.keys(ctorDataTypes)).forEach(element => {
         Object.assign(graphData,{[element] : this[element]});
     });
     Object.assign(graphData,{id:cloneId});
@@ -602,7 +608,8 @@ class GraphObject extends GraphObjectDataType{
 
   dump(){
     let d:Dictionary = {};
-    GraphObject.atribsNames.map(key => {
+    const ctorDataTypes = (this.constructor as any).dataTypes ?? GraphObject.dataTypes;
+    getClassAttribs(this,Object.keys(ctorDataTypes)).map(key => {
 
       d[key] = this[key];
     });

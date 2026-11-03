@@ -263,7 +263,10 @@ class Canvas extends React.Component<CanvasProps>{
       //*RENDER
       try {
         if(this.windowHasFocus){
+          const rendStart = performance.now();
           renderer(fps);
+          const st = (window as any).__FRAME_STATS;
+          if (st) { st.animateMs = this.animatingElapsed; st.rendererMs = performance.now() - rendStart; }
           this.fpsCounter++;
         }
       }
@@ -297,11 +300,54 @@ class Canvas extends React.Component<CanvasProps>{
       );
       RenderMisc.setWorldCameraPos(cam.origin.x, cam.origin.y);
       //Mismo near que RenderingDimentions (NEAR_PLANE) para oclusion coherente CPU/GPU
-      RenderMisc.setDepthRange(0.02, cam.maxZ ?? 10000);
+      RenderMisc.setDepthRange(Math.max(cam.nearPlane ?? 0.005, 0.0001), cam.maxZ ?? 10000);
       RenderMisc.setGlobalBlur(context as any, cam.globalBlur ?? 0);
       RenderMisc.setGlobalRgbSplit(context as any, cam.globalRgbSplit ?? null);
       RenderMisc.setGlobalAnisotropy(context as any, cam.globalAnisotropy ?? 2);
+      RenderMisc.setGlobalLighting(context as any, cam.globalLighting ?? 0);
+      RenderMisc.setGlobalLightingParams(context as any, cam.globalLight ?? {});
+      RenderMisc.setPointLights(context as any, cam.globalPointLights ?? []);
+      RenderMisc.setGlobalToneMapping(context as any, cam.globalToneMapping ?? "none");
+      RenderMisc.setGlobalExposure(context as any, cam.globalExposure ?? 1);
+      RenderMisc.setGlobalBloom(context as any, cam.globalBloom ?? null);
+      RenderMisc.setGlobalAO(context as any, cam.globalAO ?? null);
+      //*Ojo de camara en mundo para V = normalize(eye - fragWorld): mismo
+      //pivote que RenderingDimentions (perspectiva = ojo, orto = posicion).
+      {
+        const cx = -cam.position.x + 0.5;
+        const cy = -cam.position.y + 0.5;
+        const cz = -cam.position.z + 0.56;
+        const resW = this.resolutionWidth ?? 0;
+        const resH = this.resolutionHeight ?? 0;
+        const halfAspect = resW > 0 && resH > 0 ? (resW / resH) / 2 : 0.88889;
+        const eyeX = cam.usePerspective ? -cx + halfAspect : cam.position.x;
+        const eyeY = cam.usePerspective ? -cy + (cam.origin?.y ?? 0.5) : cam.position.y;
+        const eyeZ = cam.usePerspective ? -cz : cam.position.z;
+        RenderMisc.setGlobalLightingEye(context as any, eyeX, eyeY, eyeZ);
+      }
+      //*Grid 3D de ayuda (WebGPU, anclado a mundo): snapshot de cámara por
+      //frame para proyectar igual que los objetos. Apagado = no-op.
+      RenderMisc.setGridState(context as any, {
+        enabled: cam.showGrid ?? false,
+        showXZ: (cam as any).showGridXZ !== false,
+        showXY: !!(cam as any).showGridXY,
+        showYZ: !!(cam as any).showGridYZ,
+        size: cam.gridSize ?? 4,
+        divisions: cam.gridDivisions ?? 16,
+        color: (cam as any).gridColor ?? "#8a93a6",
+        opacity: (cam as any).gridOpacity ?? 0.5,
+        showAxes: (cam as any).showAxes !== false,
+      }, {
+        camX: cam.position.x, camY: cam.position.y, camZ: cam.position.z,
+        originX: cam.origin?.x ?? 0.5, originY: cam.origin?.y ?? 0.5,
+        pitch: cam.position.pitch ?? 0, yaw: cam.position.yaw ?? 0, roll: cam.position.roll ?? 0,
+        fov: (cam as any).fov, maxZ: cam.maxZ ?? 10000,
+        usePerspective: !!cam.usePerspective,
+        width: this.resolutionWidth ?? 0, height: this.resolutionHeight ?? 0,
+      });
       RenderMisc.render();
+      //*Tiempos de CPU del frame para herramientas/benchmark (ms).
+      (window as any).__FRAME_STATS = { cpuTotalMs: total, orderingTime, renderingOrdTime, infoAdjudicationTime, drawingTime };
 
       if(this.showFps){
         const mouse = this.renderEngine.mouse;

@@ -29,6 +29,94 @@ function rotate3DJS(
   return [x3, y3, z2];
 }
 
+/** Inversa exacta de rotate3DJS (rotacion ortonormal: deshace roll, pitch y yaw en ese orden). */
+function rotate3DInverseJS(
+  point: [number, number, number],
+  roll: number, pitch: number, yaw: number
+): [number, number, number] {
+  const cr = Math.cos(roll),  sr = Math.sin(roll);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const cy = Math.cos(yaw),   sy = Math.sin(yaw);
+
+  const x1 = point[0] * cr + point[1] * sr;
+  const y2 = -point[0] * sr + point[1] * cr;
+  const z2 = point[2];
+
+  const y1 = y2 * cp + z2 * sp;
+  const z1 = -y2 * sp + z2 * cp;
+
+  const x0 = x1 * cy - z1 * sy;
+  const z0 = x1 * sy + z1 * cy;
+  return [x0, y1, z0];
+}
+
+/**
+ * Caja orientada de un modelo 3D relativa al ojo de la camara. Las esquinas
+ * se calculan igual que el vertex shader de mallas: local * escala ->
+ * orientacion propia (roll/pitch/yaw) -> rotacion de mundo.
+ */
+interface ModelBoxView {
+  /** El ojo esta dentro de la caja: el modelo nunca se descarta. */
+  inside: boolean;
+  /** Todas las esquinas tras el plano cercano (no se ve nada). */
+  allBehind: boolean;
+  /** Alguna esquina tras el plano cercano (la caja lo cruza). */
+  anyBehind: boolean;
+  /** Z (relativa al ojo) de la esquina mas cercana. */
+  minZ: number;
+  /** Offsets de las 8 esquinas respecto al centro, ya rotados (unidades mundo). */
+  ox: Float64Array; oy: Float64Array; oz: Float64Array;
+  /** Mayor |offset| en x/y (cull ortografico). */
+  maxAbsX: number; maxAbsY: number;
+}
+
+const boxScratch: ModelBoxView = {
+  inside: false, allBehind: false, anyBehind: false, minZ: 0,
+  ox: new Float64Array(8), oy: new Float64Array(8), oz: new Float64Array(8),
+  maxAbsX: 0, maxAbsY: 0,
+};
+
+/** Margen relativo del test "ojo dentro de la caja" (evita parpadeo en el borde). */
+const INSIDE_BOX_MARGIN = 1.01;
+
+function computeModelBox(
+  half: [number, number, number], scale: number,
+  roll: number, pitch: number, yaw: number,
+  useWorld: boolean, wRoll: number, wPitch: number, wYaw: number,
+  cx: number, cy: number, cz: number, near: number
+): ModelBoxView {
+  const out = boxScratch;
+  const hx = half[0] * scale, hy = half[1] * scale, hz = half[2] * scale;
+
+  //*Ojo dentro: el ojo (origen) en el espacio local de la caja.
+  let e: [number, number, number] = [-cx, -cy, -cz];
+  if (useWorld) e = rotate3DInverseJS(e, wRoll, wPitch, wYaw);
+  e = rotate3DInverseJS(e, roll, pitch, yaw);
+  out.inside = Math.abs(e[0]) <= hx * INSIDE_BOX_MARGIN
+    && Math.abs(e[1]) <= hy * INSIDE_BOX_MARGIN
+    && Math.abs(e[2]) <= hz * INSIDE_BOX_MARGIN;
+
+  let behind = 0;
+  let minZ = Infinity, maxAbsX = 0, maxAbsY = 0;
+  for (let i = 0; i < 8; i++) {
+    let c: [number, number, number] = [(i & 1) ? hx : -hx, (i & 2) ? hy : -hy, (i & 4) ? hz : -hz];
+    c = rotate3DJS(c, roll, pitch, yaw);
+    if (useWorld) c = rotate3DJS(c, wRoll, wPitch, wYaw);
+    out.ox[i] = c[0]; out.oy[i] = c[1]; out.oz[i] = c[2];
+    const z = cz + c[2];
+    if (z < near) behind++;
+    if (z < minZ) minZ = z;
+    if (Math.abs(c[0]) > maxAbsX) maxAbsX = Math.abs(c[0]);
+    if (Math.abs(c[1]) > maxAbsY) maxAbsY = Math.abs(c[1]);
+  }
+  out.allBehind = behind === 8;
+  out.anyBehind = behind > 0;
+  out.minZ = minZ;
+  out.maxAbsX = maxAbsX;
+  out.maxAbsY = maxAbsY;
+  return out;
+}
+
 export class SharedDisplayCalcs{
   private static instance: SharedDisplayCalcs;
 
@@ -36,6 +124,8 @@ export class SharedDisplayCalcs{
   public nDicoSet: Set<string> = new Set();
   public recalculateAll: boolean = false;
   public visibleRefs: Array<GraphObject> = [];
+  /** Ids de modelo ya reportados como desconocidos (aviso unico por id). */
+  public warnedUnknownModels: Set<string> = new Set();
 
   static getInstance(){
     return SharedDisplayCalcs.instance;
@@ -93,7 +183,10 @@ export function generateObjectsDisplayDimentions(
     //Near plane en unidades mundo: con objectZ -> 0 la escala 1/Z diverge a
     //infinito y en negativo espejea; por debajo de esto se descarta el objeto
     //(la camara esta pegada/atravesando su plano).
-    const NEAR_PLANE = 0.02;
+    //camera.nearPlane (default 0.005): mismo valor que el depth range de la
+    //GPU (Canvas.tsx). Antes 0.02 fijo: recortaba el suelo en escenas
+    //escaladas muy pequenas (p.ej. habitaciones a radio 0.3 en la galeria).
+    const NEAR_PLANE = Math.max(camera.nearPlane ?? 0.005, 0.0001);
     const cameraOriginYDelta = (cameraOriginY-0.5)*canvasResolutionHeight;
     const finalCameraHorizontalPixelOrigin = (camera.origin.x-0.5)*canvasResolutionWidth;
 
@@ -128,6 +221,26 @@ export function generateObjectsDisplayDimentions(
         const textureName = gObject._textureName;
         const texRef: EngTexture|null = solvedTexture ?? (textureName ? textureManager.getTexture(textureName) : null);
 
+        //*Modelos 3D (ModelObject): sin textura 2D; su tamano visible sale de
+        //la caja/esfera del modelo. Carga perezosa (ModelManager): si el modelo
+        //nunca se cargo no hay caja, y se pide por cercania al ojo (ver mas
+        //abajo); si se cargo alguna vez su caja se recuerda y se pide al volver
+        //a ser visible. Hasta estar en GPU queda pendiente de recalculo. Un id
+        //que no existe se avisa UNA vez (los ids distinguen mayusculas).
+        const modelManager = engine.modelManager;
+        const modelId: string | null = (gObject as any)._model ?? null;
+        const modelRadius = modelId ? modelManager.getBoundsRadius(modelId) : 0;
+        const modelBoundsUnknown = !!modelId && modelRadius <= 0;
+        if (modelBoundsUnknown && !modelManager.isKnown(modelId!) && !modelManager.isLoadedOrLoading(modelId!)) {
+          const warned = SharedDisplayCalcs.getInstance().warnedUnknownModels;
+          if (!warned.has(modelId!) && modelManager.hasIndex()) {
+            warned.add(modelId!);
+            console.error(`ModelObject '${gObject._id}': modelo '${modelId}' no esta en models.json. Disponibles: [${modelManager.indexedIds().join(", ")}]. Revisa game/models/models.json (ids case-sensitive).`);
+          }
+          gObject._pendingRenderingRecalculation = true;
+          continue;
+        }
+
         const parentRef = gObject._parentRef;
         //L4: el hijo hereda posicion Y escala del padre (offsets en espacio del padre)
         let parentScaleAccum = 1;
@@ -144,6 +257,13 @@ export function generateObjectsDisplayDimentions(
         let worldX = gObject._x * parentScaleAccum + originX;
         let worldY = gObject._y * parentScaleAccum + originY;
         let worldZ = accumZ;
+        //*Escala modelo->mundo: fitRadius (radio deseado en unidades mundo,
+        //util cuando el tamano real del modelo no se conoce al crearlo) o la
+        //escala acumulada normal.
+        const fitRadius: number = (gObject as any)._fitRadius ?? 0;
+        const modelScale = modelId && fitRadius > 0 && modelRadius > 0
+          ? (fitRadius / modelRadius) * parentScaleAccum
+          : gObject._accomulatedScale;
 
         if (hasWorldRotation && !gObject._ignoreParallax) {
           const camPosX = camera.position.x;
@@ -166,7 +286,39 @@ export function generateObjectsDisplayDimentions(
           worldZ = rotated[2] + pivotZ;
         }
 
-        const isBehindCamera = worldZ + camCenterZ < NEAR_PLANE;
+        //*Modelo nunca cargado: sin caja todavia, se pide cuando su centro
+        //esta cerca del ojo (lazyLoadDistance) y se espera a tenerlo.
+        if (modelBoundsUnknown) {
+          const ex = worldX + camCenterX - halfAspectWidth;
+          const ey = worldY + camCenterY - cameraOriginY;
+          const ez = worldZ + camCenterZ;
+          if (Math.sqrt(ex * ex + ey * ey + ez * ez) <= modelManager.lazyLoadDistance) {
+            modelManager.requestModel(modelId!);
+          }
+          gObject._pendingRenderingRecalculation = true;
+          continue;
+        }
+
+        //*Modelos 3D: culling por su caja orientada, no por el centro. Coords
+        //relativas al ojo (px = c0 + PL*(world + camCenter - origen optico)).
+        //Con el ojo dentro de la caja nunca se descarta, mire donde mire.
+        let box: ModelBoxView | null = null;
+        if(modelId){
+          const half = engine.modelManager.getBoundsHalfExtents(modelId);
+          if(half){
+            box = computeModelBox(
+              half, modelScale,
+              gObject._rotate, gObject._pitch, gObject._yaw,
+              hasWorldRotation && !gObject._ignoreParallax, worldRoll, worldPitch, worldYaw,
+              worldX + camCenterX - halfAspectWidth, worldY + camCenterY - cameraOriginY, worldZ + camCenterZ,
+              NEAR_PLANE
+            );
+          }
+        }
+
+        const isBehindCamera = box
+          ? (!box.inside && box.allBehind)
+          : worldZ + camCenterZ < NEAR_PLANE;
         //*Equivalence-safe fast path: repeating the behind-camera check with the
         //same accumulated z and an unchanged camera yields the same discard.
         if(isBehindCamera && !recalculateAll && gObject._behindStamp === accumZ){
@@ -215,11 +367,40 @@ export function generateObjectsDisplayDimentions(
               objectWidth = canvasResolutionHeight*objectScale*gObject._widthScale;
             }
           }
+          let meshPpu = 0;
+          if(modelId){
+            //1 unidad modelo = 1 unidad mundo; 1 unidad mundo = H px en orto.
+            meshPpu = canvasResolutionHeight * modelScale;
+            objectWidth = objectHeight = Math.max(modelRadius * 2 * meshPpu, 1);
+          }
 
           const cornerX = objectLeft - objectWidth*0.5;
           const cornerY = objectTop - objectHeight*0.5;
 
-          if(!gObject._repeatPattern){
+          if(box){
+            //*Modelo en orto: rectangulo de las esquinas de su caja (x1.5 por
+            //el foreshorten local de la GPU). Ojo dentro: nunca se descarta.
+            dimentionsPack.repeatPattern = false;
+            dimentionsPack.meshScreenPx = Infinity;
+            //LOD en orto: px por unidad modelo (x1.5: foreshorten local de la GPU)
+            dimentionsPack.meshLodPx = box.inside ? 0 : canvasResolutionHeight*modelScale*1.5;
+            if(!box.inside){
+              const exX = box.maxAbsX*canvasResolutionHeight*1.5 + 2;
+              const exY = box.maxAbsY*canvasResolutionHeight*1.5 + 2;
+              if(objectLeft - exX > canvasResolutionWidth || objectTop - exY > canvasResolutionHeight ||
+                 objectLeft + exX < 0 || objectTop + exY < 0){
+                gObject._pendingRenderingRecalculation = true;
+                continue;
+              }
+              //*Diminuto en pantalla: ni se dibuja ni se pide su carga.
+              const screenPx = 2*Math.max(box.maxAbsX, box.maxAbsY)*canvasResolutionHeight;
+              dimentionsPack.meshScreenPx = screenPx;
+              if(screenPx < modelManager.minScreenPx){
+                gObject._pendingRenderingRecalculation = true;
+                continue;
+              }
+            }
+          }else if(!gObject._repeatPattern){
             dimentionsPack.repeatPattern = false;
             //La GPU rota los vertices (roll/pitch/yaw propios + rotacion mundo):
             //la caja sin rotar subestima los pixeles reales y produce pop-in/out
@@ -238,6 +419,13 @@ export function generateObjectsDisplayDimentions(
               gObject._pendingRenderingRecalculation = true;
               continue;
             }
+          }
+
+          //*Visible pero aun no en GPU (expulsado o en carga): pedirlo y esperar.
+          if(modelId && !modelManager.has(modelId)){
+            modelManager.requestModel(modelId);
+            gObject._pendingRenderingRecalculation = true;
+            continue;
           }
 
           dimentionsPack.x  = objectLeft;
@@ -262,6 +450,113 @@ export function generateObjectsDisplayDimentions(
           //Orto: sin perspectiva por vertice (la GPU conserva su foreshorten local historico)
           dimentionsPack.perspDepth.z = 0;
           dimentionsPack.perspDepth.p = 0;
+          dimentionsPack.meshPpu = meshPpu;
+          dimentionsPack.meshView.k = 0;
+
+        }else if(box){
+          //*Modelo 3D en perspectiva. La GPU lo proyecta relativo al OJO (ver
+          //meshView y el vertex shader de mallas), asi que funciona aunque el
+          //centro quede tras la camara (camara dentro de una habitacion).
+          //S(Z) = toAdd*(1/Z - invFar)/(1 - invFar) es la misma escala que
+          //perspectiveDiff*toAddSizeHelper; K = px por unidad a Z = 1.
+          const relX = worldX + camCenterX - halfAspectWidth;
+          const relY = worldY + camCenterY - cameraOriginY;
+          const objectZ = worldZ + camCenterZ;
+          const invFar = 1/camera.maxZ;
+          const K = canvasResolutionHeight*toAddSizeHelper/(1 - invFar);
+          const c0x = canvasResolutionWidth*0.5;
+          const c0y = canvasResolutionHeight*cameraOriginY;
+
+          //Tamano proyectado (lado mayor del rectangulo de la caja, px).
+          //Infinity = ojo dentro o caja cruzando el plano cercano (no aplica).
+          dimentionsPack.meshScreenPx = Infinity;
+          //*LOD: px por unidad modelo en la ESQUINA MAS CERCANA de la caja
+          //(conservador: en escenas grandes vistas de cerca, lo proximo al ojo
+          //se ve mas grande que el centro). 0 = nivel original (ojo dentro o
+          //caja cruzando el plano cercano).
+          dimentionsPack.meshLodPx = (!box.inside && !box.anyBehind)
+            ? K*(1/box.minZ - invFar)*modelScale
+            : 0;
+          if(!box.inside){
+            //Lejos: hasta la esquina mas cercana es diminuta.
+            if(!box.anyBehind && toAddSizeHelper*(1/box.minZ - invFar)/(1 - invFar) <= 0.003){
+              gObject._pendingRenderingRecalculation = true;
+              continue;
+            }
+            //Fuera de pantalla: rectangulo de las 8 esquinas proyectadas. Si la
+            //caja cruza el plano cercano no se proyecta (conservador: se dibuja).
+            if(!box.anyBehind){
+              let minPx = Infinity, maxPx = -Infinity, minPy = Infinity, maxPy = -Infinity;
+              for (let i = 0; i < 8; i++) {
+                const f = K*(1/(objectZ + box.oz[i]) - invFar);
+                const px = c0x + (relX + box.ox[i])*f;
+                const py = c0y + (relY + box.oy[i])*f;
+                if(px < minPx) minPx = px;
+                if(px > maxPx) maxPx = px;
+                if(py < minPy) minPy = py;
+                if(py > maxPy) maxPy = py;
+              }
+              if(minPx > canvasResolutionWidth || minPy > canvasResolutionHeight || maxPx < 0 || maxPy < 0){
+                gObject._pendingRenderingRecalculation = true;
+                continue;
+              }
+              //*Diminuto en pantalla (< minScreenPx): ni se dibuja ni se pide su
+              //carga. Un modelo de pocos px cuesta lo mismo que a pantalla
+              //completa (todos sus triangulos) y no aporta nada visible.
+              const screenPx = Math.max(maxPx - minPx, maxPy - minPy);
+              dimentionsPack.meshScreenPx = screenPx;
+              if(screenPx < modelManager.minScreenPx){
+                gObject._pendingRenderingRecalculation = true;
+                continue;
+              }
+            }
+          }
+
+          //*Visible pero aun no en GPU (expulsado o en carga): pedirlo y esperar.
+          if(!modelManager.has(modelId!)){
+            modelManager.requestModel(modelId!);
+            gObject._pendingRenderingRecalculation = true;
+            continue;
+          }
+
+          //Datos de pantalla del centro (orden, depuracion, texto). Con el
+          //centro tras el plano cercano no hay proyeccion: valores neutros.
+          const centerVisible = objectZ > NEAR_PLANE;
+          const pl = centerVisible ? K*(1/objectZ - invFar) : 0;
+          perspectiveScale = centerVisible ? pl/canvasResolutionHeight : 1;
+          const meshPpu = centerVisible ? pl*modelScale : 1;
+          const objectLeft = centerVisible ? c0x + relX*pl : c0x;
+          const objectTop = centerVisible ? c0y + relY*pl : canvasResolutionHeight*0.5;
+          const objectSize = centerVisible ? Math.max(modelRadius*2*meshPpu, 1) : canvasResolutionWidth;
+
+          dimentionsPack.repeatPattern = false;
+          dimentionsPack.x  = objectLeft;
+          dimentionsPack.y  = objectTop;
+          dimentionsPack.z  = objectZ;
+          dimentionsPack.corner.x = objectLeft - objectSize*0.5;
+          dimentionsPack.corner.y = objectTop - objectSize*0.5;
+
+          dimentionsPack.base.x = worldX;
+          dimentionsPack.base.y = worldY;
+          dimentionsPack.base.z = worldZ;
+
+          dimentionsPack.sizeInDisplay  = perspectiveScale;
+          dimentionsPack.width  = objectSize;
+          dimentionsPack.height  = objectSize;
+
+          dimentionsPack.rotation = gObject._rotate;
+          dimentionsPack.pitch = gObject._pitch;
+          dimentionsPack.yaw = gObject._yaw;
+          dimentionsPack.roll = gObject._rotate;
+          dimentionsPack.ignoreWorldRotation = gObject._ignoreParallax ? 1 : 0;
+          dimentionsPack.perspDepth.z = objectZ;
+          dimentionsPack.perspDepth.p = pl;
+          dimentionsPack.meshPpu = meshPpu;
+          dimentionsPack.meshView.x = relX;
+          dimentionsPack.meshView.y = relY;
+          dimentionsPack.meshView.z = objectZ;
+          dimentionsPack.meshView.k = K;
+          dimentionsPack.meshView.s = modelScale;
 
         }else{
           let objectLeft = worldX + camCenterX;
@@ -311,6 +606,13 @@ export function generateObjectsDisplayDimentions(
               objectWidth = canvasResolutionHeight*objectScale*gObject._widthScale;
             }
           }
+          let meshPpu = 0;
+          if(modelId){
+            //perspectiveLayer = px por unidad mundo a esta profundidad;
+            //objectScale ya incluye perspectiveScale: usar la base acumulada.
+            meshPpu = perspectiveLayer * gObject._accomulatedScale;
+            objectWidth = objectHeight = Math.max(modelRadius * 2 * meshPpu, 1);
+          }
 
           const cornerX = objectLeft - objectWidth*0.5;
           const cornerY = objectTop - objectHeight*0.5;
@@ -359,6 +661,7 @@ export function generateObjectsDisplayDimentions(
           //cada vertice con Zc/Zv en vez del heuristico cameraDist.
           dimentionsPack.perspDepth.z = objectZ;
           dimentionsPack.perspDepth.p = perspectiveLayer;
+          dimentionsPack.meshPpu = meshPpu;
         }
 
         //TODO: texts requires continous recomputing

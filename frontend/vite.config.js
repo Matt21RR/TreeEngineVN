@@ -10,5 +10,12 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  //*ktx2-encoder carga su WASM con new URL(..., import.meta.url): el
+  //pre-bundling de Vite rompe esa ruta (texturas BC7, ver TexEncode).
+  optimizeDeps: { exclude: ["ktx2-encoder"] },
+  //*ChaosInterpreter identifica los builders por constructor.name: sin esto
+  //el minificado de produccion renombra las clases y rompe esas busquedas.
+  //(Vite 8 usa Rolldown/Oxc: la opcion `esbuild.keepNames` no tendria efecto).
+  build: { rolldownOptions: { output: { keepNames: true } } },
   
 })
