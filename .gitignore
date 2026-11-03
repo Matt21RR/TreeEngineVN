@@ -14,6 +14,10 @@ frontend/wailsjs/go/main/App.js
 # Harnesses y codigo de pruebas (no versionar)
 frontend/animationtest.html
 frontend/blurtest.html
+frontend/modelengine.html
+frontend/modelharness.html
+frontend/modelscene.html
+frontend/modelspike.html
 frontend/mouserotatetest.html
 frontend/projrepro.html
 frontend/repro.html
