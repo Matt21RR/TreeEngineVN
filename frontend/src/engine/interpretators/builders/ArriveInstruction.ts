@@ -48,24 +48,24 @@ export default class ArriveInstruction extends InstructionInterface{
     }
     res.push(
       `
-        const stageMark = engine.stageMarks.fastGet("${markId}").point;
+        const stageMark${dynaVarName} = engine.stageMarks.fastGet("${markId}").point;
 
         let data1${dynaVarName} = {
           id:"animation1${dynaVarName}",
           enabled:true,
           relatedTo:"${actorId}->ActorParent",
           keyframes:{ 
-            0: {x: stageMark.x - 2, y: stageMark.y, z:stageMark.z},
-            ${duration ?? '500'}: stageMark 
+            0: {x: stageMark${dynaVarName}.x - 2, y: stageMark${dynaVarName}.y, z:stageMark${dynaVarName}.z},
+            ${duration ?? '500'}: stageMark${dynaVarName} 
           }
         };
 
-        const actor = engine.actors.get("${actorId}");
+        const actor${dynaVarName} = engine.actors.get("${actorId}");
 
         let data2${dynaVarName} = {
           id: "animation2${dynaVarName}",
           enabled: true,
-          relatedTo: actor.getActiveMask().id,
+          relatedTo: actor${dynaVarName}.getActiveMask().id,
           keyframes: { ${duration ?? '1000'}: {opacity:1} },
         };
         

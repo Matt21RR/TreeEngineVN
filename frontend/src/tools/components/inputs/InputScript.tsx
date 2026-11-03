@@ -43,6 +43,11 @@ export default function InputScript(props: InputScriptProps) {
   const lastErrorsFingerprintRef = useRef<string>("");
   const fullInterpretationTimerRef = useRef<number>(-1);
   const diagnosticsTimerRef = useRef<number>(-1);
+  const selectionTimerRef = useRef<number>(-1);
+  //*Sequence id of the latest full interpretation: older (slower) responses are discarded
+  const interpretationSeqRef = useRef<number>(0);
+  //*Text of the last full interpretation, to skip re-interpreting an unchanged script
+  const lastInterpretedTextRef = useRef<string | null>(null);
 
   const id = useMemo(() => {
     return props.id ?? ("inputScript" + String(window.performance.now()).replaceAll(".", ""));
@@ -56,20 +61,28 @@ export default function InputScript(props: InputScriptProps) {
   useEffect(() => {
     // @ts-ignore
     $('#' + id).highlightWithinTextarea({
-      highlight: (input) => [
+      highlight: (input: string) => {
+        //*The node block regex is expensive (tempered lazy scan): run it once and share
+        //*fresh copies of its ranges with the 3 node rules (the plugin mutates range objects)
+        const nodeRanges: Array<[number, number]> = [];
+        for (const match of input.matchAll(/node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm)) {
+          nodeRanges.push([match.index!, match.index! + match[0].length]);
+        }
+        const nodeRangesCopy = () => nodeRanges.map(range => [range[0], range[1]] as [number, number]);
+        return [
         //NODE delimitation command
         {
-          highlight: /node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm,
+          highlight: nodeRangesCopy(),
           secondPassRegex: /((?<!\n)^node)( |\t)+:( |\t)+\w+( |\t)*\n/g,
           className: 'border-t-3 border-l-1 text-rose-400 m-l-[-1px]'
         },
         {
-          highlight: /node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm,
+          highlight: nodeRangesCopy(),
           secondPassRegex: /(( *)node( |\t)+ends( |\t)*(?!\n)$)/gm,
           className: 'border-b-3 border-r-3 text-rose-400'
         },
         {
-          highlight: /node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm,
+          highlight: nodeRangesCopy(),
           className: 'bg-neutral-900'
         },
         //ACTOR commands
@@ -148,7 +161,8 @@ export default function InputScript(props: InputScriptProps) {
             title: error.message
           };
         })
-      ]
+        ];
+      }
     });
 
     const handleClickOutside = (e: MouseEvent) => {
@@ -163,19 +177,23 @@ export default function InputScript(props: InputScriptProps) {
     };
   }, [id]);
 
+  //*Only when the loaded content (or the editor) really changes: depending on the whole `props`
+  //*object re-ran this on every parent render, wiping unsaved edits and re-interpreting everything
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.value = props.defaultValue ?? "";
     }
     refreshDiagnostics();
-    runFullInterpretation();
+    runFullInterpretation(true);
     $('#' + id).trigger("load");
-  },[props]);
+  },[props.defaultValue, id]);
 
   useEffect(() => {
     return () => {
       if (fullInterpretationTimerRef.current != -1) { clearTimeout(fullInterpretationTimerRef.current); }
       if (diagnosticsTimerRef.current != -1) { clearTimeout(diagnosticsTimerRef.current); }
+      if (selectionTimerRef.current != -1) { clearTimeout(selectionTimerRef.current); }
+      interpretationSeqRef.current++; //Discards any interpretation still in flight
     };
   }, []);
 
@@ -186,8 +204,29 @@ export default function InputScript(props: InputScriptProps) {
     }
   };
 
+  const clearSelectionTimer = () => {
+    if (selectionTimerRef.current != -1) {
+      clearTimeout(selectionTimerRef.current);
+      selectionTimerRef.current = -1;
+    }
+  };
+
+  const interpretSelection = () => {
+    const element = inputRef.current;
+    if (!element) { return; }
+    const fragment = element.value.substring(element.selectionStart, element.selectionEnd);
+    if (fragment == "") { return; }
+    const chaos = RenderEngine.getInstance().chaosInstance;
+    try {
+      setSelectedInterpretation(chaos.fragmentKreator(fragment));
+    } catch (error) {
+      console.error("Error while interpreting the selected fragment: ", error);
+      setSelectedInterpretation(null);
+    }
+  };
+
   const handleSelectionChange = () => {
-    const element = $("#" + id).get(0) as HTMLTextAreaElement;
+    const element = inputRef.current;
     if (!element) { return; }
     const start = element.selectionStart;
     const end = element.selectionEnd;
@@ -199,19 +238,19 @@ export default function InputScript(props: InputScriptProps) {
     if (start == end && previous.start == previous.end && previous.start != -1) {
       return; //Collapsed selection unchanged span: no-op (ordinary caret move)
     }
-    const fragment = element.value.substring(start, end);
-    const chaos = RenderEngine.getInstance().chaosInstance;
-    if (fragment != "") {
-      try {
-        setSelectedInterpretation(chaos.fragmentKreator(fragment));
-      } catch (error) {
-        console.error("Error while interpreting the selected fragment: ", error);
-        setSelectedInterpretation(null);
+    clearSelectionTimer();
+    if (start != end) {
+      //*onSelect fires continuously while dragging: interpret only once the selection settles
+      selectionTimerRef.current = window.setTimeout(() => {
+        selectionTimerRef.current = -1;
+        interpretSelection();
+      }, 150);
+    } else {
+      //*Back to the full view: the last full interpretation is still valid unless the text changed
+      setSelectedInterpretation(null);
+      if (element.value != lastInterpretedTextRef.current) {
         scheduleFullInterpretation();
       }
-    } else {
-      setSelectedInterpretation(null);
-      scheduleFullInterpretation();
     }
   };
 
@@ -225,19 +264,30 @@ export default function InputScript(props: InputScriptProps) {
     }, 250);
   };
 
-  const runFullInterpretation = () => {
-    const element = $("#" + id).get(0) as HTMLTextAreaElement;
+  const runFullInterpretation = (force = false) => {
+    const element = inputRef.current;
     if (!element) { return; }
+    const text = element.value;
+    if (!force && text == lastInterpretedTextRef.current) { return; }
+    lastInterpretedTextRef.current = text;
     const chaos = RenderEngine.getInstance().chaosInstance;
+    const seq = ++interpretationSeqRef.current;
+    clearSelectionTimer();
     setSelectedInterpretation(null);
-    chaos.kreator(element.value)
+    //*previewKreator: no reload of every project script per call and no mutation of the engine's scenes/modules
+    chaos.previewKreator(text)
       .then((scenesAndModules: InterpretedData) => {
+        if (seq != interpretationSeqRef.current) { return; } //Stale: a newer interpretation was requested
         setInterpretedData(scenesAndModules);
+      })
+      .catch((error) => {
+        if (seq != interpretationSeqRef.current) { return; }
+        console.error("Error while interpreting the script: ", error);
       });
   };
 
   const refreshDiagnostics = () => {
-    const element = $("#" + id).get(0) as HTMLTextAreaElement;
+    const element = inputRef.current;
     if (!element) { return; }
     const chaos = RenderEngine.getInstance().chaosInstance;
     try {
@@ -267,35 +317,56 @@ export default function InputScript(props: InputScriptProps) {
     }, 250);
   };
 
+  //*Error rects are stored relative to the textarea CONTENT (box offset + scroll at capture time),
+  //*so scrolling doesn't need a DOM query + getBoundingClientRect per error on every scroll event
   const cacheErrorRects = () => {
-    const element = $("#" + id).get(0) as HTMLTextAreaElement;
+    const element = inputRef.current;
     if (!element) { return; }
     const errorSpans = $(element.parentElement).find(".hwt-highlights .hwt-error").get() as Array<HTMLElement>;
+    if (errorSpans.length == 0) {
+      errorRectsRef.current = [];
+      return;
+    }
+    const box = element.getBoundingClientRect();
+    const scrollTop = element.scrollTop;
+    const scrollLeft = element.scrollLeft;
     errorRectsRef.current = errorSpans.map(span=>{
       const rect = span.getBoundingClientRect();
       return {
         message: span.getAttribute("title") ?? "",
         rect: {
-          left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom
+          left: rect.left - box.left + scrollLeft,
+          top: rect.top - box.top + scrollTop,
+          right: rect.right - box.left + scrollLeft,
+          bottom: rect.bottom - box.top + scrollTop
         }
       };
     });
   };
 
-  const handleMouseHover = (e: React.MouseEvent) => {
+  const handleMouseHover = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    if (errorRectsRef.current.length == 0) {
+      if (hoveredError != null) { setHoveredError(null); }
+      return;
+    }
+    const element = e.currentTarget;
+    const box = element.getBoundingClientRect();
+    //*Mouse position in content coordinates
+    const x = e.clientX - box.left + element.scrollLeft;
+    const y = e.clientY - box.top + element.scrollTop;
     const hovered = errorRectsRef.current.find(entry=>{
       const rect = entry.rect;
-      return (
-        e.clientX >= rect.left && e.clientX <= rect.right &&
-        e.clientY >= rect.top && e.clientY <= rect.bottom
-      );
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
     });
     if (hovered) {
-      const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      setHoveredError({
-        message: hovered.message,
-        left: hovered.rect.left - box.left,
-        top: hovered.rect.bottom - box.top
+      const left = hovered.rect.left - element.scrollLeft;
+      const top = hovered.rect.bottom - element.scrollTop;
+      //*Only re-render when the tooltip really changes (mousemove fires constantly)
+      setHoveredError((current) => {
+        if (current != null && current.message == hovered.message && current.left == left && current.top == top) {
+          return current;
+        }
+        return { message: hovered.message, left, top };
       });
     } else {
       setHoveredError((current) => current != null ? null : current);
@@ -325,22 +396,39 @@ export default function InputScript(props: InputScriptProps) {
     //*EndDevelopMode
   };
 
-  const insertInstructionAtCaret = (text: string) => {
-    const element = $("#" + id).get(0) as HTMLTextAreaElement;
-    if (!element) { return; }
-    const start = element.selectionStart;
-    const end = element.selectionEnd;
-    const needsLeadingBreak = start > 0 && element.value[start - 1] != "\n";
-    const needsTrailingBreak = element.value[end] != undefined && element.value[end] != "\n";
-    const wrap = needsLeadingBreak ? "\r\n" : "";
-    const trailingBreak = needsTrailingBreak ? "\r\n" : "";
-    const insertion = wrap + text + trailingBreak;
+  //*Replaces the current selection with `text` as a native edit: keeps the undo history (Ctrl+Z)
+  //*and avoids rewriting the whole textarea value. The resulting "input" event drives
+  //*onChange -> action() and the highlighter, so nothing else has to be triggered by hand.
+  const insertTextAtSelection = (element: HTMLTextAreaElement, text: string) => {
+    if (document.activeElement !== element) { element.focus(); }
+    let inserted = false;
+    try {
+      inserted = (text == "")
+        ? (element.selectionStart == element.selectionEnd || document.execCommand("delete", false))
+        : document.execCommand("insertText", false, text);
+    } catch (error) {
+      inserted = false;
+    }
+    if (!inserted) {
+      //*Fallback (no undo history): direct range replacement + manual notifications
+      element.setRangeText(text, element.selectionStart, element.selectionEnd, "end");
+      action();
+      $(element).trigger("load");
+    }
+  };
 
-    element.value = element.value.substring(0, start) + insertion + element.value.substring(end);
-    element.selectionStart = element.selectionEnd = start + insertion.length;
-    element.focus();
-    action();
-    $('#' + id).trigger("load");
+  const insertInstructionAtCaret = (text: string) => {
+    const element = inputRef.current;
+    if (!element) { return; }
+    //*A blurred textarea keeps its selection, so focusing it restores the caret where it was
+    if (document.activeElement !== element) { element.focus(); }
+    const selStart = element.selectionStart;
+    const selEnd = element.selectionEnd;
+    const needsLeadingBreak = selStart > 0 && element.value[selStart - 1] != "\n";
+    const needsTrailingBreak = element.value[selEnd] != undefined && element.value[selEnd] != "\n";
+    const wrap = needsLeadingBreak ? "\n" : "";
+    const trailingBreak = needsTrailingBreak ? "\n" : "";
+    insertTextAtSelection(element, wrap + text + trailingBreak);
   };
 
   let height = props.height ? ' ' + props.height + ' ' : ' h-36 ';
@@ -356,7 +444,7 @@ export default function InputScript(props: InputScriptProps) {
           <textarea
             className={height + "w-full resize-none outline-none align-top border-none bg-transparent text-transparent caret-white p-2"}
             onBlur={(e) => {
-              const element = $("#" + id).get(0) as HTMLTextAreaElement;
+              const element = e.currentTarget;
               const start = element.selectionStart;
               const end = element.selectionEnd;
               caretPosWhenBlur.current = { start: start, end: end };
@@ -371,7 +459,6 @@ export default function InputScript(props: InputScriptProps) {
             onMouseUp={handleSelectionChange}
             onMouseMove={handleMouseHover}
             onMouseLeave={clearMouseHover}
-            onScroll={cacheErrorRects}
             onKeyUp={e => {
               if (e.key == "Tab") { e.preventDefault(); }
             }}
@@ -383,43 +470,27 @@ export default function InputScript(props: InputScriptProps) {
               } else {
                 if (e.key == 'Tab') {
                   e.preventDefault();
-                  const element = $("#" + id).get(0) as HTMLTextAreaElement;
+                  const element = e.currentTarget;
                   const start = element.selectionStart;
                   const end = element.selectionEnd;
 
                   if (e.shiftKey) {
-                    // set textarea value to: text before caret + tab + text after caret
-                    element.value = element.value.substring(0, start - 2) + element.value.substring(end);
-                    // put caret at right position again
-                    element.selectionStart =
-                      element.selectionEnd = start - 2;
+                    //*Outdent: remove up to 2 spaces right before the selection start (only spaces,
+                    //*and without deleting the selected text)
+                    let spaces = 0;
+                    while (spaces < 2 && start - spaces > 0 && element.value[start - spaces - 1] == " ") { spaces++; }
+                    if (spaces > 0) {
+                      element.setSelectionRange(start - spaces, start);
+                      insertTextAtSelection(element, "");
+                      element.setSelectionRange(start - spaces, end - spaces);
+                    }
                   } else {
-                    // set textarea value to: text before caret + tab + text after caret
-                    element.value = element.value.substring(0, start) +
-                      "  " + element.value.substring(end);
-
-                    // put caret at right position again
-                    element.selectionStart =
-                      element.selectionEnd = start + 2;
+                    insertTextAtSelection(element, "  ");
                   }
-
-                  action();
-                  $('#' + id).trigger("load");
                 }
-                if (e.key == 'Enter') { //Avoid autoscroll on enter
+                if (e.key == 'Enter') {
                   e.preventDefault();
-                  const element = $("#" + id).get(0) as HTMLTextAreaElement;
-                  const start = element.selectionStart;
-                  const end = element.selectionEnd;
-
-                  // set textarea value to: text before caret + tab + text after caret
-                  element.value = element.value.substring(0, start) +
-                    '\r\n' + element.value.substring(end);
-
-                  action();
-                  $('#' + id).trigger("load");
-                  // put caret at right position again
-                  element.selectionStart = element.selectionEnd = start + 1;
+                  insertTextAtSelection(e.currentTarget, "\n");
                 }
               }
             }} />

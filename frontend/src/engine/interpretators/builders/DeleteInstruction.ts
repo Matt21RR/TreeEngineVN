@@ -4,7 +4,7 @@ import { TokenType } from "../Token.ts";
 
 class DeleteInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger", "Actor", "StageMark"];
+    const creatableObjects = ["GraphObject","ModelObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger", "Actor", "StageMark"];
 
     return this.conditionsChecker(instruction,{
       0: {type: TokenType.word, wordMatch:"delete"},
@@ -45,6 +45,7 @@ class DeleteInstruction extends InstructionInterface{
     }
     const assignedSpace = {
       "GraphObject": "graphArray",
+      "ModelObject": "graphArray",
       "TextureAnim": "textureManager.textureAnims",
       "Trigger": "triggers",
       "KeyboardTrigger": "inputManager.keyboardTriggers",

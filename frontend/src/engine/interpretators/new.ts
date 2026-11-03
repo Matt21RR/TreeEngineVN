@@ -9,6 +9,10 @@ export default function sequencedPromise<T>(promisesArray: Array<()=>Promise<T>>
 function sequencedPromiseImpl<T>(promisesArray: Array<()=>Promise<T>>, resultsArray:Array<T> = [], rejectsArray:Array<{promise:()=>Promise<T>, details:any}> = []):Promise<{results:Array<T>, rejects:Array<{promise:()=>Promise<T>, details:any}>}>{
   return new Promise(finalResolve=>{
     const promise = promisesArray.shift();
+    if(promise === undefined){
+      finalResolve({results: resultsArray, rejects: rejectsArray});
+      return;
+    }
     promise()
       .then((resolved:T)=>{
         resultsArray.push(resolved);
@@ -33,6 +37,10 @@ export function sequencedPromiseWithResult<T>(promisesArray: Array<()=>Promise<T
   return new Promise<Array<T>>(finalResolve=>{
     const results:Array<T> = [];
     const promise = promisesArray.shift();
+    if(promise === undefined){
+      finalResolve(results);
+      return;
+    }
     promise().then((res:T)=>{
       results.push(res);
       if(promisesArray.length > 0){

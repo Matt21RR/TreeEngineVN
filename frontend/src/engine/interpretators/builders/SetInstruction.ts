@@ -5,7 +5,7 @@ import { TokenType } from "../Token.ts";
 
 class SetInstruction extends InstructionInterface{
   isOfThisType(instruction){
-    const creatableObjects = ["GraphObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger","Engine"];
+    const creatableObjects = ["GraphObject","ModelObject","TextureAnim","Animation","Trigger","CodedRoutine","KeyboardTrigger","Engine"];
     return this.conditionsChecker(instruction,{
       0: {type:TokenType.word, wordMatch:"set"},
       1: {type:TokenType.word, condition:(token)=>{return creatableObjects.includes(token.value)}},
@@ -59,7 +59,6 @@ class SetInstruction extends InstructionInterface{
     });
   }
   interpretate(isInRoutineMode:boolean, extractedData: Dictionary) {
-    console.log(extractedData);
     const branch:string = extractedData.branch;
     const id:string = extractedData.id;
     const value:string = extractedData.value;
@@ -113,6 +112,9 @@ class SetInstruction extends InstructionInterface{
           `
         ),
       GraphObject:() => res.push(
+          `engine.graphArray.get(${id})${property ?? "[key]"} ${operation} ${dynaValueConstName};`
+        ),
+      ModelObject:() => res.push(
           `engine.graphArray.get(${id})${property ?? "[key]"} ${operation} ${dynaValueConstName};`
         ),
       TextureAnim:() =>

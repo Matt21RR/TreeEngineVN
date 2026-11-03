@@ -4,6 +4,9 @@ import { Interpretation } from "../ChaosInterpreter.ts";
 import { TokenType } from "../Token.ts";
 
 class NarrationInstruction extends AgrupableInstructionInterface{
+  //A lone "string" line inside a multiline array/object literal must stay JS
+  protected allowedInsideBlocks = false;
+
   isOfThisType(instruction){
     return this.conditionsChecker(instruction, {
       0: {type:TokenType.text, instructionLength:1, result:(tokens)=>{

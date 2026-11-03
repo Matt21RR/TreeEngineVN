@@ -54,10 +54,13 @@ HighlightWithinTextarea.prototype = {
 	},
 
 	generate: function() {
+		// typing only schedules a highlight (coalesced per animation frame), instead of a full
+		// synchronous re-highlight on every keystroke
+		this.pendingFrame = 0;
 		this.$el
 			.addClass(ID + '-input ' + ID + '-content')
-			.on('input.' + ID, this.handleInput.bind(this))
-			.on('load', this.handleInput.bind(this))
+			.on('input.' + ID, this.scheduleInput.bind(this))
+			.on('load.' + ID, this.scheduleInput.bind(this))
 			.on('scroll.' + ID, this.handleScroll.bind(this));
 
 		this.$highlights = $('<div>', { class: ID + '-highlights ' + ID + '-content' });
@@ -77,7 +80,26 @@ HighlightWithinTextarea.prototype = {
 		this.handleInput();
 	},
 
+	scheduleInput: function() {
+		if (this.pendingFrame) {
+			return;
+		}
+		this.pendingFrame = requestAnimationFrame(() => {
+			this.pendingFrame = 0;
+			this.handleInput();
+		});
+	},
+
+	cancelScheduledInput: function() {
+		if (this.pendingFrame) {
+			cancelAnimationFrame(this.pendingFrame);
+			this.pendingFrame = 0;
+		}
+	},
+
 	handleInput: function() {
+		// a direct (synchronous) update makes any scheduled one redundant
+		this.cancelScheduledInput();
 		let input = this.$el.val();
 		let ranges = this.getRanges(input, this.highlight);
 		let unstaggeredRanges = this.removeStaggeredRanges(ranges);
@@ -209,16 +231,89 @@ HighlightWithinTextarea.prototype = {
 	},
 
 	// prevent staggered overlaps (clean nesting is fine)
+	//
+	// Same result as the original pairwise check (a range is dropped if it staggers with any
+	// previously accepted one: exactly one of its ends strictly inside the other), but in
+	// O(R log n) instead of O(R²). For a range [s, e] (s <= e) that xor reduces to:
+	//   A) some accepted U with  U0 < s < U1 <= e   -> min U0 over U1 in (s, e]  is < s
+	//   B) some accepted U with  s <= U0 < e < U1   -> max U1 over U0 in [s, e)  is > e
+	// Both are answered with two segment trees indexed by text position.
 	removeStaggeredRanges: function(ranges) {
 		let unstaggeredRanges = [];
+		if (ranges.length === 0) {
+			return unstaggeredRanges;
+		}
+		let maxPos = 0;
 		ranges.forEach(function(range) {
-			let isStaggered = unstaggeredRanges.some(function(unstaggeredRange) {
-				let isStartInside = range[0] > unstaggeredRange[0] && range[0] < unstaggeredRange[1];
-				let isStopInside = range[1] > unstaggeredRange[0] && range[1] < unstaggeredRange[1];
+			if (range[1] > maxPos) maxPos = range[1];
+			if (range[0] > maxPos) maxPos = range[0];
+		});
+		let size = 1;
+		while (size < maxPos + 1) size <<= 1;
+		// minStartByEnd[pos = U1] = min U0 ; maxEndByStart[pos = U0] = max U1
+		let minStartByEnd = new Float64Array(size * 2).fill(Infinity);
+		let maxEndByStart = new Float64Array(size * 2).fill(-Infinity);
+
+		let update = function(tree, pos, value, isMin) {
+			let i = pos + size;
+			if (isMin ? value < tree[i] : value > tree[i]) {
+				tree[i] = value;
+			} else {
+				return;
+			}
+			i >>= 1;
+			while (i >= 1) {
+				let next = isMin ? Math.min(tree[2 * i], tree[2 * i + 1]) : Math.max(tree[2 * i], tree[2 * i + 1]);
+				if (tree[i] === next) break;
+				tree[i] = next;
+				i >>= 1;
+			}
+		};
+		// query over the inclusive position interval [lo, hi]
+		let query = function(tree, lo, hi, isMin) {
+			let res = isMin ? Infinity : -Infinity;
+			if (lo < 0) lo = 0;
+			if (hi > size - 1) hi = size - 1;
+			if (lo > hi) return res;
+			let l = lo + size, r = hi + size + 1;
+			while (l < r) {
+				if (l & 1) { res = isMin ? Math.min(res, tree[l]) : Math.max(res, tree[l]); l++; }
+				if (r & 1) { r--; res = isMin ? Math.min(res, tree[r]) : Math.max(res, tree[r]); }
+				l >>= 1; r >>= 1;
+			}
+			return res;
+		};
+
+		// literal pairwise check, only used against malformed (reversed) ranges, which the trees don't hold
+		let staggersWith = function(range, list) {
+			return list.some(function(u) {
+				let isStartInside = range[0] > u[0] && range[0] < u[1];
+				let isStopInside = range[1] > u[0] && range[1] < u[1];
 				return isStartInside !== isStopInside; // xor
 			});
+		};
+		let reversedAccepted = [];
+
+		ranges.forEach(function(range) {
+			let s = range[0], e = range[1];
+			let isStaggered;
+			if (s <= e) {
+				isStaggered = (s < e) && (
+					query(minStartByEnd, s + 1, e, true) < s ||
+					query(maxEndByStart, s, e - 1, false) > e
+				);
+				isStaggered = isStaggered || (reversedAccepted.length > 0 && staggersWith(range, reversedAccepted));
+			} else {
+				isStaggered = staggersWith(range, unstaggeredRanges);
+			}
 			if (!isStaggered) {
 				unstaggeredRanges.push(range);
+				if (s <= e) {
+					update(minStartByEnd, e, s, true);
+					update(maxEndByStart, s, e, false);
+				} else {
+					reversedAccepted.push(range);
+				}
 			}
 		});
 		return unstaggeredRanges;
@@ -260,37 +355,40 @@ HighlightWithinTextarea.prototype = {
 
 	renderMarks: function(boundaries) {
 		let input = this.$el.val();
-		boundaries.forEach(function(boundary, index) {
-			let markup;
-			if (boundary.type === 'start') {
-				markup = '{{hwt-mark-start|' + index + '}}';
-			} else {
-				markup = '{{hwt-mark-stop}}';
-			}
-			input = input.slice(0, boundary.index) + markup + input.slice(boundary.index);
-		});
-
-		// this keeps scrolling aligned when input ends with a newline
-		input = input.replace(/\n(\{\{hwt-mark-stop\}\})?$/, '\n\n$1');
-
-		// encode HTML entities
-		input = input.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-		// replace start tokens with opening <mark> tags with class name
-		input = input.replace(/\{\{hwt-mark-start\|(\d+)\}\}/g, function(match, submatch) {
-			const className = boundaries[+submatch].className;
-			const titleAttribute = boundaries[+submatch].title ? ' title="' + boundaries[+submatch].title.replace(/\"/g, '&quot;') + '"' : '';
+		let escape = function(text) {
+			return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		};
+		let openTag = function(boundary) {
+			const className = boundary.className;
+			const titleAttribute = boundary.title ? ' title="' + boundary.title.replace(/\"/g, '&quot;') + '"' : '';
 			if (className) {
 				return '<span class="' + className + '"' + titleAttribute + '>';
 			} else {
 				return '<span' + titleAttribute + '>';
 			}
-		});
+		};
 
-		// replace stop tokens with closing </mark> tags
-		input = input.replace(/\{\{hwt-mark-stop\}\}/g, '</span>');
+		// Boundaries are sorted backwards (the original inserted them right to left, so at equal
+		// positions the later boundary ends up first). Walking the array in reverse yields the
+		// exact same textual order, letting us build the HTML in one linear pass instead of
+		// re-slicing the whole string once per boundary.
+		let pieces = [];
+		let pos = 0;
+		for (let i = boundaries.length - 1; i >= 0; i--) {
+			let boundary = boundaries[i];
+			if (boundary.index > pos) {
+				pieces.push(escape(input.slice(pos, boundary.index)));
+				pos = boundary.index;
+			}
+			pieces.push(boundary.type === 'start' ? openTag(boundary) : '</span>');
+		}
+		pieces.push(escape(input.slice(pos)));
+		let html = pieces.join('');
 
-		this.$highlights.html(input);
+		// this keeps scrolling aligned when input ends with a newline
+		html = html.replace(/\n(<\/span>)?$/, '\n\n$1');
+
+		this.$highlights.html(html);
 	},
 
 	handleScroll: function() {
@@ -311,11 +409,12 @@ HighlightWithinTextarea.prototype = {
 	},
 
 	destroy: function() {
+		this.cancelScheduledInput();
 		this.$backdrop.remove();
 		this.$el
 			.unwrap()
 			.removeClass(ID + '-text ' + ID + '-input')
-			.off(ID)
+			.off('.' + ID)
 			.removeData(ID);
 	},
 };

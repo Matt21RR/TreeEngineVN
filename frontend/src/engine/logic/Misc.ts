@@ -260,6 +260,16 @@ function templateLiteralSplitter(source:string){
   return parts;
 }
 
+//*El backend (RequestFile) devuelve los bytes crudos del archivo en base64.
+//atob() solo produce una cadena "binaria" (un char por byte), asi que el texto
+//UTF-8 (acentos, ñ, ¿) se debe decodificar explicitamente.
+export function decodeBase64Utf8(base64: string): string{
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
 export function colorToRGBA(colorCode: string) : [number, number, number, number]{
   if(colorCode == "transparent"){
     return [0,0,0,0];
@@ -275,8 +285,18 @@ export function colorToRGBA(colorCode: string) : [number, number, number, number
 }
 
 export function getClassAttribs<T>(classInstance:T, propertyNames: Array<string>){
-  const propertyDescriptors = (Object.getOwnPropertyDescriptors(Object.getPrototypeOf(classInstance)));
-  const atributesNames = propertyNames.filter(key =>{return "get" in propertyDescriptors[key]});
+  //Recorre la cadena de prototipos para no perder getters heredados
+  //(necesario para subclases como ModelObject: solo el prototipo propio
+  //no contiene los getters base y atribsNames quedaba vacio).
+  const atributesNames = propertyNames.filter(key =>{
+    let proto = Object.getPrototypeOf(classInstance);
+    while(proto && proto !== Object.prototype){
+      const descriptors = Object.getOwnPropertyDescriptors(proto);
+      if(descriptors[key] && "get" in descriptors[key]) return true;
+      proto = Object.getPrototypeOf(proto);
+    }
+    return false;
+  });
   return atributesNames;
 }
 export {

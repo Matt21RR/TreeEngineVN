@@ -11,12 +11,40 @@ import 'prismjs/themes/prism-tomorrow.css';
 //@ts-ignore
 import 'prismjs/components/prism-javascript';
 
+//*Cache of formatted+highlighted html (language + code -> html). Prettier is the most expensive
+//*step of the viewer; scenes/nodes that didn't change, or toggling selection <-> full view, reuse it.
+const FORMAT_CACHE_LIMIT = 300;
+const formatCache = new Map<string, string>();
+function readFormatCache(key: string): string | undefined {
+  const html = formatCache.get(key);
+  if (html !== undefined) {
+    //LRU: refresh recency
+    formatCache.delete(key);
+    formatCache.set(key, html);
+  }
+  return html;
+}
+function writeFormatCache(key: string, html: string) {
+  formatCache.set(key, html);
+  if (formatCache.size > FORMAT_CACHE_LIMIT) {
+    formatCache.delete(formatCache.keys().next().value as string);
+  }
+}
+
 //* Formats with pretier
 //* Hightlights with PrismJS
-function FormattedCodeBlock({ codeString, language = 'javascript' }: { codeString: string; language?: string }) {
-  const [highlightedHtml, setHighlightedHtml] = useState<string>('');
+const FormattedCodeBlock = React.memo(function FormattedCodeBlock({ codeString, language = 'javascript' }: { codeString: string; language?: string }) {
+  const cacheKey = language + "\u0000" + codeString;
+  const [highlightedHtml, setHighlightedHtml] = useState<string>(() => readFormatCache(cacheKey) ?? '');
 
   useEffect(() => {
+    const cached = readFormatCache(cacheKey);
+    if (cached !== undefined) {
+      setHighlightedHtml(cached);
+      return;
+    }
+    //*Prettier is async: a slower, older format must not overwrite a newer one
+    let alive = true;
     async function formatAndHighlight() {
       try {
         const sanitized = codeString.replace(/\\n/g, '\n');
@@ -40,15 +68,18 @@ function FormattedCodeBlock({ codeString, language = 'javascript' }: { codeStrin
           language
         );
         
-        setHighlightedHtml(highlighted);
+        writeFormatCache(cacheKey, highlighted);
+        if (alive) setHighlightedHtml(highlighted);
       } catch (error) {
+        if (!alive) return;
         console.error(`Prettier falló al formatear (${language}):`, error);
         setHighlightedHtml(Prism.highlight(codeString, Prism.languages[language] || Prism.languages.javascript, language));
       }
     }
 
     formatAndHighlight();
-  }, [codeString, language]);
+    return () => { alive = false; };
+  }, [cacheKey]);
 
   return (
     <pre className="p-4 overflow-x-auto text-sm bg-gray-900 rounded-md my-2 border border-gray-800">
@@ -58,9 +89,10 @@ function FormattedCodeBlock({ codeString, language = 'javascript' }: { codeStrin
       />
     </pre>
   );
-}
+});
 
-export default function InterpretedDataViewer(
+//*Memoized: InputScript re-renders often (hover tooltip, focus...) and this tree can be big
+export default React.memo(function InterpretedDataViewer(
   { interpretedData, selectionInterpretation }:
   { interpretedData: InterpretedData, selectionInterpretation?: string | null }
 ) {
@@ -139,4 +171,4 @@ export default function InterpretedDataViewer(
       )}
     </div>
   )
-}
+});

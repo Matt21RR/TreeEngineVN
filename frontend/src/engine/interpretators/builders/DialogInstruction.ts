@@ -15,17 +15,20 @@ class DialogInstruction extends AgrupableInstructionInterface{
         continue;
       }
       else if((token as Token).type == TokenType.text){ //is token and must to be an text token
+        //JSON.stringify escapes \ " and control chars, so any character yields a valid JS string literal
+        const textChars = (text:string) => Array.from(text).map(e=>`{type:"text",value:${JSON.stringify(e)}}`);
         if(isTemplateLiteral(token.value)){
           const templateLit = templateLiteralSplitter(token.value);
           for (const element of templateLit) {
             if(element.indexOf("${") == 0){
-              dec.push(`{type:"expresion",value:"${element}"}`);
+              dec.push(`{type:"expresion",value:${JSON.stringify(element)}}`);
             }else{
-              dec = dec.concat(element.split("").filter(e=>e != '"').map(e=>{return `{type:"text",value:"${e}"}`}))
+              dec = dec.concat(textChars(element));
             }
           }
         }else{
-          dec = dec.concat(token.value.split("").filter(e=>e != '"').map(e=>{return `{type:"text",value:"${e}"}`}))
+          //Remove only the delimiters ("…" or '…'), keeping any quote that is part of the text
+          dec = dec.concat(textChars((token.value as string).slice(1, -1)));
         }
         continue;
       }

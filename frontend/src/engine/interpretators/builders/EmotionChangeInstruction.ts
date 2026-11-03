@@ -45,26 +45,26 @@ class EmotionChangeInstruction extends InstructionInterface{
     }
     res.push(
       `
-        let actor = engine.actors.get("${actorId}");
+        const actor${dynaVarName} = engine.actors.get("${actorId}");
 
         let data1${dynaVarName} = {
           id: "animation1${dynaVarName}",
           enabled: true,
-          relatedTo: actor.getActiveMask().id,
+          relatedTo: actor${dynaVarName}.getActiveMask().id,
           keyframes: { ${duration ?? '500'}: {opacity:0} },
         };
 
         let data2${dynaVarName} = {
           id: "animation2${dynaVarName}",
           enabled: true,
-          relatedTo: actor.emotions["${emotionId}"].id,
+          relatedTo: actor${dynaVarName}.emotions["${emotionId}"].id,
           keyframes: { ${duration ?? '500'}: {opacity:1} },
         };
 
         engine.anims.push(new engine.constructors.animation(data1${dynaVarName}));
         engine.anims.push(new engine.constructors.animation(data2${dynaVarName}));
 
-        actor.emotion = "${emotionId}";
+        actor${dynaVarName}.emotion = "${emotionId}";
 
       `
     );

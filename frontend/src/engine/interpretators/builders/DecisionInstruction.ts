@@ -61,7 +61,7 @@ class OptionInstruction extends InstructionInterface{
                   let tokArray = tokens[5] as unknown as Array<any>;
                   tokArray.shift();
                   tokArray.pop();
-                  firstExpresion = `(engine)=>{${arrayFlatter(tokArray).map(e=>e.value).join("")} }`;
+                  secondExpresion = `(engine)=>{${arrayFlatter(tokArray).map(e=>e.value).join("")} }`;
                 }
 
                 return {[firstElement]: firstExpresion, [secondElement]: secondExpresion, label: tokens[1].value};
@@ -115,8 +115,6 @@ export default class DecisionInstruction extends InstructionInterface{
       const optionsData = [${options}];
       engine.uiInstance.loadDecisions(optionsData);
     });`;
-    console.log(res);
-
     return res;
   }
 }

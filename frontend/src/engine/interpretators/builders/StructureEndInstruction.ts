@@ -7,7 +7,7 @@ class StructureEndInstruction extends InstructionInterface{
   isOfThisType(instruction){
     const structTypeCheck = (value:string)=>{
       return Object.keys(ScriptStructure)
-      .filter(key=>isNaN(key as any))
+      .filter(key=>isNaN(key as any) && typeof ScriptStructure[key] != "function")
       .map(key=>key.toLowerCase())
       .includes(value.toLowerCase());
     }

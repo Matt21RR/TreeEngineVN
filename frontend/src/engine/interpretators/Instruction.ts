@@ -2,7 +2,7 @@ import Token from "./Token.ts";
 
 class Instruction extends Array<Token | Instruction>{
   get(index:number){
-    this.at(index);
+    return this.at(index);
   }
   get index():number{
     if(this.length != 0){

@@ -74,6 +74,8 @@ abstract class InstructionInterface{
   protected abstract isOfThisType(instruction: Instruction|Token): Dictionary;
   protected abstract interpretate(isInRoutineMode:boolean, extractedData:Dictionary):(string|Dictionary);
   protected agrupable = false;
+  //False when the instruction pattern is ambiguous with plain JS inside a {…}/[…] block
+  protected allowedInsideBlocks = true;
 
   private lastFailure: LastFailureReason = null;
 
@@ -83,6 +85,10 @@ abstract class InstructionInterface{
 
   isAgrupable(){
     return this.agrupable;
+  }
+
+  isAllowedInsideBlocks(){
+    return this.allowedInsideBlocks;
   }
 
   private recordFailure(idx: number, token: any, tokenCondition: TokenCondition | Array<TokenCondition>) {
