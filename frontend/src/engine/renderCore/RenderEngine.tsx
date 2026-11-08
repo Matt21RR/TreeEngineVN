@@ -519,7 +519,8 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
 
           const modelId: string | null = (gObject as any)._model ?? null;
           const texRef = modelId ? null : renderingData.solvedTexture ?? ( gObject._textureName ? textureManager.getTexture(gObject._textureName,this.engineTime) : null ); //Null works as false / not assigned
-          const strRef = gObject._text == null ? null : getStr(gObject._text);
+          //fitContent texts already carry their layout; only resolve the string when needed
+          const strRef = (gObject._text == null || renderingData.text.value) ? null : getStr(gObject._text);
 
           if(gObject._opacity == 0){
             this.noRenderedItemsCount++;
@@ -532,7 +533,9 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
               let texts: Array<TextLine> = [];
               if(renderingData.text.value || strRef){
                 const fontSize = renderingData.text.fontSize;
+                //Layout is measured on the 2D context; the active renderer draws it
                 RenderDebug.setFont(fontSize, gObject._font, window.debugContext);
+                RenderMisc.setFont(fontSize, gObject._font, canvas.context);
 
                 if(renderingData.text?.value){
                   texts = renderingData.text.value;
@@ -571,13 +574,16 @@ export class RenderEngine extends React.Component<RenderEngineProps, RenderEngin
               }
 
               if(renderingData.text.value || texts.length > 0){
-                RenderMisc.drawRectangle(renderingData, gObject._boxColor, canvas.context);
-                RenderDebug.drawText(
+                if(gObject._boxColor != "transparent")
+                  RenderMisc.drawRectangle(renderingData, gObject._boxColor, canvas.context);
+                //Queued right after its box: same depth and draw order, opacity/filter
+                //come from the setOpacity/setFilter state set above
+                RenderMisc.drawText(
                   renderingData,
                   texts,
                   gObject._color,
                   gObject._boxColor,
-                  window.debugContext);
+                  canvas.context);
               }
 
               //*part four: anullate globalalpha and filters

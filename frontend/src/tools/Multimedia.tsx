@@ -135,6 +135,7 @@ export default function Multimedia ({setSelected, info, show, close}: Multimedia
     return(
       <div className="flex flex-row w-full">
         <InputScript
+          scriptRoute={info.route}
           height={"h-full"} 
           fatherStyle={"bg-black bg-opacity-70"}
           defaultValue={content}

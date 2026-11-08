@@ -6,6 +6,8 @@ import { Dictionary } from "../../global.ts";
 import sequencedPromise from "./new.ts";
 import { RequestFile, ScanFiles } from "../../../wailsjs/go/main/App.js";
 import supportedInstructions from "./SupportedInstructions.ts";
+import { buildScriptDocument, elementSpan } from "./StructureParser.ts";
+import type { ScriptDocument } from "./ScriptDocument.ts";
 
 const MAX_NESTED_DEPENDENCY_REPROCESS = 3;
 
@@ -256,6 +258,14 @@ class ChaosInterpreter {
       }
     }
     return res;
+  }
+
+  //*Visual editor: structured view of the script (scopes, statements and char spans), without
+  //*generating JS and without touching this.scenes/this.modules
+  parseStructure(script:string): ScriptDocument{
+    const tokenList = this.lexer(script + "\n");
+    const abs = this.preParser(tokenList, [], []) as Instruction;
+    return buildScriptDocument(script, abs, this.checkScriptForErrors(script));
   }
 
   //Collects the writing errors of a script as absolute char spans, for editor squiggles
@@ -540,6 +550,7 @@ class ChaosInterpreter {
     let abs:Instruction = new Instruction();
     let acum:Instruction = bracketsPile.map(a=>a) as Instruction;
     let isJsCode = false;
+    let jsCodeCharStart = -1;
     let loopsDone = 0;
     let bracketCounter = bracketsPile.length;
     for (let idx = startIdx; idx < tokenList.length; idx++) {
@@ -585,9 +596,10 @@ class ChaosInterpreter {
       if(token.type == TokenType.lineBreak && bracketCounter == 0){ //Si hay un salto de linea y ttodos los brackets se han cerrado
         if(isJsCode){
           if(this.tokenListToText(acum).length != 0){
-            abs.push(
-              new Token(this.tokenListToText(acum), TokenType.jsCode,acum[0].index)
-            );
+            const jsToken = new Token(this.tokenListToText(acum), TokenType.jsCode, acum[0].index, jsCodeCharStart);
+            jsToken.charEnd = token.charIndex;
+            jsToken.source = acum;
+            abs.push(jsToken);
           }
         }else{//* If is not a js code, then it is a script instruction
           abs.push(acum);
@@ -598,6 +610,7 @@ class ChaosInterpreter {
       }
       if(acum.length == 0 && token.type == TokenType.word && token.value == "@"){
         isJsCode = true;
+        jsCodeCharStart = token.charIndex;
         continue;
       }
       if(
@@ -635,9 +648,12 @@ class ChaosInterpreter {
             const interpretation = this.interpretateInstruction(plausibleInstruction, true, true);
             if(interpretation.itWasAScriptInstruction){
               acum.splice((acum.length-1)-plausibleInstruction.length); //Remover todos los tokens que conforman la posible instrucción
-              acum.push(
-                new Token( interpretation.result, TokenType.jsCode, plausibleInstruction[0].index)
-              );
+              //*Span + original tokens kept for the visual editor (the JS value is unchanged)
+              const convertedSpan = elementSpan(plausibleInstruction.filter(tk=>!(tk instanceof Token && tk.type == TokenType.space)) as Instruction);
+              const converted = new Token( interpretation.result, TokenType.jsCode, plausibleInstruction[0].index, convertedSpan?.[0]);
+              if(convertedSpan){ converted.charEnd = convertedSpan[1]; }
+              converted.source = plausibleInstruction;
+              acum.push(converted);
 
               acum.push(
                 new Token( 

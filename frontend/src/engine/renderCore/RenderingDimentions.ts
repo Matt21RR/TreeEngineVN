@@ -664,6 +664,9 @@ export function generateObjectsDisplayDimentions(
           dimentionsPack.meshPpu = meshPpu;
         }
 
+        //Renderers key per-object GPU resources (text textures) by this id
+        dimentionsPack.id = gObject._id;
+
         //TODO: texts requires continous recomputing
         if(gObject._text !== null && (strRef = getStr(gObject._text)) !== null){
           const fontSizeRenderingValue = gObject._fontSize*canvasResolutionScale*developmentRatio*perspectiveScale;
@@ -708,6 +711,9 @@ export function generateObjectsDisplayDimentions(
             dimentionsPack.corner.y = (dimentionsPack.y - dimentionsPack.height*0.5);
 
             dimentionsPack.text.value = texts;
+          }else{
+            //Layout is computed per frame by the renderer; drop any stale fitContent layout
+            dimentionsPack.text.value = null;
           }
         }else{
           dimentionsPack.text.value = null;
@@ -715,7 +721,10 @@ export function generateObjectsDisplayDimentions(
         nDicoSet.add(gObject._id);
         visibleRefsOut.push(gObject);
 
-        gObject._pendingRenderingRecalculation = false;
+        //Dynamic texts (lambdas / template literals) can change without touching the proxy,
+        //so a fitContent box must be re-laid out every frame
+        gObject._pendingRenderingRecalculation = gObject._fitContent && gObject._text !== null &&
+          (typeof gObject._text == "function" || (typeof gObject._text == "string" && gObject._text.includes("${")));
 
       }
     }

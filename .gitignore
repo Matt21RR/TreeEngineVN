@@ -23,6 +23,7 @@ frontend/projrepro.html
 frontend/repro.html
 frontend/rgbsplittest.html
 frontend/scriptsettest.html
+frontend/scriptgraph.html
 frontend/snapharness.html
 frontend/scripts-dev/
 frontend/src/dev/

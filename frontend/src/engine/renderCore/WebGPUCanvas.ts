@@ -37,6 +37,8 @@ interface DrawParams {
   ms?: number;
   /** Solo meshes: px por unidad modelo para elegir LOD (0 = nivel original). */
   lodPx?: number;
+  /** Multiplicador de alfa (solo imagenes; default 1). */
+  opacity?: number;
   fillColor?: [number, number, number, number];
   borderColor?: [number, number, number, number];
   borderWidth?: number;
@@ -829,16 +831,61 @@ export default class WebGPUCanvas {
     this.registerTexture(id, texture, opts?.srgb ? "bc7-rgba-unorm-srgb" : null);
   }
 
-  private registerTexture(id: string, texture: GPUTexture, srgbFormat: GPUTextureFormat | null) {
+  /** Lado maximo de textura 2D del dispositivo (0 antes de init). */
+  get maxTextureSize(): number {
+    return this.device?.limits.maxTextureDimension2D ?? 0;
+  }
+
+  /** Numero de subidas de texturas dinamicas (texto) desde el arranque. */
+  dynamicUploads = 0;
+
+  //*Textura que cambia en caliente (texto rasterizado). Si ya existe con el
+  //mismo tamano se reescribe en sitio (sin recrear bind groups); si no, se
+  //crea y registra sin invalidar los bind groups de mallas (los ids de texto
+  //nunca los usa un material).
+  uploadDynamicTexture(id: string, source: HTMLCanvasElement | OffscreenCanvas, w: number, h: number) {
+    if (!this.device || w <= 0 || h <= 0) return;
+    this.dynamicUploads++;
+    const mipLevelCount = Math.max(Math.floor(Math.log2(Math.max(w, h))) + 1, 1);
+    const prev = this.textureCache.get(id);
+    let texture: GPUTexture;
+    if (prev && prev.texture.width === w && prev.texture.height === h) {
+      texture = prev.texture;
+    } else {
+      texture = this.device.createTexture({
+        size: [w, h],
+        format: "rgba8unorm",
+        mipLevelCount,
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+      });
+    }
+    this.device.queue.copyExternalImageToTexture(
+      { source, flipY: false },
+      { texture, mipLevel: 0 },
+      [w, h]
+    );
+    if (mipLevelCount > 1) this.generateMipmaps(texture, w, h, mipLevelCount);
+    if (texture !== prev?.texture) this.registerTexture(id, texture, null, true);
+  }
+
+  /** Libera una textura del cache (no-op si no existe). */
+  releaseTexture(id: string) {
+    const entry = this.textureCache.get(id);
+    if (!entry) return;
+    entry.texture.destroy();
+    this.textureCache.delete(id);
+  }
+
+  private registerTexture(id: string, texture: GPUTexture, srgbFormat: GPUTextureFormat | null, keepMeshBindGroups = false) {
     //*La vista cubre toda la cadena de mips: el sampler trilineal/anisotropico
     //elige el lod por derivadas (mejora angulos rasantes en pitch/yaw).
     const view = texture.createView(srgbFormat ? { format: srgbFormat } : undefined);
 
     const prev = this.textureCache.get(id);
-    if (prev) prev.texture.destroy();
+    if (prev && prev.texture !== texture) prev.texture.destroy();
     //*El bind group mesh cacheado referenciaba la vista vieja: invalidar.
     //Clave combinada base|emisivo: se vacia entera (recargas puntuales).
-    this.meshMaterialBindGroups.clear();
+    if (!keepMeshBindGroups) this.meshMaterialBindGroups.clear();
     const mkTexBg = (layout: GPUBindGroupLayout) => this.device.createBindGroup({
       layout,
       entries: [{ binding: 0, resource: this.sampler }, { binding: 1, resource: view }],
@@ -1499,6 +1546,7 @@ export default class WebGPUCanvas {
         staging[offset + 9] = p.ignoreWorldRotation ?? 0; // transform3.y → ignoreWorld flag
         staging[offset + 10] = p.depthZ ?? 0; // transform3.z → profundidad centro (mundo)
         staging[offset + 11] = p.depthP ?? 0; // transform3.w → px por unidad mundo (0 = orto)
+        staging[offset + 12] = p.opacity ?? 1; // extra.x → multiplicador de alfa
       }
     }
     pushSegment();
@@ -1910,12 +1958,12 @@ export default class WebGPUCanvas {
         transform1: vec4f, // [x, y, width, height]
         transform2: vec4f, // [roll, pitch, yaw, canvasWidth]
         transform3: vec4f, // [canvasHeight, ignoreWorld, zCenter, pxPerWorld]
-        _pad: vec4f
+        extra: vec4f       // [opacity, 0, 0, 0]
       };
       struct DataImage { instances: array<InstImage> };
       @group(0) @binding(0) var<storage, read> data: DataImage;
 
-      struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f, @location(1) zv: f32 };
+      struct Out { @builtin(position) p: vec4f, @location(0) uv: vec2f, @location(1) zv: f32, @location(2) @interpolate(flat) op: f32 };
       
       ${commonWGSLTransforms}
 
@@ -1930,17 +1978,18 @@ export default class WebGPUCanvas {
 
         var zvLin: f32 = 1e10;
         let ndc = getNDCPosition(pos, p_pos, p_size, p_rot, p_pitch, p_yaw, canvasSize, inst.transform3.y, inst.transform3.z, inst.transform3.w, &zvLin);
-        return Out(ndc, uv, zvLin);
+        return Out(ndc, uv, zvLin, inst.extra.x);
       }
 
       @group(1) @binding(0) var s: sampler;
       @group(1) @binding(1) var t: texture_2d<f32>;
-      @fragment fn fs(@location(0) uv: vec2f, @location(1) zv: f32) -> @location(0) vec4f {
+      @fragment fn fs(@location(0) uv: vec2f, @location(1) zv: f32, @location(2) @interpolate(flat) op: f32) -> @location(0) vec4f {
         //Corte nitido tras el near plane (zv interpola con correccion perspectiva,
         //igual que w): sin esto los vertices clampados generaban streaks.
         if (zv < world.depthParams.x) { discard; }
-        let c = textureSample(t, s, uv);
-        if (c.a < 0.015) { discard; }
+        let tex = textureSample(t, s, uv);
+        if (tex.a < 0.015) { discard; }
+        let c = vec4f(tex.rgb, tex.a * op);
         return c;
       }
     `;

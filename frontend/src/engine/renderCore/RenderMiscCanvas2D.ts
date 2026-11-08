@@ -121,6 +121,7 @@ class RenderMiscForDebug extends RenderMiscForDebugInterface<CanvasRenderingCont
     // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);//cleanning window
 
     ctx.font = "12px Consolas";
+    ctx.textBaseline = "alphabetic";
     ctx.fillStyle = "orange";
     ctx.filter = 'none';
     ctx.globalAlpha = 1;
@@ -217,7 +218,7 @@ export default class RenderMiscCanvas2D extends RenderMiscForDebug implements Re
   }
 
   drawImage(texture: ImageBitmap, object:ObjectRenderingData, ctx:CanvasRenderingContext2D){
-    if(object.rotation % 360 == 0){
+    if(object.rotation === 0){
       ctx.drawImage(
         texture,
         object.corner.x,
@@ -273,7 +274,7 @@ export default class RenderMiscCanvas2D extends RenderMiscForDebug implements Re
 
   drawRectangle(object:ObjectRenderingData, boxColor:string, ctx:CanvasRenderingContext2D){
     ctx.fillStyle = boxColor;
-    if(object.rotation % 360 == 0){
+    if(object.rotation === 0){
       ctx.fillRect(
         object.corner.x,
         object.corner.y,
@@ -291,10 +292,12 @@ export default class RenderMiscCanvas2D extends RenderMiscForDebug implements Re
   }
   setFont(fontSize:number, fontFamily:string, ctx:CanvasRenderingContext2D){
     ctx.font = `${fontSize}px ${fontFamily}`;
+    //Lines are positioned by their vertical middle (y = top + lineHeight/2)
+    ctx.textBaseline = "middle";
   }
   drawText(object:ObjectRenderingData, textLines:Array<TextLine>, fontColor:string, boxColor:string, ctx:CanvasRenderingContext2D){
     
-    if(object.rotation % 360 == 0){
+    if(object.rotation === 0){
       // if(boxColor != "transparent")
         // this.drawRectangle(object,boxColor,ctx);
       

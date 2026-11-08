@@ -191,6 +191,22 @@ abstract class InstructionInterface{
     }
   }
 
+  //*Structured extraction for the visual editor: same matching as check(), but no JS is generated.
+  //*Beware: some result() callbacks mutate the instruction tokens (shift/pop), compute spans before.
+  extract(instruction: Instruction): {match: true, data: Dictionary} | {match: false}{
+    this.lastFailure = null;
+    let strParams = "";
+    if (Array.isArray((instruction as Instruction).at(-1))){
+      strParams = this.getStrParamsFromInstruction(instruction);
+    }
+    const extractedData = this.isOfThisType(instruction);
+    if(!extractedData.match){
+      return {match:false};
+    }
+    extractedData["value"] = strParams;
+    return {match:true, data:extractedData};
+  }
+
   check(instruction, chaosReference:Chaos, isInRoutineMode:boolean, checkOnly = false){
     this.lastFailure = null;
     let strParams = "";

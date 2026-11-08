@@ -75,7 +75,8 @@ class OptionInstruction extends InstructionInterface{
   interpretate(isInRoutineMode: boolean, extractedData:Dictionary) {
     const label = extractedData.label;
     const condition = extractedData.if;
-    const nextNode = extractedData.nextNode ? `"${extractedData.nextNode}"` : undefined;
+    //nextNode may come as a word (fiesta) or as a text token ("fiesta"): strip quotes before re-quoting
+    const nextNode = extractedData.nextNode ? JSON.stringify(String(extractedData.nextNode).replace(/^(["'`])(.*)\1$/, "$2")) : undefined;
     const res =
     `{label: ${label}, condition: ${condition}, nextNode: ${nextNode}}`;
 

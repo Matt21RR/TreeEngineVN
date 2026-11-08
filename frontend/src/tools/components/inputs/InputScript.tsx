@@ -11,6 +11,7 @@ import InstructionPalette from "./InstructionPalette.tsx";
 import { ToolbarButton } from "../Buttons.tsx";
 import { InterpretedData } from "../../../engine/interpretators/ChaosInterpreter.ts";
 import { RenderEngine } from "../../../engine/renderCore/RenderEngine.tsx";
+import ScriptGraphEditor from "../../scriptGraph/ScriptGraphEditor.tsx";
 
 interface InputScriptProps {
   action?: (string) => void,
@@ -20,8 +21,12 @@ interface InputScriptProps {
   height?: string,
   fatherStyle?: string
   onControl: Dictionary<(e: React.KeyboardEvent) => void>,
-  bottomRightSlot?: React.ReactNode
+  bottomRightSlot?: React.ReactNode,
+  //Route of the edited script: the node editor keeps its box positions in a sidecar <script>.layout.json
+  scriptRoute?: string
 }
+
+type ViewMode = "text" | "nodes" | "split";
 
 export default function InputScript(props: InputScriptProps) {
   const [focus, setFocus] = useState(false);
@@ -29,6 +34,12 @@ export default function InputScript(props: InputScriptProps) {
   const [interpretedData, setInterpretedData] = useState<InterpretedData>({scenes: {}, modules: {}});
   const [selectedInterpretation, setSelectedInterpretation] = useState<string | null>(null);
   const [paletteVisible, setPaletteVisible] = useState(false);
+  //*Node editor: the textarea stays mounted (hidden) as the canonical buffer, so Save/diagnostics keep working
+  const [viewMode, setViewMode] = useState<ViewMode>("text");
+  const [graphText, setGraphText] = useState("");
+  const [caret, setCaret] = useState<number | null>(null);
+  const viewModeRef = useRef<ViewMode>("text");
+  viewModeRef.current = viewMode;
 
   const inputBoxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -65,7 +76,7 @@ export default function InputScript(props: InputScriptProps) {
         //*The node block regex is expensive (tempered lazy scan): run it once and share
         //*fresh copies of its ranges with the 3 node rules (the plugin mutates range objects)
         const nodeRanges: Array<[number, number]> = [];
-        for (const match of input.matchAll(/node( |\t)+:( |\t)+\w+( |\t)*\n(?:(?!node( |\t)+:)[\s\S])+?node( |\t)+ends( |\t)*$/gm)) {
+        for (const match of input.matchAll(/node( |\t)*:( |\t)*\w+( |\t)*\n(?:(?!node( |\t)*:)[\s\S])+?(?:node( |\t)+ends|end( |\t)+node)( |\t)*$/gm)) {
           nodeRanges.push([match.index!, match.index! + match[0].length]);
         }
         const nodeRangesCopy = () => nodeRanges.map(range => [range[0], range[1]] as [number, number]);
@@ -73,12 +84,12 @@ export default function InputScript(props: InputScriptProps) {
         //NODE delimitation command
         {
           highlight: nodeRangesCopy(),
-          secondPassRegex: /((?<!\n)^node)( |\t)+:( |\t)+\w+( |\t)*\n/g,
+          secondPassRegex: /((?<!\n)^( |\t)*node)( |\t)*:( |\t)*\w+( |\t)*\n/g,
           className: 'border-t-3 border-l-1 text-rose-400 m-l-[-1px]'
         },
         {
           highlight: nodeRangesCopy(),
-          secondPassRegex: /(( *)node( |\t)+ends( |\t)*(?!\n)$)/gm,
+          secondPassRegex: /(( *)(?:node( |\t)+ends|end( |\t)+node)( |\t)*(?!\n)$)/gm,
           className: 'border-b-3 border-r-3 text-rose-400'
         },
         {
@@ -183,6 +194,7 @@ export default function InputScript(props: InputScriptProps) {
     if (inputRef.current) {
       inputRef.current.value = props.defaultValue ?? "";
     }
+    setGraphText(props.defaultValue ?? "");
     refreshDiagnostics();
     runFullInterpretation(true);
     $('#' + id).trigger("load");
@@ -230,6 +242,7 @@ export default function InputScript(props: InputScriptProps) {
     if (!element) { return; }
     const start = element.selectionStart;
     const end = element.selectionEnd;
+    if (viewModeRef.current == "split") { setCaret(start); }
     const previous = lastSelectionRef.current;
     if (start == previous.start && end == previous.end) {
       return; //Pure caret movement or same selection: no-op
@@ -379,6 +392,7 @@ export default function InputScript(props: InputScriptProps) {
 
   const action = () => {
     if (inputRef.current) {
+      if (viewModeRef.current != "text") { setGraphText(inputRef.current.value); }
       props.action?.(inputRef.current.value);
       refreshDiagnosticsDebounced();
       scheduleFullInterpretation();
@@ -430,6 +444,45 @@ export default function InputScript(props: InputScriptProps) {
     const trailingBreak = needsTrailingBreak ? "\n" : "";
     insertTextAtSelection(element, wrap + text + trailingBreak);
   };
+
+  //*Node editor edits: replace the whole buffer (the graph keeps its own undo history)
+  const replaceAllText = (newText: string) => {
+    const element = inputRef.current;
+    if (!element) { return; }
+    element.value = newText;
+    setGraphText(newText);
+    action();
+    $(element).trigger("load");
+  };
+
+  const selectSpanInText = (span: [number, number]) => {
+    const element = inputRef.current;
+    if (!element || viewModeRef.current != "split") { return; }
+    element.focus({ preventScroll: true });
+    element.setSelectionRange(span[0], span[1]);
+    const lineHeight = parseFloat(getComputedStyle(element).lineHeight) || 18;
+    const line = element.value.slice(0, span[0]).split("\n").length - 1;
+    element.scrollTop = Math.max(0, line * lineHeight - element.clientHeight / 3);
+  };
+
+  const switchView = (mode: ViewMode) => {
+    if (mode != "text" && inputRef.current) { setGraphText(inputRef.current.value); }
+    setViewMode(mode);
+  };
+
+  const viewToggle = (
+    <div className="flex rounded-md overflow-hidden border border-neutral-600" title="Cambiar la forma de editar el script">
+      {([["text", "✍ Texto"], ["nodes", "◇ Nodos"], ["split", "◫ Ambos"]] as Array<[ViewMode, string]>).map(([mode, label]) => (
+        <button
+          key={mode}
+          onClick={() => switchView(mode)}
+          className={`text-[12px] px-2 py-1 ${viewMode == mode ? "bg-sky-700 text-white" : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"}`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
 
   let height = props.height ? ' ' + props.height + ' ' : ' h-36 ';
   let fatherStyle = props.fatherStyle ? ' ' + props.fatherStyle + ' ' : 'bg-transparent';
@@ -508,8 +561,10 @@ export default function InputScript(props: InputScriptProps) {
     </>
   );
 
+  const textWidth = viewMode == "text" ? "w-1/2" : viewMode == "split" ? "w-1/3" : "hidden";
+
   return <div className="flex flex-row w-full relative">
-    <div className="w-1/2 h-full relative">
+    <div className={textWidth + " h-full relative"}>
       <InstructionPalette
         visible={paletteVisible}
         onClose={() => { setPaletteVisible(false) }}
@@ -517,17 +572,35 @@ export default function InputScript(props: InputScriptProps) {
       />
       {editor}
     </div>
-    <div className="w-1/2 h-full">
-      <InterpretedDataViewer interpretedData={interpretedData} selectionInterpretation={selectedInterpretation} />
-    </div>
+    {viewMode == "text"
+      ? <div className="w-1/2 h-full">
+          <InterpretedDataViewer interpretedData={interpretedData} selectionInterpretation={selectedInterpretation} />
+        </div>
+      : <div className={(viewMode == "split" ? "w-2/3 border-l border-neutral-700" : "w-full") + " h-full relative"}>
+          <ScriptGraphEditor
+            text={graphText}
+            onChange={replaceAllText}
+            scriptRoute={props.scriptRoute}
+            onSelectSpan={selectSpanInText}
+            caret={viewMode == "split" ? caret : null}
+            toolbarExtra={viewToggle}
+          />
+        </div>}
     <div className="absolute bottom-1 right-1 z-30 flex flex-row gap-1 items-start">
       {props.bottomRightSlot}
-      <ToolbarButton
-        text="⌘ Instructions"
-        action={() => { setPaletteVisible(!paletteVisible) }}
-        hide={paletteVisible}
-        title="Instruction palette"
-      />
+      {viewMode == "text" && <>
+        <ToolbarButton
+          text="◇ Ver como nodos"
+          action={() => { switchView("nodes") }}
+          title="Editar el script visualmente, como un mapa de la historia"
+        />
+        <ToolbarButton
+          text="⌘ Instructions"
+          action={() => { setPaletteVisible(!paletteVisible) }}
+          hide={paletteVisible}
+          title="Instruction palette"
+        />
+      </>}
     </div>
   </div>
 }

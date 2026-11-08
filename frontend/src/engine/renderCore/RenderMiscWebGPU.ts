@@ -1,5 +1,5 @@
 import { ObjectRenderingData } from "../engineComponents/CollisionLayer.ts";
-import { colorToRGBA, TextLine } from "../logic/Misc.ts";
+import { colorToRGBA, TextLine, wrapText } from "../logic/Misc.ts";
 import RenderMiscInterface, { RenderMiscForDebugInterface } from "./RenderMiscInterface.ts";
 import EngTexture from "./EngTexture.ts";
 import WebGPUCanvas, { RepeatMode } from "./WebGPUCanvas.ts";
@@ -8,6 +8,7 @@ import type { TexImageBC7 } from "./GlbTex.ts";
 import { RgbSplitParams } from "./RgbSplit.ts";
 import type { GridState, GridView } from "./GridHelper.ts";
 import type { PointLightData } from "./RenderEngine.d.tsx";
+import TextRasterizer from "./TextRasterizer.ts";
 
 class RenderMiscForDebug extends RenderMiscForDebugInterface<GPUCanvasContext>{
   drawObjectLimits(ctx:GPUCanvasContext, object: ObjectRenderingData, canvasResolution: {width:number, height:number}, cameraZ:number){}
@@ -38,6 +39,18 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
   readonly requiresPrecreateRepeatPattern = false;
   
   private WebGPURendererInstance = new WebGPUCanvas();
+  //*Estado por objeto que fija RenderEngine antes de encolar (opacidad,
+  //filtro CSS y fuente): se aplica a imagenes, rects y texto.
+  private currentOpacity = 1;
+  private currentFilter = "none";
+  private currentFontSize = 18;
+  private currentFontFamily = "Arial";
+  private textRasterizer = new TextRasterizer({
+    upload: (id, source, w, h) => this.WebGPURendererInstance.uploadDynamicTexture(id, source, w, h),
+    release: (id) => this.WebGPURendererInstance.releaseTexture(id),
+    maxTextureSize: () => this.WebGPURendererInstance.maxTextureSize,
+  });
+  private measureCtx: CanvasRenderingContext2D | null = null;
   private static instance: RenderMiscWebGPU;
   static getInstance(){
     if(!RenderMiscWebGPU.instance){
@@ -105,10 +118,11 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
     //WebGPU clear is handled in the render loop, so we don't need to do anything here
   }
   setOpacity(ctx: GPUCanvasContext, opacity:number){
-    
+    this.currentOpacity = opacity;
   }
   setFilter(ctx: GPUCanvasContext, filter:string){
-
+    //Solo lo aplica el texto (se rasteriza con ctx.filter)
+    this.currentFilter = filter;
   }
   setGlobalBlur(ctx: GPUCanvasContext, radiusPx:number){
     this.WebGPURendererInstance.setBlurRadius(radiusPx);
@@ -165,7 +179,8 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
       roll: object.roll,
       depthZ: object.perspDepth.z,
       depthP: object.perspDepth.p,
-      ignoreWorldRotation: object.ignoreWorldRotation ?? 0});
+      ignoreWorldRotation: object.ignoreWorldRotation ?? 0,
+      opacity: this.currentOpacity});
   }
   drawMesh(modelId: string, ppu: number, object:ObjectRenderingData, ctx:GPUCanvasContext){
     this.WebGPURendererInstance.queueMesh({
@@ -222,6 +237,8 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
   }
 
   drawRectangle(object:ObjectRenderingData, boxColor:string, ctx:GPUCanvasContext){
+    const color = colorToRGBA(boxColor);
+    color[3] *= this.currentOpacity;
     this.WebGPURendererInstance.queueRect({
       x:object.corner.x,
       y:object.corner.y,
@@ -234,15 +251,41 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
       ignoreWorldRotation: object.ignoreWorldRotation ?? 0,
       depthZ: object.perspDepth.z,
       depthP: object.perspDepth.p,
-      borderColor: colorToRGBA(boxColor),
-      fillColor: colorToRGBA(boxColor),
+      borderColor: color,
+      fillColor: color,
     });
   }
   setFont(fontSize:number, fontFamily:string, ctx:GPUCanvasContext){
-    
+    this.currentFontSize = fontSize;
+    this.currentFontFamily = fontFamily;
   }
+  /** Rasteriza el texto a una textura por objeto y lo encola como imagen (respeta Z, rotaciones 3D y opacidad). */
   drawText(object:ObjectRenderingData, textLines:Array<TextLine>, fontColor:string, boxColor:string, ctx:GPUCanvasContext){
-    
+    const quad = this.textRasterizer.ensure(
+      object.id,
+      object.corner,
+      object.width,
+      object.height,
+      textLines,
+      this.currentFontSize,
+      this.currentFontFamily,
+      fontColor,
+      this.currentFilter);
+    if(!quad) return;
+    this.WebGPURendererInstance.queueImage({
+      id: quad.id,
+      x: quad.x,
+      y: quad.y,
+      width: quad.width,
+      height: quad.height,
+      rotation: object.rotation,
+      pitch: object.pitch,
+      yaw: object.yaw,
+      roll: object.roll,
+      depthZ: object.perspDepth.z,
+      depthP: object.perspDepth.p,
+      ignoreWorldRotation: object.ignoreWorldRotation ?? 0,
+      opacity: this.currentOpacity});
   }
 
   wrapText(
@@ -251,12 +294,30 @@ export default class RenderMiscWebGPU extends RenderMiscForDebug implements Rend
     horizontalCenter:boolean,
     verticalCenter:boolean,
     ctx:GPUCanvasContext){
-
-  return []
+    //Medicion en un contexto 2D propio (mismo algoritmo que Canvas2D)
+    this.measureCtx ??= document.createElement("canvas").getContext("2d");
+    if(!this.measureCtx) return [];
+    this.measureCtx.font = `${this.currentFontSize}px ${this.currentFontFamily}`;
+    const text = object.text;
+    return wrapText(
+      this.measureCtx,
+      baseText,
+      text.margin.horizontal + object.corner.x,
+      text.margin.vertical + object.corner.y + text.fontSize/2,
+      object.width - text.margin.horizontal*2,
+      object.height - text.margin.vertical*2,
+      text.fontSize,
+      horizontalCenter,
+      verticalCenter);
   }
 
   render(){
     this.WebGPURendererInstance.render();
+    this.textRasterizer.endFrame();
+  }
+  /** Subidas de texturas de texto desde el arranque (diagnostico de re-raster). */
+  get textUploads(){
+    return this.WebGPURendererInstance.dynamicUploads;
   }
   setWorldRotation(pitch: number, yaw: number, roll: number){
     this.WebGPURendererInstance.setWorldRotation(pitch, yaw, roll);

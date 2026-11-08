@@ -78,20 +78,20 @@ export const scriptInstructionsCatalog: Array<ScriptInstructionEntry> = [
   {
     name: "node",
     category: "Structure and flow",
-    description: "Defines the start of a node's scope. Must be written inside a scene and only activates while the scene is active. Closed with node ends.",
+    description: "Defines the start of a node's scope. Must be written inside a scene and only activates while the scene is active. Closed with end node.",
     syntaxes: [
       { syntax: "node: nodeId", description: "nodeId: name of the node" }
     ],
     example: "node: IdunnoBro"
   },
   {
-    name: "node ends",
+    name: "end node",
     category: "Structure and flow",
     description: "Closes the current node's scope.",
     syntaxes: [
-      { syntax: "node ends" }
+      { syntax: "end node" }
     ],
-    example: "node ends"
+    example: "end node"
   },
   {
     name: "run",
@@ -111,7 +111,7 @@ export const scriptInstructionsCatalog: Array<ScriptInstructionEntry> = [
   {
     name: "jumpto",
     category: "Structure and flow",
-    description: "Jumps to a node defined in the active scene (the rest of the section's code is no longer executed).",
+    description: "Runs a node of the active scene and then continues with the rest of the current section (call and return). Written directly in a scene/node it runs while that block loads, so use it inside a Trigger or CodedRoutine; to change scene use run.",
     syntaxes: [
       { syntax: "jumpto nodeName" }
     ],
